@@ -195,7 +195,7 @@ export default function PlanningDetail() {
             <div>
               <div className="flex items-center gap-3">
                 <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
-                  {isCreate ? "Create Barging Process" : `Barging ID: BRG-${id || '90210'}`}
+                  {isCreate ? "Create Barging Process" : `Barging ID: ${id || 'BRG-90210'}`}
                 </h1>
                 {!isCreate && (
                   <span className={`px-3 py-1 rounded-lg text-xs font-bold tracking-wide uppercase ${
