@@ -1,0 +1,2513 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Barge System — Web App (SPV / PJO)</title>
+<style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+        --sidebar-w: 240px;
+        --navy: #1a1d2e;
+        --navy2: #252840;
+        --teal: #2dd4bf;
+        --teal2: #14b8a6;
+        --indigo: #5B5FC7;
+        --indigo2: #4a4eaa;
+        --text: #f1f5f9;
+        --text-dim: #94a3b8;
+        --border: rgba(255,255,255,0.08);
+        --card-bg: rgba(255,255,255,0.04);
+        --success: #1B8A58;
+        --warning: #D97706;
+        --danger: #DC2626;
+        --radius: 10px;
+    }
+    body { font-family: 'Segoe UI', system-ui, sans-serif; background: #f0f4f8; color: #1e293b; min-height: 100vh; }
+
+    /* ── LOGIN ── */
+    #login-page {
+        display: flex; align-items: center; justify-content: center;
+        min-height: 100vh;
+        background: linear-gradient(135deg, var(--navy) 0%, #2a2d4a 50%, #1a2038 100%);
+    }
+    .login-box {
+        background: rgba(255,255,255,0.06); backdrop-filter: blur(20px);
+        border: 1px solid var(--border); border-radius: 20px;
+        padding: 40px 36px; width: 360px;
+    }
+    .login-logo { text-align: center; margin-bottom: 28px; }
+    .login-logo .brand { font-size: 22px; font-weight: 700; color: var(--teal); letter-spacing: 1px; }
+    .login-logo .sub  { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
+    .login-title { font-size: 18px; font-weight: 600; color: var(--text); margin-bottom: 20px; text-align: center; }
+    .login-group { margin-bottom: 16px; }
+    .login-label { display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 6px; font-weight: 500; }
+    .login-input {
+        width: 100%; padding: 11px 14px; border-radius: 8px;
+        background: rgba(255,255,255,0.08); border: 1px solid var(--border);
+        color: var(--text); font-size: 14px; outline: none;
+    }
+    .login-input:focus { border-color: var(--teal); }
+    .login-btn {
+        width: 100%; padding: 13px; border: none; border-radius: 10px; cursor: pointer;
+        background: linear-gradient(135deg, var(--teal), var(--teal2));
+        color: #0f2824; font-size: 15px; font-weight: 700; margin-top: 8px;
+    }
+    .login-error { color: #f87171; font-size: 12px; text-align: center; margin-top: 10px; display: none; }
+
+    /* ── SHELL ── */
+    #app { display: none; }
+    .shell { display: flex; height: 100vh; overflow: hidden; }
+
+    /* SIDEBAR */
+    .sidebar {
+        width: var(--sidebar-w); background: var(--navy);
+        display: flex; flex-direction: column; flex-shrink: 0;
+        border-right: 1px solid var(--border); overflow-y: auto;
+    }
+    .sidebar-brand { padding: 20px 18px; border-bottom: 1px solid var(--border); }
+    .sidebar-brand .b1 { font-size: 16px; font-weight: 700; color: var(--teal); }
+    .sidebar-brand .b2 { font-size: 11px; color: var(--text-dim); margin-top: 2px; }
+    .nav-section { padding: 14px 10px 6px; }
+    .nav-section-label { font-size: 10px; text-transform: uppercase; color: var(--text-dim); letter-spacing: 1px; padding: 0 8px; margin-bottom: 4px; }
+    .nav-item {
+        display: flex; align-items: center; gap: 10px; padding: 9px 12px;
+        border-radius: 8px; cursor: pointer; color: var(--text-dim);
+        font-size: 13px; font-weight: 500; transition: all .15s;
+    }
+    .nav-item:hover { background: rgba(255,255,255,0.06); color: var(--text); }
+    .nav-item.active { background: rgba(45,212,191,0.15); color: var(--teal); }
+    .nav-icon { font-size: 15px; width: 20px; text-align: center; }
+    .sidebar-footer { margin-top: auto; padding: 14px 10px; border-top: 1px solid var(--border); }
+    .user-chip {
+        display: flex; align-items: center; gap: 10px; padding: 10px;
+        background: var(--card-bg); border-radius: 8px;
+    }
+    .user-avatar { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(135deg,var(--indigo),var(--teal)); display: flex; align-items: center; justify-content: center; font-size: 13px; color: #fff; font-weight: 700; }
+    .user-name { font-size: 12px; font-weight: 600; color: var(--text); }
+    .user-role { font-size: 10px; color: var(--text-dim); }
+    .logout-btn { background: none; border: none; color: var(--text-dim); cursor: pointer; font-size: 16px; margin-left: auto; }
+
+    /* MAIN */
+    .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .topbar {
+        height: 54px; background: #fff; border-bottom: 1px solid #e2e8f0;
+        display: flex; align-items: center; padding: 0 24px; gap: 12px; flex-shrink: 0;
+    }
+    .topbar-title { font-size: 15px; font-weight: 600; color: #1e293b; flex: 1; }
+    .topbar-badge { background: #f0f4f8; border-radius: 6px; padding: 4px 10px; font-size: 12px; color: #64748b; }
+    .content-area { flex: 1; overflow-y: auto; padding: 24px; }
+
+    /* ── PAGE VIEWS ── */
+    .page { display: none; }
+    .page.active { display: block; }
+
+    /* ── CARDS & GRIDS ── */
+    .metric-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+    .metric-card {
+        background: #fff; border-radius: var(--radius); padding: 18px;
+        border: 1px solid #e2e8f0; display: flex; flex-direction: column; gap: 6px;
+    }
+    .metric-icon { font-size: 22px; }
+    .metric-label { font-size: 11px; color: #64748b; font-weight: 500; }
+    .metric-value { font-size: 24px; font-weight: 700; color: #1e293b; }
+    .metric-sub { font-size: 11px; color: #94a3b8; }
+
+    /* TABLE */
+    .card { background: #fff; border-radius: var(--radius); border: 1px solid #e2e8f0; overflow: hidden; }
+    .card-header { padding: 16px 20px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; }
+    .card-title { font-size: 14px; font-weight: 600; color: #1e293b; }
+    .card-body { padding: 0; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { padding: 10px 16px; text-align: left; background: #f8fafc; color: #64748b; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .5px; border-bottom: 1px solid #e2e8f0; }
+    td { padding: 13px 16px; border-bottom: 1px solid #f1f5f9; color: #334155; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #f8fafc; }
+
+    /* STATUS BADGES */
+    .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+    .badge.planned  { background: #fef9c3; color: #854d0e; }
+    .badge.arrived  { background: #dbeafe; color: #1e40af; }
+    .badge.open     { background: #e0f2fe; color: #0369a1; }
+    .badge.on-progress { background: #ede9fe; color: #5B21B6; }
+    .badge.closed   { background: #fef2f2; color: #991b1b; }
+    .badge.departed { background: #dcfce7; color: #166534; }
+    .badge.invalid  { background: #f1f5f9; color: #64748b; }
+    .badge.breakdown-b { background: #fef2f2; color: #DC2626; }
+    .badge.transfer-b  { background: #fef7e0; color: #78350f; }
+    .badge.available-b { background: #dcfce7; color: #166534; }
+    .badge.loaded-b    { background: #ede9fe; color: #5B21B6; }
+
+    /* BUTTONS */
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 8px; border: none; cursor: pointer; font-size: 13px; font-weight: 600; transition: all .15s; }
+    .btn-primary { background: var(--indigo); color: #fff; }
+    .btn-primary:hover { background: var(--indigo2); }
+    .btn-teal { background: var(--teal); color: #0f2824; }
+    .btn-teal:hover { background: var(--teal2); }
+    .btn-outline { background: transparent; border: 1px solid #cbd5e1; color: #475569; }
+    .btn-outline:hover { background: #f8fafc; }
+    .btn-secondary { background: #e2e8f0; color: #334155; }
+    .btn-secondary:hover { background: #cbd5e1; }
+    .btn-danger { background: #DC2626; color: #fff; }
+    .btn-danger:hover { background: #b91c1c; }
+    .btn-warn { background: #D97706; color: #fff; }
+    .btn-warn:hover { background: #b45309; }
+    .btn-sm { padding: 5px 12px; font-size: 12px; }
+    .btn-icon { padding: 7px; border-radius: 7px; font-size: 14px; }
+
+    /* DETAIL PAGE */
+    .detail-layout { display: grid; grid-template-columns: 1fr 280px; gap: 20px; }
+    .detail-main { display: flex; flex-direction: column; gap: 16px; }
+    .detail-sidebar { display: flex; flex-direction: column; gap: 16px; }
+
+    .status-flow { display: flex; align-items: center; gap: 0; background: #fff; border: 1px solid #e2e8f0; border-radius: var(--radius); padding: 16px 20px; }
+    .sf-step { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; position: relative; }
+    .sf-step:not(:last-child)::after { content: ''; position: absolute; top: 14px; left: 50%; width: 100%; height: 2px; background: #e2e8f0; z-index: 0; }
+    .sf-step.done::after { background: #1B8A58; }
+    .sf-step.current::after { background: linear-gradient(90deg,#1B8A58 50%,#e2e8f0 50%); }
+    .sf-dot { width: 28px; height: 28px; border-radius: 50%; border: 2px solid #e2e8f0; background: #f8fafc; display: flex; align-items: center; justify-content: center; font-size: 12px; z-index: 1; }
+    .sf-step.done .sf-dot { border-color: #1B8A58; background: #1B8A58; color: #fff; }
+    .sf-step.current .sf-dot { border-color: var(--indigo); background: var(--indigo); color: #fff; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100% { box-shadow: 0 0 0 0 rgba(91,95,199,.4); } 50% { box-shadow: 0 0 0 6px rgba(91,95,199,0); } }
+    .sf-label { font-size: 10px; color: #94a3b8; font-weight: 500; text-align: center; }
+    .sf-step.done .sf-label, .sf-step.current .sf-label { color: #1e293b; font-weight: 600; }
+
+    .section-card { background: #fff; border-radius: var(--radius); border: 1px solid #e2e8f0; }
+    .section-card-header { padding: 14px 18px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; justify-content: space-between; }
+    .section-card-title { font-size: 13px; font-weight: 600; color: #1e293b; }
+    .section-card-body { padding: 16px 18px; }
+
+    .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .info-item { display: flex; flex-direction: column; gap: 3px; }
+    .info-label { font-size: 11px; color: #94a3b8; font-weight: 500; }
+    .info-value { font-size: 13px; color: #1e293b; font-weight: 600; }
+
+    .checklist-item { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid #f1f5f9; }
+    .checklist-item:last-child { border-bottom: none; }
+    .checklist-box { width: 20px; height: 20px; border-radius: 5px; border: 2px solid #cbd5e1; cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: 11px; flex-shrink: 0; }
+    .checklist-box.checked { background: var(--indigo); border-color: var(--indigo); color: #fff; }
+    .checklist-label { font-size: 13px; color: #334155; }
+
+    .form-group { margin-bottom: 14px; }
+    .form-label { display: block; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 6px; }
+    .form-input, .form-select {
+        width: 100%; padding: 9px 12px; border-radius: 7px;
+        border: 1px solid #cbd5e1; font-size: 13px; color: #1e293b;
+        background: #fff; outline: none; transition: border-color .15s;
+    }
+    .form-input:focus, .form-select:focus { border-color: var(--indigo); }
+    .form-input[readonly] { background: #f8fafc; color: #64748b; cursor: not-allowed; }
+
+    /* ACHIEVEMENT TABLE */
+    .achievement-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+    .ach-stat { background: #f8fafc; border-radius: 8px; padding: 12px; text-align: center; }
+    .ach-stat-val { font-size: 22px; font-weight: 700; color: #1e293b; }
+    .ach-stat-label { font-size: 11px; color: #94a3b8; font-weight: 500; }
+    .progress-bar-wrap { background: #e2e8f0; border-radius: 99px; height: 10px; margin-bottom: 6px; overflow: hidden; }
+    .progress-bar-fill { height: 100%; border-radius: 99px; background: linear-gradient(90deg,var(--teal),var(--teal2)); transition: width .5s; }
+
+    /* DT STATUS PANEL */
+    .dt-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
+    .dt-card {
+        border-radius: 8px; padding: 12px; border: 1px solid #e2e8f0;
+        display: flex; flex-direction: column; gap: 6px; position: relative;
+    }
+    .dt-card.available { background: #f0fdf4; border-color: #bbf7d0; }
+    .dt-card.loaded    { background: #f5f3ff; border-color: #ddd6fe; }
+    .dt-card.breakdown { background: #fef2f2; border-color: #fecaca; }
+    .dt-card.transfer  { background: #fef7e0; border-color: #fde68a; }
+    .dt-name { font-size: 13px; font-weight: 700; color: #1e293b; }
+    .dt-plate { font-size: 11px; color: #64748b; }
+    .dt-info  { font-size: 11px; color: #64748b; }
+    .dt-action-btn {
+        margin-top: 6px; padding: 5px 0; border: none; border-radius: 6px;
+        cursor: pointer; font-size: 11px; font-weight: 600; width: 100%;
+    }
+    .dt-action-btn.breakdown-action { background: #fef2f2; color: #DC2626; border: 1px solid #fecaca; }
+    .dt-action-btn.breakdown-action:hover { background: #fee2e2; }
+
+    /* MODAL */
+    .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.45); backdrop-filter: blur(4px); z-index: 1000; align-items: center; justify-content: center; }
+    .modal-backdrop.open { display: flex; }
+    .modal { background: #fff; border-radius: 16px; padding: 28px; width: 440px; max-width: 96vw; }
+    .modal-title { font-size: 16px; font-weight: 700; color: #1e293b; margin-bottom: 6px; }
+    .modal-sub { font-size: 13px; color: #64748b; margin-bottom: 20px; }
+    .modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+
+    /* INFO BOX */
+    .info-box { border-radius: 8px; padding: 12px 14px; font-size: 12px; line-height: 1.6; border: 1px solid; }
+    .info-box.blue { background: #eff6ff; border-color: #bfdbfe; color: #1e40af; }
+    .info-box.orange { background: #fef7e0; border-color: #fde68a; color: #78350f; }
+    .info-box.red   { background: #fef2f2; border-color: #fecaca; color: #991b1b; }
+    .info-box.green { background: #f0fdf4; border-color: #bbf7d0; color: #14532d; }
+
+    .empty-state { text-align: center; padding: 40px 20px; color: #94a3b8; }
+    .empty-state .empty-icon { font-size: 36px; margin-bottom: 10px; }
+
+    /* ── TABS ── */
+    .tab-bar {
+        display: flex; gap: 2px; border-bottom: 2px solid #e2e8f0; margin-bottom: 20px;
+        position: sticky; top: 0; background: #f0f4f8; z-index: 10;
+        margin-left: -24px; margin-right: -24px; padding: 0 24px;
+    }
+    .tab-btn {
+        padding: 10px 20px; border: none; background: none; cursor: pointer;
+        font-size: 13px; font-weight: 600; color: #64748b;
+        border-bottom: 3px solid transparent; margin-bottom: -2px;
+        border-radius: 6px 6px 0 0; transition: all .15s;
+    }
+    .tab-btn:hover { background: #f8fafc; color: #1e293b; }
+    .tab-btn.active { color: var(--indigo); border-bottom-color: var(--indigo); background: #f5f5ff; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* Doc info strip above tabs */
+    .doc-strip {
+        display: flex; gap: 20px; flex-wrap: wrap; background: #fff;
+        border: 1px solid #e2e8f0; border-radius: var(--radius);
+        padding: 12px 18px; margin-bottom: 16px; align-items: center;
+    }
+    .doc-strip-item { display: flex; flex-direction: column; gap: 1px; }
+    .doc-strip-label { font-size: 10px; color: #94a3b8; font-weight: 500; text-transform: uppercase; letter-spacing: .4px; }
+    .doc-strip-val   { font-size: 13px; color: #1e293b; font-weight: 600; }
+
+    select { cursor: pointer; }
+    input[type=datetime-local] { cursor: pointer; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════ LOGIN PAGE ══════════════ -->
+<div id="login-page">
+    <div class="login-box">
+        <div class="login-logo">
+            <div class="brand">ITI ONE</div>
+            <div class="sub">Barge System — Web App</div>
+        </div>
+        <div class="login-title">Masuk ke Sistem</div>
+        <div class="login-group">
+            <label class="login-label">Username</label>
+            <input type="text" class="login-input" id="login-user" placeholder="contoh: spv001" value="spv001">
+        </div>
+        <div class="login-group">
+            <label class="login-label">Password</label>
+            <input type="password" class="login-input" id="login-pass" placeholder="password" value="password123">
+        </div>
+        <button class="login-btn" onclick="doLogin()">Masuk</button>
+        <div class="login-error" id="login-error">Username atau password salah.</div>
+        <p style="text-align:center;font-size:11px;color:#94a3b8;margin-top:14px;">Demo: spv001 / password123 &nbsp;|&nbsp; pjo001 / password123</p>
+    </div>
+</div>
+
+<!-- ══════════════ APP SHELL ══════════════ -->
+<div id="app">
+<div class="shell">
+
+    <!-- SIDEBAR -->
+    <aside class="sidebar">
+        <div class="sidebar-brand">
+            <div class="b1">ITI ONE</div>
+            <div class="b2">Barge System — Web</div>
+        </div>
+
+        <div class="nav-section">
+            <div class="nav-section-label">Overview</div>
+            <div class="nav-item active" id="nav-dashboard" onclick="goPage('dashboard')">
+                <span class="nav-icon">📊</span> Dashboard
+            </div>
+        </div>
+
+        <div class="nav-section">
+            <div class="nav-section-label">Transaksional</div>
+            <div class="nav-item" id="nav-planning" onclick="goPage('planning')">
+                <span class="nav-icon">📋</span> Barging Process
+            </div>
+        </div>
+
+        <div class="sidebar-footer">
+            <div class="user-chip">
+                <div class="user-avatar" id="sidebar-avatar">S</div>
+                <div>
+                    <div class="user-name" id="sidebar-name">SPV Produksi</div>
+                    <div class="user-role" id="sidebar-role">SPV Production</div>
+                </div>
+                <button class="logout-btn" onclick="doLogout()" title="Logout">⏻</button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- MAIN -->
+    <div class="main">
+        <div class="topbar">
+            <div class="topbar-title" id="topbar-title">Dashboard</div>
+            <div class="topbar-badge" id="topbar-badge">Barge System v1.0</div>
+        </div>
+
+        <div class="content-area">
+
+            <!-- PAGE: DASHBOARD -->
+            <div class="page active" id="page-dashboard">
+                <div class="metric-grid" id="dashboard-metrics"></div>
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">Active Barging Documents</div>
+                        <button class="btn btn-primary btn-sm" onclick="goPage('planning')">Lihat Semua</button>
+                    </div>
+                    <div class="card-body">
+                        <table id="dashboard-table">
+                            <thead><tr><th>Doc ID</th><th>Area</th><th>Barge</th><th>Status</th><th>Progress</th><th></th></tr></thead>
+                            <tbody id="dashboard-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAGE: PLANNING LIST -->
+            <div class="page" id="page-planning">
+                <div class="card">
+                    <div class="card-header">
+                        <div class="card-title">Barging Process List</div>
+                        <button class="btn btn-primary btn-sm" onclick="goPage('create')">+ Create</button>
+                    </div>
+                    <div style="padding:0 16px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+                        <input type="text" id="plan-search" placeholder="Search by Doc ID or Barge name..."
+                               oninput="renderPlanning()"
+                               style="flex:1;min-width:200px;padding:6px 10px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px;outline:none;">
+                        <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#64748b;">
+                            <span>Date</span>
+                            <input type="date" id="plan-date-from" onchange="renderPlanning()"
+                                   style="padding:5px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px;">
+                            <span>–</span>
+                            <input type="date" id="plan-date-to" onchange="renderPlanning()"
+                                   style="padding:5px 8px;border:1px solid #e2e8f0;border-radius:6px;font-size:12px;">
+                        </div>
+                        <button class="btn btn-outline btn-sm" onclick="clearPlanFilters()" style="white-space:nowrap;">Clear Filter</button>
+                    </div>
+                    <div class="card-body">
+                        <table>
+                            <thead><tr><th>Doc ID</th><th>Barge</th><th>Material</th><th>Target Tonnage</th><th>ETA</th><th>ATA</th><th>Status</th><th>Action</th></tr></thead>
+                            <tbody id="planning-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAGE: PLANNING DETAIL -->
+            <div class="page" id="page-detail">
+                <div style="margin-bottom:16px;display:flex;align-items:center;gap:10px;">
+                    <button class="btn btn-outline btn-sm" onclick="goPage('planning')">← Kembali</button>
+                    <span id="detail-breadcrumb" style="font-size:13px;color:#64748b;"></span>
+                </div>
+                <div id="detail-doc-strip"></div>
+                <div class="status-flow" id="detail-status-flow"></div>
+                <div id="detail-tabs" style="margin-top:16px;"></div>
+            </div>
+
+            <!-- PAGE: CREATE BARGE DOCUMENT -->
+            <div class="page" id="page-create">
+                <div style="margin-bottom:20px;display:flex;align-items:center;gap:10px;">
+                    <button class="btn btn-outline btn-sm" onclick="goPage('planning')">← Kembali</button>
+                    <span style="font-size:13px;color:#64748b;">Transactional → Barging Process → Create Barge Document</span>
+                </div>
+                <div class="card">
+                    <div class="card-body" style="padding:20px;">
+                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                            <div class="form-group">
+                                <label class="form-label">Area / Lokasi (Jetty)</label>
+                                <select class="form-select" id="cr-area">
+                                    <option value="Jetty F">Jetty F</option>
+                                    <option value="Jetty G">Jetty G</option>
+                                    <option value="Jetty H">Jetty H</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Barge (Tongkang)</label>
+                                <select class="form-select" id="cr-barge">
+                                    <option value="SEA TITAN">SEA TITAN (5.000 MT)</option>
+                                    <option value="RIVER KING">RIVER KING (3.500 MT)</option>
+                                    <option value="OCEAN BLUE">OCEAN BLUE (4.000 MT)</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Material</label>
+                                <select class="form-select" id="cr-material" onchange="updateMaterialDensity()">
+                                    <option value="Coal">Coal</option>
+                                    <option value="Nickel">Nickel</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Densitas Material (MT/m³)</label>
+                                <input type="number" class="form-input" id="cr-density" step="0.1" min="0.5" max="3.0" value="1.2">
+                                <div style="font-size:10px;color:#94a3b8;margin-top:3px;">Auto-fill dari jenis material. Bisa diubah.</div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Target Tonase (MT)</label>
+                                <input type="number" class="form-input" id="cr-target" value="4500" min="100">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">ETA</label>
+                                <input type="datetime-local" class="form-input" id="cr-eta">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Surveyor</label>
+                                <input type="text" class="form-input" id="cr-surveyor" value="PT. Sucofindo">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">SPV / Checker</label>
+                                <input type="text" class="form-input" id="cr-spv" value="Budi Santoso">
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;padding-top:16px;border-top:1px solid #e2e8f0;">
+                            <button class="btn btn-outline" onclick="goPage('planning')">Batal</button>
+                            <button class="btn btn-primary" onclick="createDocument()">Create Document</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAGE: EDIT BARGE DOCUMENT -->
+            <div class="page" id="page-edit">
+                <div style="margin-bottom:20px;display:flex;align-items:center;gap:10px;">
+                    <button class="btn btn-outline btn-sm" onclick="goPage('planning')">← Kembali</button>
+                    <span style="font-size:13px;color:#64748b;">Transactional → Barging Process → Edit Barge Document</span>
+                </div>
+                <div class="card">
+                    <div class="card-body" style="padding:20px;">
+                        <div id="edit-modal-sub" style="font-size:12px;color:#64748b;margin-bottom:14px;"></div>
+                        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;margin-bottom:16px;font-size:12px;color:#64748b;">
+                            <strong style="color:#374151;">Read-only (cannot be changed):</strong>
+                            <div style="margin-top:6px;display:grid;grid-template-columns:1fr 1fr;gap:4px;">
+                                <span>Barge: <strong id="edit-ro-barge" style="color:#1e293b;"></strong></span>
+                                <span>Material: <strong id="edit-ro-material" style="color:#1e293b;"></strong></span>
+                            </div>
+                        </div>
+                        <div style="display:grid;gap:12px;max-width:480px;">
+                            <div class="form-group">
+                                <label class="form-label">ETA</label>
+                                <input type="datetime-local" class="form-input" id="edit-eta">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Target Tonnage (MT)</label>
+                                <input type="number" class="form-input" id="edit-target" min="1" step="0.01" placeholder="e.g. 4500">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Material Density (MT/m³)</label>
+                                <input type="number" class="form-input" id="edit-density" min="0.01" step="0.01" placeholder="e.g. 1.2">
+                            </div>
+                        </div>
+                        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:20px;padding-top:16px;border-top:1px solid #e2e8f0;">
+                            <button class="btn btn-outline" onclick="goPage('planning')">Cancel</button>
+                            <button class="btn btn-primary" onclick="saveEdit()">Save Changes</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+</div>
+
+
+<!-- MODAL: BREAKDOWN -->
+<div class="modal-backdrop" id="modal-breakdown">
+    <div class="modal">
+        <div class="modal-title">⚠️ Tandai Breakdown & Transfer Muatan</div>
+        <div class="modal-sub" id="bd-sub">Pilih unit yang breakdown dan unit penerima muatan hibah.</div>
+        <div class="form-group">
+            <label class="form-label">Unit yang Breakdown</label>
+            <select class="form-select" id="bd-from"></select>
+        </div>
+        <div id="bd-payload-info" style="margin-bottom:14px;display:none;" class="info-box orange"></div>
+        <div class="form-group">
+            <label class="form-label">Transfer Muatan ke Unit</label>
+            <select class="form-select" id="bd-to" onchange="updateBdTonnagePreview()">
+                <option value="">Pilih unit penerima...</option>
+            </select>
+        </div>
+        <div id="bd-tonnage-preview" class="info-box green" style="margin-bottom:12px;display:none;"></div>
+        <div class="info-box blue" style="margin-bottom:0;">
+            <strong>Catatan:</strong> Tonnage yang ditransfer menggunakan <strong>min(kapasitas unit asal, kapasitas unit penerima)</strong>. Setelah konfirmasi, unit penerima muncul di Operator App untuk dump pertama, lalu kembali ke siklus normalnya.
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-outline" onclick="closeModal('modal-breakdown')">Batal</button>
+            <button class="btn btn-warn" onclick="confirmBreakdown()">Konfirmasi Breakdown & Transfer</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: CREATE CONFIRMATION -->
+<div class="modal-backdrop" id="modal-create-confirm">
+    <div class="modal" style="width:420px;">
+        <div class="modal-title">Buat Dokumen Barging</div>
+        <div style="margin:12px 0 20px;color:#475569;font-size:14px;">Are you sure want to create this document? Pastikan semua data sudah benar sebelum melanjutkan.</div>
+        <div class="modal-actions">
+            <button class="btn btn-outline" onclick="closeModal('modal-create-confirm')">Cancel</button>
+            <button class="btn btn-primary" onclick="confirmCreateDocument()">Yes, Create</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: EDIT CONFIRMATION -->
+<div class="modal-backdrop" id="modal-edit-confirm">
+    <div class="modal" style="width:420px;">
+        <div class="modal-title">Simpan Perubahan</div>
+        <div style="margin:12px 0 20px;color:#475569;font-size:14px;">Are you sure want to save these changes? Perubahan akan langsung diterapkan pada dokumen.</div>
+        <div class="modal-actions">
+            <button class="btn btn-outline" onclick="closeModal('modal-edit-confirm')">Cancel</button>
+            <button class="btn btn-primary" onclick="confirmSaveEdit()">Yes, Save</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: ARRIVAL CONFIRMATION -->
+<div class="modal-backdrop" id="modal-arrival-confirm">
+    <div class="modal" style="width:420px;">
+        <div class="modal-title">Konfirmasi Kedatangan Tongkang</div>
+        <div style="margin:12px 0 20px;color:#475569;font-size:14px;">Are you sure want to confirm barge arrival? Please ensure ETA and ATA are correct before proceeding.</div>
+        <div class="modal-actions">
+            <button class="btn btn-outline" onclick="closeModal('modal-arrival-confirm')">Cancel</button>
+            <button class="btn btn-primary" onclick="confirmArrivalExecute()">Yes, Confirm</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: SET OPEN CONFIRMATION -->
+<div class="modal-backdrop" id="modal-open-confirm">
+    <div class="modal" style="width:420px;">
+        <div class="modal-title">Pembukaan Tongkang</div>
+        <div style="margin:12px 0 20px;color:#475569;font-size:14px;">Are you sure want to open this barge? Please ensure all pre-operation checklist items are completed before proceeding.</div>
+        <div class="modal-actions">
+            <button class="btn btn-outline" onclick="closeModal('modal-open-confirm')">Cancel</button>
+            <button class="btn btn-primary" onclick="confirmSetOpenExecute()">Yes, Open</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: MARK AS INVALID CONFIRMATION -->
+<div class="modal-backdrop" id="modal-invalid-confirm">
+    <div class="modal" style="width:460px;">
+        <div class="modal-title">Mark as Invalid</div>
+        <div style="margin:12px 0 16px;color:#475569;font-size:14px;">Are you sure want to mark this document as invalid? This action cannot be undone. The document will be retained for audit purposes.</div>
+        <div id="invalid-confirm-info" style="background:#fef9c3;border:1px solid #fde68a;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:#92400e;font-weight:600;"></div>
+        <div class="form-group" style="margin-bottom:20px;">
+            <label class="form-label" style="font-size:13px;font-weight:600;color:#374151;">Alasan Invalidasi <span style="color:#DC2626;">*</span></label>
+            <textarea id="invalid-justification" rows="3" placeholder="Masukkan alasan mengapa dokumen ini diinvalidkan..." style="width:100%;padding:8px 12px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;resize:vertical;font-family:inherit;outline:none;"></textarea>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-outline" onclick="closeModal('modal-invalid-confirm')">Cancel</button>
+            <button class="btn btn-warn" onclick="confirmMarkInvalidExecute()">Yes, Mark as Invalid</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: DELETE CONFIRMATION -->
+<div class="modal-backdrop" id="modal-delete-confirm">
+    <div class="modal" style="width:420px;">
+        <div class="modal-title">Hapus Dokumen Barging</div>
+        <div style="margin:12px 0 16px;color:#475569;font-size:14px;">Are you sure want to delete this data? Tindakan ini tidak dapat dibatalkan.</div>
+        <div id="delete-confirm-info" style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:10px 14px;margin-bottom:20px;font-size:13px;color:#991b1b;font-weight:600;"></div>
+        <div class="modal-actions">
+            <button class="btn btn-outline" onclick="closeModal('modal-delete-confirm')">Cancel</button>
+            <button class="btn btn-danger" onclick="confirmDeleteDocument()">Yes, Delete</button>
+        </div>
+    </div>
+</div>
+
+<!-- TOAST NOTIFICATION -->
+<div id="toast-notification" style="position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:12px 22px;border-radius:10px;font-size:13px;font-weight:500;display:none;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,0.25);min-width:280px;text-align:center;">
+    <div id="toast-message"></div>
+    <div id="toast-sub" style="font-size:11px;color:#94a3b8;margin-top:4px;"></div>
+</div>
+
+<!-- MODAL: ADD UNIT -->
+<div class="modal-backdrop" id="modal-add-unit">
+    <div class="modal" style="width:480px;">
+        <div class="modal-title" id="add-unit-title">Tambah Unit</div>
+        <div class="modal-sub" id="add-unit-sub">Pilih unit dari master populasi.</div>
+        <div class="form-group">
+            <label class="form-label">Pilih Unit</label>
+            <select class="form-select" id="add-unit-select"></select>
+        </div>
+        <div id="add-unit-dt-fields">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+                <div class="form-group">
+                    <label class="form-label">Rute</label>
+                    <select class="form-select" id="add-unit-route" onchange="onAddUnitRouteChange()">
+                        <option value="scheduled">Scheduled (EFO → Jetty)</option>
+                        <option value="unscheduled">Unscheduled (PIT/ETO → Jetty)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Area Penugasan</label>
+                    <select class="form-select" id="add-unit-area"></select>
+                </div>
+            </div>
+        </div>
+        <div id="add-unit-exca-fields" style="display:none;">
+            <div class="form-group">
+                <label class="form-label">Area Penugasan</label>
+                <select class="form-select" id="add-exca-area">
+                    <option value="EFO A">EFO A</option>
+                    <option value="EFO B">EFO B</option>
+                    <option value="Stockpile A">Stockpile A</option>
+                    <option value="Jetty F">Jetty F</option>
+                    <option value="Jetty G">Jetty G</option>
+                    <option value="Jetty H">Jetty H</option>
+                </select>
+            </div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-outline" onclick="closeModal('modal-add-unit')">Batal</button>
+            <button class="btn btn-primary" onclick="confirmAddUnit()">Tambahkan ke Operasi</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: REMOVE UNIT -->
+<div class="modal-backdrop" id="modal-remove-unit">
+    <div class="modal">
+        <div class="modal-title">⚠️ Keluarkan Unit dari Operasi</div>
+        <div class="modal-sub" id="remove-unit-sub"></div>
+        <div class="info-box orange" style="margin-bottom:4px;">
+            <strong>Pastikan sudah koordinasi dengan driver/operator via HT</strong> sebelum mengeluarkan unit ini. Unit yang dikeluarkan tidak akan terhitung dalam operasi ini.
+        </div>
+        <div class="modal-actions">
+            <button class="btn btn-outline" onclick="closeModal('modal-remove-unit')">Batal</button>
+            <button class="btn btn-danger" onclick="confirmRemoveUnit()">Ya, Keluarkan Unit</button>
+        </div>
+    </div>
+</div>
+
+
+<script>
+// ════════════════════════════════════════════════════════
+// DATA STORE
+// ════════════════════════════════════════════════════════
+
+const SHARED_KEY   = 'bargingSystem_v1_shared';
+const WEB_KEY      = 'bargingSystem_v1_web';
+const MOBILE_KEY   = 'operatorAppData_v2';
+
+const ALL_DT = [
+    { code: 'DT-01', plate: 'B 1234 ABC', vessel_capacity_m3: 10 },
+    { code: 'DT-02', plate: 'B 5678 DEF', vessel_capacity_m3: 12 },
+    { code: 'DT-03', plate: 'B 9012 GHI', vessel_capacity_m3: 15 },
+    { code: 'DT-04', plate: 'B 3456 JKL', vessel_capacity_m3: 10 },
+    { code: 'DT-05', plate: 'B 7890 MNO', vessel_capacity_m3: 8  }
+];
+
+const AREAS_LOADING = ['EFO A', 'EFO B', 'Stockpile A'];
+const AREAS_JETTY   = ['Jetty F', 'Jetty G', 'Jetty H'];
+const AREAS_DIRECT  = ['PIT', 'ETO'];
+const ALL_AREAS     = [...AREAS_LOADING, ...AREAS_JETTY, ...AREAS_DIRECT];
+const MATERIAL_DENSITY = { 'Coal': 1.2, 'Nickel': 1.6 };
+
+const ALL_EXCAS = [
+    { code: 'EX-001', model: 'Hitachi PC200',  bucket: 1.6 },
+    { code: 'EX-002', model: 'Komatsu PC400',  bucket: 2.4 },
+    { code: 'EX-003', model: 'Caterpillar 320', bucket: 1.2 },
+    { code: 'EX-004', model: 'Hitachi PC300',  bucket: 2.0 }
+];
+
+const USERS = {
+    spv001:  { name: 'Budi Santoso',  role: 'SPV Production', avatar: 'B' },
+    pjo001:  { name: 'Siti Rahayu',   role: 'PJO',            avatar: 'S' }
+};
+
+function getWebData() {
+    try { return JSON.parse(localStorage.getItem(WEB_KEY)) || { documents: [], nextSeq: 1 }; }
+    catch { return { documents: [], nextSeq: 1 }; }
+}
+function saveWebData(d) { localStorage.setItem(WEB_KEY, JSON.stringify(d)); }
+
+function getShared() {
+    try { return JSON.parse(localStorage.getItem(SHARED_KEY)) || { payloadTransfers: [] }; }
+    catch { return { payloadTransfers: [] }; }
+}
+
+function saveShared(s) { localStorage.setItem(SHARED_KEY, JSON.stringify(s)); }
+
+function getMobileData() {
+    try { return JSON.parse(localStorage.getItem(MOBILE_KEY)); } catch { return null; }
+}
+
+// Simulated + real ritase data — doc stores simulated counts; fallback reads mobile localStorage
+function getRitaseCount(doc) {
+    const simulated = doc ? (doc.simulatedRitase || 0) : 0;
+    const m = getMobileData();
+    const fromMobile = (m && m.ritases) ? m.ritases.length : 0;
+    return simulated + fromMobile;
+}
+
+function getAccumulatedTonnage(doc) {
+    const simulated = doc ? (doc.simulatedTonnage || 0) : 0;
+    const m = getMobileData();
+    const fromMobile = m ? (m.activities || []).filter(a => a.type === 'loading' && a.ritaseId).reduce((s, a) => s + (a.tonnage || 0), 0) : 0;
+    return simulated + fromMobile;
+}
+
+function simulateRitase(docId) {
+    const data = getWebData();
+    const doc  = data.documents.find(d => d.id === docId);
+    if (!doc) return;
+
+    // Auto-populate Populasi from "Operator App" if first refresh
+    if (!doc.excas || doc.excas.length === 0) {
+        doc.excas = [
+            { code: 'Exca PC200-17',  model: 'Hitachi PC200',   bucket: 1.6, assignedArea: 'EFO A' },
+            { code: 'Exca CAT320-19', model: 'Caterpillar 320', bucket: 1.2, assignedArea: 'EFO B' }
+        ];
+    }
+    if (!doc.dumpTrucks || doc.dumpTrucks.length === 0) {
+        doc.dumpTrucks = [
+            { code: 'DT-01', plate: 'B 1234 ABC', vessel_capacity_m3: 10, route: 'scheduled',   assignedArea: doc.area },
+            { code: 'DT-02', plate: 'B 5678 DEF', vessel_capacity_m3: 12, route: 'scheduled',   assignedArea: doc.area },
+            { code: 'DT-03', plate: 'B 9012 GHI', vessel_capacity_m3: 15, route: 'unscheduled', assignedArea: doc.area }
+        ];
+    }
+
+    // 60% chance: add 1–2 ritase; 40%: no change (feels like real polling)
+    if (Math.random() < 0.4) { saveWebData(data); renderDetail(docId); return; }
+    const newRitase  = Math.random() < 0.6 ? 1 : 2;
+    const perRitase  = 15 + Math.random() * 10;
+    doc.simulatedRitase  = (doc.simulatedRitase  || 0) + newRitase;
+    doc.simulatedTonnage = (doc.simulatedTonnage || 0) + Math.round(newRitase * perRitase * 10) / 10;
+
+    // 25% chance: add a dummy breakdown/transfer event (simulates mobile operator action)
+    if (!doc.breakdownEvents) doc.breakdownEvents = [];
+    if (Math.random() < 0.25 && doc.breakdownEvents.length < 4) {
+        const pairs = [['DT-03','DT-01'],['DT-02','DT-04'],['DT-01','DT-02']];
+        const [from, to] = pairs[Math.floor(Math.random() * pairs.length)];
+        const bkt = Math.floor(Math.random() * 3) + 1;
+        doc.breakdownEvents.push({
+            id: 'BD-' + Date.now(),
+            type: 'dt_breakdown',
+            timestamp: new Date().toLocaleString('id-ID'),
+            fromTruck: from, toTruck: to,
+            bucketCount: bkt,
+            tonnage: Math.round(bkt * (18 + Math.random() * 6) * 10) / 10,
+            note: 'Transfer via operator app (mobile)'
+        });
+    }
+
+    saveWebData(data);
+    renderDetail(docId);
+}
+
+// ════════════════════════════════════════════════════════
+// AUTH
+// ════════════════════════════════════════════════════════
+
+let currentUser = null;
+
+function doLogin() {
+    const u = document.getElementById('login-user').value.trim();
+    const p = document.getElementById('login-pass').value;
+    if (USERS[u] && p === 'password123') {
+        currentUser = { username: u, ...USERS[u] };
+        document.getElementById('login-page').style.display = 'none';
+        document.getElementById('app').style.display = 'block';
+        document.getElementById('sidebar-avatar').textContent = currentUser.avatar;
+        document.getElementById('sidebar-name').textContent   = currentUser.name;
+        document.getElementById('sidebar-role').textContent   = currentUser.role;
+        goPage('dashboard');
+    } else {
+        document.getElementById('login-error').style.display = 'block';
+    }
+}
+
+function doLogout() {
+    currentUser = null;
+    document.getElementById('login-page').style.display = 'flex';
+    document.getElementById('app').style.display = 'none';
+    document.getElementById('login-error').style.display = 'none';
+}
+
+document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && document.getElementById('login-page').style.display !== 'none') doLogin();
+});
+
+// ════════════════════════════════════════════════════════
+// NAVIGATION
+// ════════════════════════════════════════════════════════
+
+let currentPage = 'dashboard';
+let currentDocId = null;
+let currentDetailTab = 'progress';
+
+const PAGE_TITLES = {
+    dashboard: 'Dashboard',
+    planning:  'Barging Process',
+    detail:    'Barging Document Detail',
+    create:    'Create Barge Document',
+    edit:      'Edit Barge Document'
+};
+
+function goPage(page, docId) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    document.getElementById('page-' + page).classList.add('active');
+    const navMap = { detail: 'planning', create: 'planning', edit: 'planning' };
+    const navEl = document.getElementById('nav-' + (navMap[page] || page));
+    if (navEl) navEl.classList.add('active');
+    document.getElementById('topbar-title').textContent = PAGE_TITLES[page] || page;
+    currentPage = page;
+    if (page === 'dashboard') renderDashboard();
+    if (page === 'planning')  renderPlanning();
+    if (page === 'detail' && docId) {
+        if (currentDocId !== docId) currentDetailTab = 'operasional';
+        currentDocId = docId;
+        renderDetail(docId);
+    }
+    if (page === 'create') initCreatePage();
+    if (page === 'edit' && docId) initEditPage(docId);
+}
+
+// ════════════════════════════════════════════════════════
+// STATUS HELPERS
+// ════════════════════════════════════════════════════════
+
+const STATUS_ORDER = ['Planned','Arrived','Open','On Progress','Closed','Departed'];
+const STATUS_BADGE = {
+    'Planned':     'planned',
+    'Arrived':     'arrived',
+    'Open':        'open',
+    'On Progress': 'on-progress',
+    'Closed':      'closed',
+    'Departed':    'departed',
+    'Invalid':     'invalid'
+};
+
+function statusBadge(s) {
+    return `<span class="badge ${STATUS_BADGE[s] || 'planned'}">${s}</span>`;
+}
+
+function nextStatus(s) {
+    const idx = STATUS_ORDER.indexOf(s);
+    return idx >= 0 && idx < STATUS_ORDER.length - 1 ? STATUS_ORDER[idx + 1] : null;
+}
+
+// ════════════════════════════════════════════════════════
+// DASHBOARD
+// ════════════════════════════════════════════════════════
+
+function renderDashboard() {
+    const data = getWebData();
+    const docs  = data.documents;
+    const active = docs.filter(d => d.status === 'On Progress').length;
+    const ritase = docs.reduce((s, d) => s + getRitaseCount(d), 0);
+    const tonnage = docs.reduce((s, d) => s + getAccumulatedTonnage(d), 0).toFixed(1);
+
+    document.getElementById('dashboard-metrics').innerHTML = `
+        <div class="metric-card"><div class="metric-icon">🚢</div><div class="metric-label">Dokumen Aktif</div><div class="metric-value">${docs.length}</div><div class="metric-sub">total dokumen</div></div>
+        <div class="metric-card"><div class="metric-icon">🔄</div><div class="metric-label">On Progress</div><div class="metric-value">${active}</div><div class="metric-sub">sedang loading</div></div>
+        <div class="metric-card"><div class="metric-icon">🔢</div><div class="metric-label">Total Ritase</div><div class="metric-value">${ritase}</div><div class="metric-sub">dari mobile app</div></div>
+        <div class="metric-card"><div class="metric-icon">⚖️</div><div class="metric-label">Tonnage Terakumulasi</div><div class="metric-value">${tonnage}</div><div class="metric-sub">MT (dari mobile)</div></div>
+    `;
+
+    const tbody = document.getElementById('dashboard-tbody');
+    if (docs.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:24px;color:#94a3b8;">Belum ada dokumen. <a href="#" onclick="goPage('planning')">Buat sekarang</a></td></tr>`;
+        return;
+    }
+    tbody.innerHTML = docs.map(d => {
+        const ritaseCount = getRitaseCount(d);
+        const pct = d.targetTonase ? Math.min(100, Math.round(getAccumulatedTonnage(d) / d.targetTonase * 100)) : 0;
+        return `<tr>
+            <td><strong>${d.id}</strong></td>
+            <td>${d.area}</td>
+            <td>${d.barge}</td>
+            <td>${statusBadge(d.status)}</td>
+            <td>
+                <div class="progress-bar-wrap" style="width:120px;"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
+                <span style="font-size:11px;color:#64748b;">${pct}% (${ritaseCount} ritase)</span>
+            </td>
+            <td><button class="btn btn-outline btn-sm" onclick="goPage('detail','${d.id}')">Detail →</button></td>
+        </tr>`;
+    }).join('');
+}
+
+// ════════════════════════════════════════════════════════
+// PLANNING LIST
+// ════════════════════════════════════════════════════════
+
+function parseDMY(str) {
+    if (!str) return null;
+    const [d, m, y] = str.split('/');
+    return new Date(+y, +m - 1, +d);
+}
+
+function clearPlanFilters() {
+    const s = document.getElementById('plan-search');
+    const f = document.getElementById('plan-date-from');
+    const t = document.getElementById('plan-date-to');
+    if (s) s.value = '';
+    if (f) f.value = '';
+    if (t) t.value = '';
+    renderPlanning();
+}
+
+function renderPlanning() {
+    let { documents } = getWebData();
+    const tbody     = document.getElementById('planning-tbody');
+    const keyword   = (document.getElementById('plan-search')?.value || '').toLowerCase().trim();
+    const dateFrom  = document.getElementById('plan-date-from')?.value;
+    const dateTo    = document.getElementById('plan-date-to')?.value;
+
+    if (keyword) {
+        documents = documents.filter(d =>
+            d.id.toLowerCase().includes(keyword) ||
+            (d.barge || '').toLowerCase().includes(keyword)
+        );
+    }
+    if (dateFrom) {
+        const from = new Date(dateFrom);
+        documents = documents.filter(d => { const dt = parseDMY(d.createdDate); return dt && dt >= from; });
+    }
+    if (dateTo) {
+        const to = new Date(dateTo);
+        to.setHours(23, 59, 59);
+        documents = documents.filter(d => { const dt = parseDMY(d.createdDate); return dt && dt <= to; });
+    }
+
+    if (documents.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">📋</div><div>No barging documents found.</div></div></td></tr>`;
+        return;
+    }
+    tbody.innerHTML = documents.map(d => {
+        const canEdit   = d.status === 'Planned';
+        const canDelete = d.status === 'Planned' || d.status === 'Arrived';
+        const editBtn = canEdit
+            ? `<button class="btn btn-outline btn-sm" onclick="goPage('edit','${d.id}')" style="margin-right:4px;">Edit</button>`
+            : `<button class="btn btn-outline btn-sm" disabled style="margin-right:4px;opacity:0.4;cursor:not-allowed;">Edit</button>`;
+        const deleteBtn = canDelete
+            ? `<button class="btn btn-danger btn-sm" onclick="deleteDocument('${d.id}')" style="margin-right:4px;">Hapus</button>`
+            : '';
+        return `<tr>
+            <td><strong>${d.id}</strong></td>
+            <td>${d.barge}</td>
+            <td>${d.material || '—'}</td>
+            <td>${d.targetTonase.toLocaleString()} MT</td>
+            <td>${d.eta || '—'}</td>
+            <td>${d.ata || '—'}</td>
+            <td>${statusBadge(d.status)}</td>
+            <td style="white-space:nowrap;">${editBtn}${deleteBtn}<button class="btn btn-outline btn-sm" onclick="goPage('detail','${d.id}')">View Detail →</button></td>
+        </tr>`;
+    }).join('');
+}
+
+// ════════════════════════════════════════════════════════
+// EDIT DOCUMENT
+// ════════════════════════════════════════════════════════
+
+let editDocId = null;
+
+function initEditPage(docId) {
+    const data = getWebData();
+    const doc  = data.documents.find(d => d.id === docId);
+    if (!doc || doc.status !== 'Planned') { goPage('planning'); return; }
+    editDocId = docId;
+    document.getElementById('edit-modal-sub').textContent = `Document ID: ${doc.id}`;
+    document.getElementById('edit-ro-barge').textContent    = doc.barge || '—';
+    document.getElementById('edit-ro-material').textContent = doc.material || '—';
+    document.getElementById('edit-eta').value     = doc.eta ? doc.eta.replace(' ', 'T').slice(0, 16) : '';
+    document.getElementById('edit-target').value  = doc.targetTonase || '';
+    document.getElementById('edit-density').value = doc.materialDensity || '';
+}
+
+function saveEdit() {
+    const eta     = document.getElementById('edit-eta').value;
+    const target  = parseFloat(document.getElementById('edit-target').value);
+    const density = parseFloat(document.getElementById('edit-density').value);
+    if (!eta)           { alert('ETA wajib diisi.'); return; }
+    if (!target || target <= 0)   { alert('Target Tonnage harus lebih dari 0.'); return; }
+    if (!density || density <= 0) { alert('Material Density harus lebih dari 0.'); return; }
+    const data = getWebData();
+    const doc  = data.documents.find(d => d.id === editDocId);
+    if (!doc || doc.status !== 'Planned') { alert('Dokumen tidak dapat diedit.'); return; }
+    document.getElementById('modal-edit-confirm').classList.add('open');
+}
+
+function confirmSaveEdit() {
+    closeModal('modal-edit-confirm');
+    const eta     = document.getElementById('edit-eta').value;
+    const target  = parseFloat(document.getElementById('edit-target').value);
+    const density = parseFloat(document.getElementById('edit-density').value);
+    const data = getWebData();
+    const doc  = data.documents.find(d => d.id === editDocId);
+    doc.eta             = eta.replace('T', ' ');
+    doc.targetTonase    = target;
+    doc.materialDensity = density;
+    saveWebData(data);
+    goPage('planning');
+    showToast('Barge doc successfully updated', `Barge doc data "${editDocId}" successfully updated`);
+}
+
+// ════════════════════════════════════════════════════════
+// TOAST NOTIFICATION
+// ════════════════════════════════════════════════════════
+
+let toastTimer = null;
+
+function showToast(message, sub = '') {
+    const el  = document.getElementById('toast-notification');
+    document.getElementById('toast-message').textContent = message;
+    document.getElementById('toast-sub').textContent     = sub;
+    document.getElementById('toast-sub').style.display   = sub ? 'block' : 'none';
+    el.style.display = 'block';
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => { el.style.display = 'none'; }, 3500);
+}
+
+// ════════════════════════════════════════════════════════
+// DELETE DOCUMENT
+// ════════════════════════════════════════════════════════
+
+let deleteTargetId = null;
+
+function deleteDocument(docId) {
+    deleteTargetId = docId;
+    const data = getWebData();
+    const doc  = data.documents.find(d => d.id === docId);
+    const info = doc ? `Dokumen: ${docId} — Barge: ${doc.barge} — Status: ${doc.status}` : `Dokumen: ${docId}`;
+    document.getElementById('delete-confirm-info').textContent = info;
+    document.getElementById('modal-delete-confirm').classList.add('open');
+}
+
+function confirmDeleteDocument() {
+    if (!deleteTargetId) return;
+    const id   = deleteTargetId;
+    const data = getWebData();
+    data.documents = data.documents.filter(d => d.id !== id);
+    saveWebData(data);
+    closeModal('modal-delete-confirm');
+    deleteTargetId = null;
+    renderPlanning();
+    showToast('Barge doc successfully deleted', `Barge doc data "${id}" successfully deleted`);
+}
+
+// ════════════════════════════════════════════════════════
+// CREATE DOCUMENT
+// ════════════════════════════════════════════════════════
+
+function initCreatePage() {
+    updateMaterialDensity();
+}
+
+function onDtRouteChange(code) {
+    // Area options tidak difilter per route — semua Master Area tersedia
+}
+
+function updateMaterialDensity() {
+    const mat = document.getElementById('cr-material')?.value;
+    const density = MATERIAL_DENSITY[mat] || 1.2;
+    const inp = document.getElementById('cr-density');
+    if (inp) inp.value = density;
+}
+
+function createDocument() {
+    const data = getWebData();
+    const barge = document.getElementById('cr-barge').value;
+    const ACTIVE = ['Planned', 'Arrived', 'Open', 'On Progress', 'Closed'];
+    const dup = data.documents.find(d => d.barge === barge && ACTIVE.includes(d.status));
+    if (dup) {
+        alert(`Barge "${barge}" masih memiliki dokumen aktif (${dup.id} — Status: ${dup.status}). Selesaikan atau hapus dokumen tersebut sebelum membuat yang baru.`);
+        return;
+    }
+    document.getElementById('modal-create-confirm').classList.add('open');
+}
+
+function confirmCreateDocument() {
+    closeModal('modal-create-confirm');
+    const data = getWebData();
+    const seq  = data.nextSeq;
+    const id   = 'BRG-' + String(seq).padStart(3, '0');
+
+    const selectedDTs   = [];
+    const selectedExcas = [];
+
+    const materialDensity = parseFloat(document.getElementById('cr-density')?.value) || 1.2;
+
+    const doc = {
+        id,
+        createdDate: new Date().toLocaleDateString('id-ID'),
+        area:        document.getElementById('cr-area').value,
+        barge:       document.getElementById('cr-barge').value,
+        material:    document.getElementById('cr-material').value,
+        materialDensity,
+        targetTonase: parseInt(document.getElementById('cr-target').value) || 4500,
+        surveyor:    document.getElementById('cr-surveyor').value,
+        spv:         document.getElementById('cr-spv').value,
+        excas:       selectedExcas,
+        dumpTrucks:  selectedDTs,
+        status:      'Planned',
+        eta: (document.getElementById('cr-eta').value || '').replace('T', ' ') || null,
+        ata: null,
+        openChecklist:  { notify: false, ramp: false, excaEnter: false },
+        closeChecklist: { bargeInfo: false, closeBarge: false, finalDraft: false },
+        finalTonnage: null, documentFile: null,
+        simulatedRitase: 0, simulatedTonnage: 0,
+        breakdownEvents: [], shiftHistory: []
+    };
+
+    data.documents.push(doc);
+    data.nextSeq = seq + 1;
+    saveWebData(data);
+    goPage('planning');
+    showToast('Barge doc successfully created', `Barge doc data "${id}" successfully created`);
+}
+
+// ════════════════════════════════════════════════════════
+// PLANNING DETAIL
+// ════════════════════════════════════════════════════════
+
+function renderDetail(docId) {
+    viewingHistoricalStatus = null; // reset on fresh navigation
+    const { documents } = getWebData();
+    const doc = documents.find(d => d.id === docId);
+    if (!doc) { goPage('planning'); return; }
+
+    document.getElementById('detail-breadcrumb').textContent = `${doc.id} — ${doc.barge} — ${doc.area}`;
+
+    // Doc info strip
+    const diRow = (label, val) => `
+        <div style="display:flex;flex-direction:column;gap:2px;">
+            <span style="font-size:10px;color:#94a3b8;font-weight:600;text-transform:uppercase;letter-spacing:.4px;">${label}</span>
+            <span style="font-size:12px;color:#1e293b;font-weight:600;">${val || '—'}</span>
+        </div>`;
+    document.getElementById('detail-doc-strip').innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:8px;min-width:0;">
+            <span style="font-weight:700;color:#1e293b;font-size:13px;">${doc.id}</span>
+            <span style="color:#64748b;font-size:12px;">${doc.area}</span>
+            ${statusBadge(doc.status)}
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+            <button onclick="toggleDocInfo('${doc.id}')" id="doc-info-btn-${doc.id}" style="background:none;border:1px solid #e2e8f0;border-radius:6px;padding:3px 10px;font-size:11px;cursor:pointer;color:#475569;white-space:nowrap;">▾ Info</button>
+            ${doc.status === 'Open' ? `<button class="btn btn-warn btn-sm" onclick="markInvalid('${doc.id}')">Mark as Invalid</button>` : ''}
+        </div>
+    </div>
+    <div id="doc-info-expand-${doc.id}" style="display:none;margin-top:10px;padding:14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;">
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px 20px;">
+            ${diRow('Doc ID', doc.id)}
+            ${diRow('Area / Jetty', doc.area)}
+            ${diRow('Barge', doc.barge)}
+            ${diRow('Material', doc.material)}
+            ${diRow('Target Tonnage', doc.targetTonase ? doc.targetTonase.toLocaleString() + ' MT' : null)}
+            ${diRow('Densitas', doc.materialDensity ? doc.materialDensity + ' MT/m³' : null)}
+            ${diRow('ETA', doc.eta)}
+            ${diRow('ATA', doc.ata)}
+            ${diRow('Surveyor', doc.surveyor)}
+            ${diRow('SPV / Checker', doc.spv)}
+            ${diRow('Created Date', doc.createdDate)}
+            ${diRow('Final Tonnage', doc.finalTonnage ? doc.finalTonnage + ' MT' : null)}
+        </div>
+        ${doc.status === 'Invalid' && doc.invalidReason ? `
+        <div style="margin-top:12px;padding:10px 12px;background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;">
+            <span style="font-size:10px;color:#b91c1c;font-weight:700;text-transform:uppercase;letter-spacing:.4px;">Alasan Invalidasi</span>
+            <p style="font-size:12px;color:#7f1d1d;font-weight:600;margin:4px 0 0;">${doc.invalidReason}</p>
+        </div>` : ''}
+    </div>`;
+
+    // Status flow
+    const stepIdx = STATUS_ORDER.indexOf(doc.status);
+    document.getElementById('detail-status-flow').innerHTML = doc.status === 'Invalid'
+        ? `<div style="padding:10px 0;color:#92400e;font-size:13px;font-weight:600;">⚠️ Dokumen ini telah ditandai sebagai <strong>Invalid</strong> dan tidak dapat digunakan dalam proses operasional.</div>`
+        : STATUS_ORDER.map((s, i) => {
+            const cls = i < stepIdx ? 'done' : i === stepIdx ? 'current' : '';
+            const icon = i < stepIdx ? '✓' : i + 1;
+            const clickAttr = i < stepIdx
+                ? `onclick="showStepSnapshot('${doc.id}','${s}')" title="Lihat detail step ${s}" style="cursor:pointer;"`
+                : '';
+            return `<div class="sf-step ${cls}" ${clickAttr}><div class="sf-dot">${icon}</div><div class="sf-label">${s}</div></div>`;
+        }).join('');
+
+    _refreshDetailTabs(docId);
+}
+
+function switchTab(tabId) {
+    currentDetailTab = tabId;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b.dataset.tab === tabId));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.toggle('active', p.id === 'tabpanel-' + tabId));
+}
+
+function renderTabOperasional(doc, readonly = false) {
+    if (doc.status === 'Invalid') {
+        return `<div class="info-box orange" style="margin-top:12px;">
+            <div style="font-weight:700;margin-bottom:6px;">Dokumen telah ditandai sebagai Invalid</div>
+            ${doc.invalidReason ? `<div style="font-size:12px;margin-top:4px;"><span style="opacity:.7;">Alasan:</span> <strong>${doc.invalidReason}</strong></div>` : ''}
+            <div style="font-size:11px;margin-top:6px;opacity:.7;">Tidak ada aksi operasional yang tersedia.</div>
+        </div>`;
+    }
+    let html = '';
+    const idx = STATUS_ORDER.indexOf(doc.status);
+
+    if (idx <= 1) {
+        const disabled = readonly || doc.status !== 'Planned' ? 'disabled' : '';
+        html += `
+        <div class="section-card">
+            <div class="section-card-header"><div class="section-card-title">Kedatangan Tongkang</div></div>
+            <div class="section-card-body">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+                    <div class="form-group" style="margin:0">
+                        <label class="form-label">ETA (Estimasi Kedatangan)</label>
+                        <input type="datetime-local" class="form-input" id="input-eta" value="${doc.eta ? doc.eta.replace(' ', 'T') : ''}" ${disabled}>
+                    </div>
+                    <div class="form-group" style="margin:0">
+                        <label class="form-label">ATA (Aktual Kedatangan)</label>
+                        <input type="datetime-local" class="form-input" id="input-ata" value="${doc.ata || ''}" ${disabled}>
+                    </div>
+                </div>
+                ${!readonly && doc.status === 'Planned'
+                    ? `<button class="btn btn-primary" onclick="confirmArrival('${doc.id}')">Konfirmasi Kedatangan →</button>`
+                    : doc.ata ? `<div class="info-box green">Kedatangan dikonfirmasi. ETA: ${doc.eta || '-'} | ATA: ${doc.ata || '-'}</div>` : ''}
+            </div>
+        </div>`;
+    }
+
+    if (doc.status === 'Arrived') {
+        const cl = doc.openChecklist;
+        const allDone = cl.notify && cl.ramp && cl.excaEnter;
+        const editable = !readonly;
+        html += `
+        <div class="section-card">
+            <div class="section-card-header"><div class="section-card-title">Pre-Operasi Checklist</div>${allDone ? '<span class="badge available-b">Semua ✓</span>' : ''}</div>
+            <div class="section-card-body">
+                ${[
+                    { key: 'notify',    label: 'Notifikasi SPV Production' },
+                    { key: 'ramp',      label: 'Set Ramp Door' },
+                    { key: 'excaEnter', label: 'Excavator masuk barge' }
+                ].map(item => `
+                    <div class="checklist-item">
+                        <div class="checklist-box ${cl[item.key] ? 'checked' : ''}" onclick="${editable ? `toggleChecklist('${doc.id}','open','${item.key}')` : ''}">
+                            ${cl[item.key] ? '✓' : ''}
+                        </div>
+                        <div class="checklist-label">${item.label}</div>
+                    </div>
+                `).join('')}
+                ${editable
+                    ? `<button class="btn btn-primary" style="margin-top:12px;" onclick="setOpen('${doc.id}')" ${!allDone ? 'disabled style="opacity:.5;cursor:not-allowed;"' : ''}>Set Status Open →</button>`
+                    : ''}
+            </div>
+        </div>`;
+    }
+
+    if (doc.status === 'Open') {
+        html += `
+        <div class="section-card">
+            <div class="section-card-header"><div class="section-card-title">Mulai Operasi Loading</div></div>
+            <div class="section-card-body">
+                <div class="info-box blue" style="margin-bottom:14px;">Semua persiapan selesai. Klik tombol di bawah untuk memulai proses barging.</div>
+                ${!readonly ? `<button class="btn btn-primary" onclick="startOperation('${doc.id}')">Mulai Operasi →</button>` : ''}
+            </div>
+        </div>`;
+    }
+
+    if (doc.status === 'On Progress') {
+        const cl = doc.closeChecklist;
+        const allDone = cl.bargeInfo && cl.closeBarge && cl.finalDraft;
+        const ritaseNow = getRitaseCount(doc);
+        html += `
+        <div class="section-card">
+            <div class="section-card-header"><div class="section-card-title">Penutupan Tongkang</div></div>
+            <div class="section-card-body">
+                ${[
+                    { key: 'bargeInfo',  label: 'Terima informasi barge penuh' },
+                    { key: 'closeBarge', label: 'Close Barge' },
+                    { key: 'finalDraft', label: 'Konfirmasi Final Draft Survey' }
+                ].map(item => `
+                    <div class="checklist-item">
+                        <div class="checklist-box ${cl[item.key] ? 'checked' : ''}" onclick="${!readonly ? `toggleChecklist('${doc.id}','close','${item.key}')` : ''}">
+                            ${cl[item.key] ? '✓' : ''}
+                        </div>
+                        <div class="checklist-label">${item.label}</div>
+                    </div>
+                `).join('')}
+                ${!readonly ? `<button class="btn btn-danger" style="margin-top:12px;" onclick="closeBarge('${doc.id}')"
+                    ${!allDone || ritaseNow < 1 ? 'disabled' : ''}>
+                    Close Tongkang
+                </button>
+                ${ritaseNow < 1 ? '<p style="font-size:11px;color:#DC2626;margin-top:6px;">Minimal 1 ritase diperlukan sebelum bisa close.</p>' : ''}` : ''}
+            </div>
+        </div>`;
+    }
+
+    if (doc.status === 'Closed') {
+        html += `
+        <div class="section-card">
+            <div class="section-card-header"><div class="section-card-title">Data Final & Keberangkatan</div></div>
+            <div class="section-card-body">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+                    <div class="form-group" style="margin:0;">
+                        <label class="form-label">Final Tonnage Aktual (MT)</label>
+                        <input type="number" class="form-input" id="input-final-tonnage" placeholder="Masukkan tonase final" value="${doc.finalTonnage || ''}" ${readonly ? 'disabled' : ''}>
+                    </div>
+                    <div class="form-group" style="margin:0;">
+                        <label class="form-label">Upload Dokumen Draft Survey</label>
+                        <input type="file" class="form-input" id="input-doc-file" accept=".pdf,.jpg,.png,.doc,.docx" style="padding:6px;" ${readonly ? 'disabled' : ''}>
+                    </div>
+                </div>
+                ${!readonly ? `<button class="btn btn-primary" onclick="setDeparted('${doc.id}')">Konfirmasi Keberangkatan →</button>` : ''}
+            </div>
+        </div>`;
+    }
+
+    if (doc.status === 'Departed') {
+        html += `
+        <div class="section-card">
+            <div class="section-card-header"><div class="section-card-title">Operasi Selesai</div><span class="badge departed">Departed ✓</span></div>
+            <div class="section-card-body">
+                <div class="info-box green">
+                    Tongkang <strong>${doc.barge}</strong> telah berangkat. Final Tonnage: <strong>${doc.finalTonnage || '-'} MT</strong>.
+                    Total Ritase: <strong>${getRitaseCount(doc)}</strong>. Operasi berhasil diselesaikan.
+                </div>
+            </div>
+        </div>`;
+    }
+
+    // Population section — visible only from On Progress onwards (auto-populated from operator app)
+    if (STATUS_ORDER.indexOf(doc.status) >= 3) {
+        const popMgmt = renderPopManagementHtml(doc, readonly);
+        if (popMgmt) {
+            html += popMgmt;
+        } else {
+            const excaRows = doc.excas.map(e => `
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 14px;border-bottom:1px solid #f1f5f9;font-size:12px;">
+                <span class="badge on-progress">${e.code}</span>
+                <span style="color:#64748b;">${e.model} (${e.bucket}m³)</span>
+                <span style="color:#94a3b8;">${e.assignedArea || '—'}</span>
+            </div>`).join('');
+            const dtPopRows = doc.dumpTrucks.map(dt => {
+                const routeColor = dt.route === 'unscheduled' ? '#DC2626' : '#1B8A58';
+                return `
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 14px;border-bottom:1px solid #f1f5f9;font-size:12px;">
+                <span class="badge draft">${dt.code}</span>
+                <span style="color:#64748b;">${dt.plate} | ${dt.vessel_capacity_m3}m³</span>
+                <span style="color:${routeColor};font-weight:600;">${dt.route === 'unscheduled' ? 'Unscheduled' : 'Scheduled'}</span>
+                <span style="color:#94a3b8;">${dt.assignedArea || '—'}</span>
+            </div>`;
+            }).join('');
+            html += `
+        <div class="section-card" style="margin-top:16px;">
+            <div class="section-card-header"><div class="section-card-title">Excavator (${doc.excas.length})</div></div>
+            <div class="section-card-body" style="padding:0;">${excaRows || '<div style="padding:14px;color:#94a3b8;font-size:12px;">Belum ada excavator.</div>'}</div>
+        </div>
+        <div class="section-card" style="margin-top:16px;">
+            <div class="section-card-header"><div class="section-card-title">Dump Truck (${doc.dumpTrucks.length})</div></div>
+            <div class="section-card-body" style="padding:0;">${dtPopRows || '<div style="padding:14px;color:#94a3b8;font-size:12px;">Belum ada dump truck.</div>'}</div>
+        </div>`;
+        }
+    }
+
+    return html || `<div class="empty-state"><div class="empty-icon">✓</div><p>Tidak ada aksi aktif untuk status ini.</p></div>`;
+}
+
+function renderTabProgress(doc, readonly = false) {
+    const idx = STATUS_ORDER.indexOf(doc.status);
+    if (idx < 3) {
+        return `<div class="empty-state"><div class="empty-icon">📊</div><p>Data progress tersedia setelah operasi dimulai.</p></div>`;
+    }
+    const ritaseCount = getRitaseCount(doc);
+    const accTonnage  = getAccumulatedTonnage(doc);
+    const pct       = doc.targetTonase ? Math.min(100, Math.round(accTonnage / doc.targetTonase * 100)) : 0;
+    const remaining = Math.max(0, doc.targetTonase - accTonnage);
+
+    return `
+    <div class="section-card">
+        <div class="section-card-header">
+            <div class="section-card-title">Progress Produksi</div>
+            <span style="font-size:11px;color:#94a3b8;">Auto-update dari Operator App</span>
+        </div>
+        <div class="section-card-body">
+            <div class="achievement-summary">
+                <div class="ach-stat"><div class="ach-stat-val">${doc.targetTonase.toLocaleString()}</div><div class="ach-stat-label">Target (MT)</div></div>
+                <div class="ach-stat"><div class="ach-stat-val">${accTonnage.toFixed(1)}</div><div class="ach-stat-label">Akumulasi (MT)</div></div>
+                <div class="ach-stat"><div class="ach-stat-val">${ritaseCount}</div><div class="ach-stat-label">Total Ritase</div></div>
+            </div>
+            <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:#64748b;margin-top:4px;margin-bottom:16px;">
+                <span>${pct}% tercapai</span><span>Sisa: ${remaining.toFixed(1)} MT</span>
+            </div>
+            ${doc.status === 'On Progress' && !readonly ? `
+            <div class="info-box blue" style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+                <span><strong>Integrasi Mobile:</strong> Data ritase & tonnage di-sync otomatis dari Operator App setiap kali operator submit dumping di Jetty.</span>
+                <button onclick="simulateRitase('${doc.id}')" class="btn btn-primary btn-sm" style="white-space:nowrap;">↻ Refresh</button>
+            </div>` : doc.status === 'On Progress' ? `
+            <div class="info-box blue" style="font-size:12px;">
+                <strong>Integrasi Mobile:</strong> Data ritase & tonnage di-sync otomatis dari Operator App.
+            </div>` : ''}
+        </div>
+    </div>
+    ${renderShiftLogHtml(doc)}`;
+}
+
+function renderTabPopulasi(doc) {
+    const mgmt = renderPopManagementHtml(doc);
+    if (mgmt) return mgmt;
+
+    // Read-only view for non-On Progress statuses
+    const excaRows = doc.excas.map(e => `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 14px;border-bottom:1px solid #f1f5f9;font-size:12px;">
+            <span class="badge on-progress">${e.code}</span>
+            <span style="color:#64748b;">${e.model} (${e.bucket}m³)</span>
+            <span style="color:#94a3b8;">${e.assignedArea || '—'}</span>
+        </div>`).join('');
+    const dtRows = doc.dumpTrucks.map(dt => {
+        const routeColor = dt.route === 'unscheduled' ? '#DC2626' : '#1B8A58';
+        return `
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 14px;border-bottom:1px solid #f1f5f9;font-size:12px;">
+            <span class="badge draft">${dt.code}</span>
+            <span style="color:#64748b;">${dt.plate} | ${dt.vessel_capacity_m3}m³</span>
+            <span style="color:${routeColor};font-weight:600;">${dt.route === 'unscheduled' ? 'Unscheduled' : 'Scheduled'}</span>
+            <span style="color:#94a3b8;">${dt.assignedArea || '—'}</span>
+        </div>`;
+    }).join('');
+
+    return `
+    <div class="section-card">
+        <div class="section-card-header"><div class="section-card-title">Excavator (${doc.excas.length})</div></div>
+        <div class="section-card-body" style="padding:0;">${excaRows || '<div style="padding:14px;color:#94a3b8;font-size:12px;">Belum ada excavator.</div>'}</div>
+    </div>
+    <div class="section-card" style="margin-top:16px;">
+        <div class="section-card-header"><div class="section-card-title">Dump Truck (${doc.dumpTrucks.length})</div></div>
+        <div class="section-card-body" style="padding:0;">${dtRows || '<div style="padding:14px;color:#94a3b8;font-size:12px;">Belum ada dump truck.</div>'}</div>
+    </div>
+    <div class="info-box blue" style="margin-top:12px;font-size:12px;">Edit populasi tersedia saat status dokumen <strong>On Progress</strong>.</div>`;
+}
+
+function renderTabRiwayat(doc) {
+    let html = '';
+
+    const events = doc.breakdownEvents || [];
+    const eventCards = events.slice().reverse().map(ev => {
+        const type = ev.type || 'dt_breakdown';
+        if (type === 'dt_breakdown') {
+            return `<div style="background:#fff;border:1px solid #fecaca;border-radius:8px;padding:12px 16px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                    <span class="badge breakdown-b">⚠️ DT Breakdown & Transfer</span>
+                    <span style="font-size:11px;color:#94a3b8;">${ev.timestamp}</span>
+                </div>
+                <div style="font-size:13px;font-weight:600;color:#DC2626;">${ev.fromTruck} <span style="color:#94a3b8;font-weight:400;margin:0 4px;">→</span> ${ev.toTruck}</div>
+                <div style="font-size:12px;color:#64748b;margin-top:3px;">${ev.bucketCount !== '-' ? ev.bucketCount + ' bucket | ' : ''}${ev.tonnage} MT ditransfer</div>
+                ${ev.note ? `<div style="font-size:11px;color:#94a3b8;margin-top:3px;">${ev.note}</div>` : ''}
+            </div>`;
+        }
+        if (type === 'dt_recovery') {
+            return `<div style="background:#fff;border:1px solid #bbf7d0;border-radius:8px;padding:12px 16px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                    <span class="badge available-b">✅ DT Recovery</span>
+                    <span style="font-size:11px;color:#94a3b8;">${ev.timestamp}</span>
+                </div>
+                <div style="font-size:13px;font-weight:600;color:#1B8A58;">${ev.unit}</div>
+                <div style="font-size:12px;color:#64748b;margin-top:3px;">Unit kembali ke status Available</div>
+            </div>`;
+        }
+        if (type === 'exca_breakdown') {
+            return `<div style="background:#fff;border:1px solid #fde68a;border-radius:8px;padding:12px 16px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                    <span class="badge" style="background:#fef9c3;color:#92400e;">⚠️ Exca Breakdown</span>
+                    <span style="font-size:11px;color:#94a3b8;">${ev.timestamp}</span>
+                </div>
+                <div style="font-size:13px;font-weight:600;color:#92400e;">${ev.unit}</div>
+                <div style="font-size:12px;color:#64748b;margin-top:3px;">Excavator ditandai Breakdown oleh SPV</div>
+            </div>`;
+        }
+        if (type === 'exca_recover') {
+            return `<div style="background:#fff;border:1px solid #bbf7d0;border-radius:8px;padding:12px 16px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                    <span class="badge available-b">✅ Exca Recovery</span>
+                    <span style="font-size:11px;color:#94a3b8;">${ev.timestamp}</span>
+                </div>
+                <div style="font-size:13px;font-weight:600;color:#1B8A58;">${ev.unit}</div>
+                <div style="font-size:12px;color:#64748b;margin-top:3px;">Excavator kembali ke status Available</div>
+            </div>`;
+        }
+        return '';
+    }).join('');
+
+    html += `
+    <div class="section-card" style="margin-top:16px;">
+        <div class="section-card-header">
+            <div class="section-card-title">Riwayat Breakdown & Transfer</div>
+            <span style="font-size:11px;color:#94a3b8;">${events.length} kejadian</span>
+        </div>
+        <div class="section-card-body">
+            ${events.length === 0
+                ? `<div class="empty-state" style="padding:20px;"><div class="empty-icon">✅</div><p>Tidak ada kejadian breakdown.</p></div>`
+                : `<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">${eventCards}</div>`}
+            <div class="info-box blue" style="margin-top:8px;font-size:11px;">
+                <strong>Catatan:</strong> Recovery unit (DT/Exca) oleh SPV berdasarkan konfirmasi dari workshop via HT. Perubahan commissioning status unit (RFU / Not RFU) di Master Populasi belum terintegrasi — dependency ke modul Master Unit.
+            </div>
+        </div>
+    </div>`;
+
+    return html;
+}
+
+function renderDTPanelHtml(doc) {
+    // DT status lives in doc.dumpTrucks[].status (web-managed, no mobile dependency)
+    // status: 'available' | 'loaded' | 'breakdown' | 'transfer'
+    const hasLoaded = doc.dumpTrucks.some(dt => dt.status === 'loaded');
+
+    const dtCards = doc.dumpTrucks.map(dt => {
+        const routeTag  = dt.route === 'unscheduled'
+            ? `<span style="font-size:10px;color:#DC2626;font-weight:600;">Unscheduled</span>`
+            : `<span style="font-size:10px;color:#1B8A58;font-weight:600;">Scheduled</span>`;
+        const capTag    = dt.vessel_capacity_m3 ? `<div class="dt-info">${dt.vessel_capacity_m3}m³ • ${routeTag}</div>` : '';
+        let cardCls = 'available', badge = '<span class="badge available-b">🟢 Available</span>', actionBtn = '';
+
+        if (dt.status === 'breakdown') {
+            cardCls  = 'breakdown';
+            badge    = `<span class="badge breakdown-b">⚠️ Breakdown</span>`;
+            actionBtn = `<div style="font-size:11px;color:#DC2626;margin-top:4px;">Muatan → ${dt.transferTo || '-'}</div>
+                <button class="dt-action-btn" style="background:#f0fdf4;color:#166534;border:1px solid #bbf7d0;margin-top:6px;" onclick="recoverDT('${doc.id}','${dt.plate}')">✅ Recovery</button>`;
+        } else if (dt.status === 'transfer') {
+            cardCls  = 'transfer';
+            badge    = `<span class="badge transfer-b">🔄 Transfer Payload</span>`;
+            const p  = dt.payload;
+            if (p) actionBtn = `<div style="font-size:11px;color:#78350f;margin-top:4px;">${p.bucketCount !== '-' ? p.bucketCount + ' bucket | ' : ''}${p.tonnage} ton<br>dari ${p.fromTruck}</div>`;
+        } else if (dt.status === 'loaded') {
+            cardCls  = 'loaded';
+            const p  = dt.payload;
+            const loadedLabel = dt.route === 'unscheduled' ? '🟣 Loaded (Unscheduled)' : '🟣 Loaded (EFO)';
+            badge    = `<span class="badge loaded-b">${loadedLabel}</span>`;
+            const info = p ? `<div style="font-size:11px;color:#5B21B6;margin-top:4px;">${p.bucketCount !== '-' && p.bucketCount !== undefined ? p.bucketCount + ' bucket | ' : ''}${p.tonnage} ton</div>` : '';
+            actionBtn = info + `<button class="dt-action-btn breakdown-action" onclick="openBreakdownModal('${doc.id}','${dt.plate}')">⚠️ Tandai Breakdown</button>`;
+        } else {
+            const btnLabel = dt.route === 'unscheduled' ? '+ Simulasi Unscheduled Load' : '+ Simulasi Loading';
+            actionBtn = `<button class="dt-action-btn" style="background:#f5f3ff;color:#5B21B6;border:1px solid #ddd6fe;margin-top:6px;" onclick="simulateLoaded('${doc.id}','${dt.plate}')">${btnLabel}</button>`;
+        }
+        return `
+        <div class="dt-card ${cardCls}">
+            <div class="dt-name">${dt.code}</div>
+            <div class="dt-plate">${dt.plate}</div>
+            ${capTag}
+            ${badge}
+            ${actionBtn}
+        </div>`;
+    }).join('');
+
+    return `
+    <div class="section-card">
+        <div class="section-card-header">
+            <div class="section-card-title">Status Dump Truck</div>
+            ${hasLoaded ? `<button class="btn btn-warn btn-sm" onclick="openBreakdownModal('${doc.id}',null)">⚠️ Tandai Breakdown</button>` : ''}
+        </div>
+        <div class="section-card-body">
+            <div class="dt-grid">${dtCards}</div>
+            <div class="info-box blue" style="margin-top:12px;">
+                <strong>Keterangan:</strong> Klik <em>Simulasi Loading</em> untuk mensimulasikan truck telah loading di EFO (dalam demo nyata, ini otomatis dari mobile). Setelah status <em>Loaded</em>, SPV bisa tandai <em>Breakdown</em> jika ada laporan dari lapangan.
+            </div>
+        </div>
+    </div>`;
+}
+
+function simulateLoaded(docId, plate) {
+    const data = getWebData();
+    const doc  = data.documents.find(d => d.id === docId);
+    if (!doc) return;
+    const dt = doc.dumpTrucks.find(d => d.plate === plate);
+    if (!dt) return;
+    const density = doc.materialDensity || 1.2;
+
+    if (dt.route === 'unscheduled') {
+        const cap     = dt.vessel_capacity_m3 || 10;
+        const tonnage = Math.round(cap * density * 10) / 10;
+        dt.status  = 'loaded';
+        dt.payload = { route: 'unscheduled', vessel_capacity_m3: cap, tonnage };
+    } else {
+        const exca       = doc.excas[0] || { bucket: 1.6 };
+        const bucketSize = exca.bucket || 1.6;
+        const bucketCount = Math.floor(Math.random() * 5) + 3; // 3–7
+        const tonnage    = Math.round(bucketCount * bucketSize * density * 10) / 10;
+        dt.status  = 'loaded';
+        dt.payload = { route: 'scheduled', bucketCount, tonnage };
+    }
+    saveWebData(data);
+    renderDetail(docId);
+}
+
+
+function markExcaBreakdown(docId, code) {
+    const data = getWebData();
+    const doc  = data.documents.find(d => d.id === docId);
+    if (!doc) return;
+    const exca = doc.excas.find(e => e.code === code);
+    if (!exca) return;
+    const wasBreakdown = exca.status === 'breakdown';
+    exca.status = wasBreakdown ? 'available' : 'breakdown';
+    doc.breakdownEvents = doc.breakdownEvents || [];
+    doc.breakdownEvents.push({
+        type: wasBreakdown ? 'exca_recover' : 'exca_breakdown',
+        unit: code,
+        timestamp: new Date().toLocaleString('id-ID')
+    });
+    saveWebData(data);
+    renderDetail(docId);
+}
+
+function recoverDT(docId, plate) {
+    const data = getWebData();
+    const doc  = data.documents.find(d => d.id === docId);
+    if (!doc) return;
+    const dt = doc.dumpTrucks.find(d => d.plate === plate);
+    if (!dt || dt.status !== 'breakdown') return;
+    const unitLabel = `${dt.code} (${plate})`;
+    dt.status     = 'available';
+    dt.transferTo = null;
+    doc.breakdownEvents = doc.breakdownEvents || [];
+    doc.breakdownEvents.push({
+        type: 'dt_recovery',
+        unit: unitLabel,
+        timestamp: new Date().toLocaleString('id-ID')
+    });
+    saveWebData(data);
+    renderDetail(docId);
+    showToast('DT Recovery berhasil', `${dt.code} kembali ke status Available`);
+}
+
+// ════════════════════════════════════════════════════════
+// STATUS TRANSITIONS
+// ════════════════════════════════════════════════════════
+
+function updateDoc(docId, updates) {
+    const data = getWebData();
+    const idx  = data.documents.findIndex(d => d.id === docId);
+    if (idx === -1) return null;
+    data.documents[idx] = { ...data.documents[idx], ...updates };
+    saveWebData(data);
+    return data.documents[idx];
+}
+
+function confirmArrival(docId) {
+    const eta = document.getElementById('input-eta').value;
+    const ata = document.getElementById('input-ata').value;
+    if (!eta) { alert('ETA wajib diisi.'); return; }
+    if (!ata) { alert('ATA wajib diisi.'); return; }
+    document.getElementById('modal-arrival-confirm').classList.add('open');
+}
+
+function confirmArrivalExecute() {
+    const docId = currentDocId;
+    const eta = document.getElementById('input-eta').value;
+    const ata = document.getElementById('input-ata').value;
+    closeModal('modal-arrival-confirm');
+    updateDoc(docId, { status: 'Arrived', eta: eta.replace('T', ' '), ata: ata.replace('T', ' ') });
+    renderDetail(docId);
+    showToast('Barge arrival confirmed', `Barge doc '${docId}' arrival successfully confirmed`);
+}
+
+function toggleChecklist(docId, type, key) {
+    const data = getWebData();
+    const doc  = data.documents.find(d => d.id === docId);
+    if (!doc) return;
+    if (type === 'open')  doc.openChecklist[key]  = !doc.openChecklist[key];
+    if (type === 'close') doc.closeChecklist[key] = !doc.closeChecklist[key];
+    saveWebData(data);
+    renderDetail(docId);
+}
+
+function setOpen(docId) {
+    const data = getWebData();
+    const doc  = data.documents.find(d => d.id === docId);
+    if (!doc) return;
+    const cl = doc.openChecklist;
+    if (!cl.notify || !cl.ramp || !cl.excaEnter) return;
+    document.getElementById('modal-open-confirm').classList.add('open');
+}
+
+function confirmSetOpenExecute() {
+    const docId = currentDocId;
+    closeModal('modal-open-confirm');
+    updateDoc(docId, { status: 'Open' });
+    renderDetail(docId);
+    showToast('Barge successfully opened', `Barge doc '${docId}' status successfully changed to Open`);
+}
+
+let invalidTargetId = null;
+
+function markInvalid(docId) {
+    invalidTargetId = docId;
+    const data = getWebData();
+    const doc  = data.documents.find(d => d.id === docId);
+    const info = doc ? `Dokumen: ${docId} — Barge: ${doc.barge} — Status: Open` : `Dokumen: ${docId}`;
+    document.getElementById('invalid-confirm-info').textContent = info;
+    document.getElementById('invalid-justification').value = '';
+    document.getElementById('modal-invalid-confirm').classList.add('open');
+}
+
+function confirmMarkInvalidExecute() {
+    const id = invalidTargetId;
+    if (!id) return;
+    const justification = document.getElementById('invalid-justification').value.trim();
+    if (!justification) {
+        document.getElementById('invalid-justification').style.border = '1.5px solid #DC2626';
+        document.getElementById('invalid-justification').focus();
+        return;
+    }
+    document.getElementById('invalid-justification').style.border = '';
+    closeModal('modal-invalid-confirm');
+    invalidTargetId = null;
+    updateDoc(id, { status: 'Invalid', invalidReason: justification });
+    goPage('planning');
+    showToast('Document marked as invalid', `Barge doc '${id}' has been marked as invalid`);
+}
+
+function startOperation(docId) {
+    updateDoc(docId, { status: 'On Progress' });
+    renderDetail(docId);
+}
+
+function closeBarge(docId) {
+    const data = getWebData();
+    const doc  = data.documents.find(d => d.id === docId);
+    if (!doc) return;
+    if (getRitaseCount(doc) < 1) { alert('Minimal 1 ritase harus ada sebelum bisa close.'); return; }
+    updateDoc(docId, { status: 'Closed' });
+    renderDetail(docId);
+}
+
+function setDeparted(docId) {
+    const ft = document.getElementById('input-final-tonnage')?.value;
+    if (!ft) { alert('Masukkan final tonnage aktual.'); return; }
+    updateDoc(docId, { status: 'Departed', finalTonnage: parseFloat(ft) });
+    renderDetail(docId);
+}
+
+// ════════════════════════════════════════════════════════
+// BREAKDOWN & TRANSFER
+// ════════════════════════════════════════════════════════
+
+let breakdownDocId = null;
+let breakdownPreselect = null;
+
+function openBreakdownModal(docId, preselectedPlate) {
+    breakdownDocId   = docId;
+    breakdownPreselect = preselectedPlate;
+
+    const data = getWebData();
+    const doc  = data.documents.find(d => d.id === docId);
+    if (!doc) return;
+
+    // FROM: loaded trucks that aren't already breakdown/transfer
+    const fromTrucks = doc.dumpTrucks.filter(dt => dt.status === 'loaded');
+    // TO:   available trucks only
+    const toTrucks   = doc.dumpTrucks.filter(dt => dt.status === 'available');
+
+    const fromSel = document.getElementById('bd-from');
+    if (fromTrucks.length === 0) {
+        document.getElementById('bd-sub').textContent = 'Tidak ada unit yang sedang loaded. Klik "Simulasi Loading" pada unit yang ingin disimulasi lebih dulu.';
+        fromSel.innerHTML = '<option value="">— Tidak ada unit loaded —</option>';
+        document.getElementById('bd-to').innerHTML = '<option value="">-</option>';
+        document.getElementById('bd-payload-info').style.display = 'none';
+    } else {
+        document.getElementById('bd-sub').textContent = 'Pilih unit yang breakdown dan unit penerima muatan hibah.';
+        fromSel.innerHTML = fromTrucks.map(dt => {
+            const routeTag = dt.route === 'unscheduled' ? ' [Unscheduled]' : ' [Scheduled]';
+            return `<option value="${dt.plate}">${dt.code} — ${dt.plate} | ${dt.vessel_capacity_m3 || '?'}m³${routeTag}</option>`;
+        }).join('');
+        if (preselectedPlate) fromSel.value = preselectedPlate;
+        document.getElementById('bd-to').innerHTML = `<option value="">Pilih unit penerima...</option>` +
+            toTrucks.map(dt => `<option value="${dt.plate}">${dt.code} — ${dt.plate} | ${dt.vessel_capacity_m3 || '?'}m³</option>`).join('');
+        fromSel.onchange = () => { updateBdPayloadInfo(fromSel.value, doc); updateBdTonnagePreview(); };
+        updateBdPayloadInfo(fromSel.value, doc);
+        updateBdTonnagePreview();
+    }
+
+    document.getElementById('modal-breakdown').classList.add('open');
+}
+
+function updateBdPayloadInfo(plate, doc) {
+    const infoBox = document.getElementById('bd-payload-info');
+    if (!plate || !doc) { infoBox.style.display = 'none'; return; }
+    const dt = doc.dumpTrucks.find(d => d.plate === plate);
+    if (!dt) { infoBox.style.display = 'none'; return; }
+    infoBox.style.display = 'block';
+    if (dt.route === 'unscheduled') {
+        const density = doc.materialDensity || 1.2;
+        const cap     = dt.vessel_capacity_m3 || 10;
+        infoBox.innerHTML = `<strong>Unscheduled route</strong>: Vessel capacity ${cap}m³ × densitas ${density} = estimasi <strong>${Math.round(cap * density * 10) / 10} MT</strong>`;
+    } else if (dt.payload) {
+        const bc = dt.payload.bucketCount !== undefined ? `${dt.payload.bucketCount} bucket | ` : '';
+        infoBox.innerHTML = `<strong>Scheduled route</strong>: ${bc}<strong>${dt.payload.tonnage} MT</strong> (dari loading record)`;
+    } else {
+        infoBox.innerHTML = `<strong>Scheduled route</strong>: Belum ada loading record.`;
+    }
+}
+
+function updateBdTonnagePreview() {
+    const fromPlate = document.getElementById('bd-from')?.value;
+    const toPlate   = document.getElementById('bd-to')?.value;
+    const previewEl = document.getElementById('bd-tonnage-preview');
+    if (!previewEl) return;
+    if (!fromPlate || !toPlate) { previewEl.style.display = 'none'; return; }
+
+    const data = getWebData();
+    const doc  = data.documents.find(d => d.id === breakdownDocId);
+    if (!doc) return;
+    const fromDT = doc.dumpTrucks.find(dt => dt.plate === fromPlate);
+    const toDT   = doc.dumpTrucks.find(dt => dt.plate === toPlate);
+    if (!fromDT || !toDT) return;
+
+    const density = doc.materialDensity || 1.2;
+    const fromCap = fromDT.vessel_capacity_m3 || 10;
+    const toCap   = toDT.vessel_capacity_m3 || 10;
+    let preview;
+
+    if (fromDT.route === 'unscheduled' || !fromDT.payload) {
+        const effectiveCap = Math.min(fromCap, toCap);
+        const tonnage      = Math.round(effectiveCap * density * 10) / 10;
+        const smaller      = fromCap <= toCap ? fromDT.code : toDT.code;
+        const ruleNote     = fromCap === toCap
+            ? `kapasitas sama (${fromCap}m³)`
+            : `min(${fromCap}m³, ${toCap}m³) → pakai kapasitas ${smaller} yang lebih kecil`;
+        preview = `Tonnage yang ditransfer (trip pertama ${toDT.code}): <strong>${tonnage} MT</strong><br><span style="font-size:10px;opacity:.8;">${ruleNote} × ${density} MT/m³</span>`;
+    } else {
+        const recordTonnage = fromDT.payload.tonnage || 0;
+        const maxByToCap    = Math.round(toCap * density * 10) / 10;
+        const tonnage       = Math.min(recordTonnage, maxByToCap);
+        const cutNote       = recordTonnage > maxByToCap ? ` ⚠️ Dipotong dari ${recordTonnage} MT (kapasitas ${toDT.code} lebih kecil)` : '';
+        preview = `Tonnage yang ditransfer (trip pertama ${toDT.code}): <strong>${tonnage} MT</strong>${cutNote}`;
+    }
+
+    previewEl.style.display = 'block';
+    previewEl.innerHTML = preview;
+}
+
+function confirmBreakdown() {
+    const fromPlate = document.getElementById('bd-from').value;
+    const toPlate   = document.getElementById('bd-to').value;
+    if (!fromPlate || !toPlate) { alert('Pilih unit breakdown dan unit penerima.'); return; }
+    if (fromPlate === toPlate)  { alert('Unit yang sama tidak bisa menerima muatannya sendiri.'); return; }
+
+    const data = getWebData();
+    const doc  = data.documents.find(d => d.id === breakdownDocId);
+    if (!doc) return;
+
+    const fromDT = doc.dumpTrucks.find(dt => dt.plate === fromPlate);
+    const toDT   = doc.dumpTrucks.find(dt => dt.plate === toPlate);
+    if (!fromDT || !toDT) return;
+
+    const density   = doc.materialDensity || 1.2;
+    const fromCap   = fromDT.vessel_capacity_m3 || 10;
+    const toCap     = toDT.vessel_capacity_m3 || 10;
+    const ts        = new Date().toLocaleString('id-ID');
+
+    let tonnage, bucketCount, transferNote;
+
+    if (fromDT.route === 'unscheduled' || !fromDT.payload) {
+        // Unscheduled: tonnage = min(fromCap, toCap) × density
+        const effectiveCap = Math.min(fromCap, toCap);
+        tonnage     = Math.round(effectiveCap * density * 10) / 10;
+        bucketCount = '-';
+        transferNote = fromCap > toCap
+            ? `min(${fromCap}, ${toCap})m³ × ${density} = ${tonnage}MT (dibatasi kapasitas unit penerima)`
+            : `min(${fromCap}, ${toCap})m³ × ${density} = ${tonnage}MT`;
+    } else {
+        // Scheduled: from loading record, cap by toTruck vessel capacity
+        const recordTonnage = fromDT.payload.tonnage || 0;
+        const maxByToCap    = Math.round(toCap * density * 10) / 10;
+        tonnage     = Math.min(recordTonnage, maxByToCap);
+        bucketCount = fromDT.payload.bucketCount || 0;
+        transferNote = recordTonnage > maxByToCap
+            ? `Dipotong dari ${recordTonnage}MT ke ${tonnage}MT (kapasitas unit penerima lebih kecil)`
+            : `Dari loading record: ${tonnage}MT`;
+    }
+
+    // Update DT statuses
+    fromDT.status     = 'breakdown';
+    fromDT.transferTo = `${toDT.code} (${toPlate})`;
+    toDT.status       = 'transfer';
+    toDT.payload      = { bucketCount, tonnage, fromTruck: `${fromDT.code} (${fromPlate})`, fromRoute: fromDT.route || 'scheduled' };
+
+    doc.breakdownEvents = doc.breakdownEvents || [];
+    doc.breakdownEvents.push({
+        type: 'dt_breakdown',
+        fromTruck: `${fromDT.code} (${fromPlate})`, toTruck: `${toDT.code} (${toPlate})`,
+        bucketCount, tonnage, timestamp: ts, note: transferNote
+    });
+
+    saveWebData(data);
+
+    // Write to shared localStorage so mobile POC picks it up
+    const shared = getShared();
+    shared.payloadTransfers = (shared.payloadTransfers || []).concat([{
+        id: 'TRF-' + Date.now(), fromTruck: fromPlate, toTruck: toPlate,
+        bucketCount, tonnage, timestamp: ts, completed: false
+    }]);
+    saveShared(shared);
+
+    // Void mobile loading record for breakdown truck
+    const mData = getMobileData();
+    if (mData) {
+        const loading = [...(mData.activities || [])].reverse().find(a => a.type === 'loading' && a.truck === fromPlate && !a.ritaseId && !a.breakdown);
+        if (loading) {
+            const idx = mData.activities.findIndex(a => a.id === loading.id);
+            if (idx !== -1) { mData.activities[idx].breakdown = true; localStorage.setItem(MOBILE_KEY, JSON.stringify(mData)); }
+        }
+    }
+
+    closeModal('modal-breakdown');
+    renderDetail(breakdownDocId);
+}
+
+// ════════════════════════════════════════════════════════
+// POPULATION MANAGEMENT
+// ════════════════════════════════════════════════════════
+
+function toggleActionMenu(menuId) {
+    const menu = document.getElementById(menuId);
+    if (!menu) return;
+    const isOpen = menu.style.display !== 'none';
+    document.querySelectorAll('.action-menu-dropdown').forEach(el => el.style.display = 'none');
+    menu.style.display = isOpen ? 'none' : 'block';
+}
+
+document.addEventListener('click', function(e) {
+    if (!e.target.closest('[onclick*="toggleActionMenu"]')) {
+        document.querySelectorAll('.action-menu-dropdown').forEach(el => el.style.display = 'none');
+    }
+});
+
+function renderPopManagementHtml(doc, readonly = false) {
+    if (STATUS_ORDER.indexOf(doc.status) < 3) return '';
+
+    const thS = `padding:7px 10px;text-align:left;font-size:11px;font-weight:600;color:#475569;
+                 border-bottom:2px solid #e2e8f0;white-space:nowrap;position:sticky;top:0;background:#f8fafc;z-index:1;`;
+    const tdS = `padding:7px 10px;border-bottom:1px solid #f1f5f9;vertical-align:middle;font-size:12px;`;
+
+    const dtRows = doc.dumpTrucks.map(dt => {
+        const routeColor = dt.route === 'unscheduled' ? '#DC2626' : '#1B8A58';
+        const routeLabel = dt.route === 'unscheduled' ? 'Unscheduled' : 'Scheduled';
+        const menuId = `dt-menu-${dt.code}-${doc.id}`.replace(/[^a-zA-Z0-9-_]/g, '-');
+        const actionCell = readonly ? `<td style="${tdS};color:#94a3b8;font-size:11px;">—</td>` : `<td style="${tdS}">
+                <div style="position:relative;display:inline-block;">
+                    <button onclick="toggleActionMenu('${menuId}')"
+                        style="font-size:16px;background:none;border:1px solid #e2e8f0;border-radius:6px;padding:2px 8px;cursor:pointer;line-height:1;color:#475569;">⋯</button>
+                    <div id="${menuId}" class="action-menu-dropdown" style="display:none;position:absolute;right:0;top:30px;background:#fff;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.1);min-width:130px;z-index:20;">
+                        <button onclick="simulateLoaded('${doc.id}','${dt.plate}');toggleActionMenu('${menuId}')"
+                            style="width:100%;text-align:left;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:12px;border-bottom:1px solid #f1f5f9;">▶ Sim</button>
+                        <button onclick="openRemoveUnitModal('${doc.id}','dt','${dt.code}');toggleActionMenu('${menuId}')"
+                            style="width:100%;text-align:left;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:12px;color:#DC2626;">Remove</button>
+                    </div>
+                </div>
+            </td>`;
+        return `<tr>
+            <td style="${tdS}"><span class="badge draft">${dt.code}</span></td>
+            <td style="${tdS};color:#64748b;white-space:nowrap;">${dt.plate}<br><span style="font-size:10px;">${dt.vessel_capacity_m3}m³</span></td>
+            <td style="${tdS}"><span style="color:${routeColor};font-weight:600;font-size:11px;">${routeLabel}</span></td>
+            <td style="${tdS};color:#64748b;">${dt.assignedArea || '—'}</td>
+            ${actionCell}
+        </tr>`;
+    }).join('');
+
+    const excaRows = doc.excas.map(ex => {
+        const menuId = `exca-menu-${ex.code}-${doc.id}`.replace(/[^a-zA-Z0-9-_]/g, '-');
+        const actionCell = readonly ? `<td style="${tdS};color:#94a3b8;font-size:11px;">—</td>` : `<td style="${tdS}">
+                <div style="position:relative;display:inline-block;">
+                    <button onclick="toggleActionMenu('${menuId}')"
+                        style="font-size:16px;background:none;border:1px solid #e2e8f0;border-radius:6px;padding:2px 8px;cursor:pointer;line-height:1;color:#475569;">⋯</button>
+                    <div id="${menuId}" class="action-menu-dropdown" style="display:none;position:absolute;right:0;top:30px;background:#fff;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.1);min-width:130px;z-index:20;">
+                        <button onclick="openRemoveUnitModal('${doc.id}','exca','${ex.code}');toggleActionMenu('${menuId}')"
+                            style="width:100%;text-align:left;padding:8px 12px;border:none;background:none;cursor:pointer;font-size:12px;color:#DC2626;">Remove</button>
+                    </div>
+                </div>
+            </td>`;
+        return `<tr>
+            <td style="${tdS}"><span class="badge on-progress">${ex.code}</span></td>
+            <td style="${tdS};color:#334155;">${ex.model}</td>
+            <td style="${tdS};color:#64748b;">${ex.bucket}m³/bkt</td>
+            <td style="${tdS};color:#64748b;">${ex.assignedArea || '—'}</td>
+            ${actionCell}
+        </tr>`;
+    }).join('');
+
+    const scrollWrap = `max-height:220px;overflow-y:auto;`;
+    const emptyDT   = `<tr><td colspan="5" style="padding:14px;color:#94a3b8;font-size:12px;text-align:center;">Belum ada Dump Truck (auto-populate dari Operator App).</td></tr>`;
+    const emptyExca = `<tr><td colspan="5" style="padding:14px;color:#94a3b8;font-size:12px;text-align:center;">Belum ada Excavator (auto-populate dari Operator App).</td></tr>`;
+
+    return `
+    <div class="section-card" style="margin-top:16px;">
+        <div class="section-card-header">
+            <div class="section-card-title">Populasi & Assignment</div>
+            <span style="font-size:11px;color:#94a3b8;">Auto-populate dari Operator App. View-only.</span>
+        </div>
+        <div class="section-card-body" style="padding:0;">
+
+            <div style="padding:7px 14px;background:#f8fafc;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;">
+                <span style="font-size:12px;font-weight:600;">Dump Truck (${doc.dumpTrucks.length})</span>
+            </div>
+            <div style="padding:5px 14px;background:#f8fafc;border-bottom:1px solid #e2e8f0;">
+                <input type="text" placeholder="Search by No Unit..."
+                    oninput="filterPopTable('${doc.id}','dt',this.value)"
+                    style="width:100%;padding:5px 10px;font-size:12px;border:1px solid #e2e8f0;border-radius:6px;outline:none;background:#fff;color:#1e293b;">
+            </div>
+            <div style="${scrollWrap}">
+                <table style="width:100%;border-collapse:collapse;">
+                    <thead><tr>
+                        <th style="${thS}">Code</th>
+                        <th style="${thS}">Unit</th>
+                        <th style="${thS}">Route</th>
+                        <th style="${thS}">Area</th>
+                        <th style="${thS}">Aksi</th>
+                    </tr></thead>
+                    <tbody id="pop-dt-tbody-${doc.id}">${dtRows || emptyDT}</tbody>
+                </table>
+            </div>
+
+            <div style="padding:7px 14px;background:#f8fafc;border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between;">
+                <span style="font-size:12px;font-weight:600;">Excavator (${doc.excas.length})</span>
+            </div>
+            <div style="padding:5px 14px;background:#f8fafc;border-bottom:1px solid #e2e8f0;">
+                <input type="text" placeholder="Search by No Unit..."
+                    oninput="filterPopTable('${doc.id}','exca',this.value)"
+                    style="width:100%;padding:5px 10px;font-size:12px;border:1px solid #e2e8f0;border-radius:6px;outline:none;background:#fff;color:#1e293b;">
+            </div>
+            <div style="${scrollWrap}">
+                <table style="width:100%;border-collapse:collapse;">
+                    <thead><tr>
+                        <th style="${thS}">Code</th>
+                        <th style="${thS}">Model</th>
+                        <th style="${thS}">Bucket</th>
+                        <th style="${thS}">Area</th>
+                        <th style="${thS}">Aksi</th>
+                    </tr></thead>
+                    <tbody id="pop-exca-tbody-${doc.id}">${excaRows || emptyExca}</tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>`;
+}
+
+let addUnitDocId = null, addUnitType = null;
+let removeUnitDocId = null, removeUnitType = null, removeUnitCode = null;
+
+function openAddUnitModal(docId, type) {
+    addUnitDocId = docId;
+    addUnitType  = type;
+    const data   = getWebData();
+    const doc    = data.documents.find(d => d.id === docId);
+    if (!doc) return;
+
+    if (type === 'dt') {
+        const used      = doc.dumpTrucks.map(d => d.code);
+        const available = ALL_DT.filter(d => !used.includes(d.code));
+        document.getElementById('add-unit-title').textContent = 'Tambah Dump Truck';
+        document.getElementById('add-unit-sub').textContent   = 'Pilih dump truck dari master yang belum terdaftar di dokumen ini.';
+        document.getElementById('add-unit-select').innerHTML  = available.map(d =>
+            `<option value="${d.code}" data-plate="${d.plate}" data-cap="${d.vessel_capacity_m3}">${d.code} — ${d.plate} (${d.vessel_capacity_m3}m³)</option>`
+        ).join('');
+        document.getElementById('add-unit-dt-fields').style.display  = 'block';
+        document.getElementById('add-unit-exca-fields').style.display = 'none';
+        document.getElementById('add-unit-area').innerHTML = ALL_AREAS.map(a => `<option value="${a}">${a}</option>`).join('');
+    } else {
+        const used      = doc.excas.map(e => e.code);
+        const available = ALL_EXCAS.filter(e => !used.includes(e.code));
+        document.getElementById('add-unit-title').textContent = 'Tambah Excavator';
+        document.getElementById('add-unit-sub').textContent   = 'Pilih excavator dari master yang belum terdaftar di dokumen ini.';
+        document.getElementById('add-unit-select').innerHTML  = available.map(e =>
+            `<option value="${e.code}" data-model="${e.model}" data-bucket="${e.bucket}">${e.code} — ${e.model} (${e.bucket}m³/bucket)</option>`
+        ).join('');
+        document.getElementById('add-unit-dt-fields').style.display  = 'none';
+        document.getElementById('add-unit-exca-fields').style.display = 'block';
+    }
+
+    document.getElementById('modal-add-unit').classList.add('open');
+}
+
+function filterPopTable(docId, type, query) {
+    const tbodyId = type === 'dt' ? `pop-dt-tbody-${docId}` : `pop-exca-tbody-${docId}`;
+    const tbody = document.getElementById(tbodyId);
+    if (!tbody) return;
+    const q = query.trim().toLowerCase();
+    Array.from(tbody.querySelectorAll('tr')).forEach(row => {
+        const codeCell = row.querySelector('td:first-child');
+        if (!codeCell) return;
+        const code = codeCell.textContent.trim().toLowerCase();
+        row.style.display = (!q || code.includes(q)) ? '' : 'none';
+    });
+}
+
+function onAddUnitRouteChange() {
+    // Area options tidak difilter per route — semua Master Area tersedia
+}
+
+function confirmAddUnit() {
+    const data = getWebData();
+    const doc  = data.documents.find(d => d.id === addUnitDocId);
+    if (!doc) return;
+    const selected = document.getElementById('add-unit-select').value;
+    if (!selected) { alert('Pilih unit terlebih dahulu.'); return; }
+
+    if (addUnitType === 'dt') {
+        const master = ALL_DT.find(d => d.code === selected);
+        if (!master) return;
+        doc.dumpTrucks.push({
+            code: master.code, plate: master.plate,
+            vessel_capacity_m3: master.vessel_capacity_m3,
+            route:        document.getElementById('add-unit-route').value,
+            assignedArea: document.getElementById('add-unit-area').value,
+            status: 'available', payload: null
+        });
+    } else {
+        const master = ALL_EXCAS.find(e => e.code === selected);
+        if (!master) return;
+        doc.excas.push({
+            code: master.code, model: master.model, bucket: master.bucket,
+            assignedArea: document.getElementById('add-exca-area').value,
+            status: 'available'
+        });
+    }
+
+    saveWebData(data);
+    closeModal('modal-add-unit');
+    renderDetail(addUnitDocId);
+}
+
+function openRemoveUnitModal(docId, type, code) {
+    const data = getWebData();
+    const doc  = data.documents.find(d => d.id === docId);
+    if (!doc) return;
+
+    if (type === 'dt') {
+        const dt = doc.dumpTrucks.find(d => d.code === code);
+        if (!dt) return;
+        if (dt.status !== 'available') {
+            alert(`${dt.code} tidak bisa dikeluarkan — status saat ini: ${dt.status}. Tunggu hingga truck kembali Available.`);
+            return;
+        }
+        document.getElementById('remove-unit-sub').innerHTML = `Dump Truck <strong>${dt.code} (${dt.plate})</strong> akan dikeluarkan dari operasi barging ini.`;
+    } else {
+        const ex = doc.excas.find(e => e.code === code);
+        if (!ex) return;
+        document.getElementById('remove-unit-sub').innerHTML = `Excavator <strong>${ex.code} — ${ex.model}</strong> akan dikeluarkan dari operasi barging ini.`;
+    }
+
+    removeUnitDocId = docId;
+    removeUnitType  = type;
+    removeUnitCode  = code;
+    document.getElementById('modal-remove-unit').classList.add('open');
+}
+
+function confirmRemoveUnit() {
+    const data = getWebData();
+    const doc  = data.documents.find(d => d.id === removeUnitDocId);
+    if (!doc) return;
+
+    if (removeUnitType === 'dt') {
+        doc.dumpTrucks = doc.dumpTrucks.filter(d => d.code !== removeUnitCode);
+    } else {
+        doc.excas = doc.excas.filter(e => e.code !== removeUnitCode);
+    }
+
+    saveWebData(data);
+    closeModal('modal-remove-unit');
+    renderDetail(removeUnitDocId);
+}
+
+function changeUnitAssignment(docId, type, code, field, value) {
+    const data = getWebData();
+    const doc  = data.documents.find(d => d.id === docId);
+    if (!doc) return;
+
+    if (type === 'dt') {
+        const dt = doc.dumpTrucks.find(d => d.code === code);
+        if (!dt) return;
+        dt[field] = value;
+        if (field === 'route') {
+            // Area tidak di-reset saat route berubah — semua area tersedia untuk semua route
+        }
+    } else {
+        const ex = doc.excas.find(e => e.code === code);
+        if (!ex) return;
+        ex[field] = value;
+    }
+    saveWebData(data);
+    renderDetail(docId);
+}
+
+// ════════════════════════════════════════════════════════
+// SHIFT LOG
+// ════════════════════════════════════════════════════════
+
+let achFilter = 'shift';
+let viewingHistoricalStatus = null;
+
+function setAchFilter(mode) {
+    achFilter = mode;
+    document.querySelectorAll('.ach-filter-btn').forEach(btn => {
+        btn.classList.toggle('active-filter', btn.dataset.mode === mode);
+    });
+    document.querySelectorAll('.ach-view').forEach(view => {
+        view.style.display = view.dataset.view === mode ? 'block' : 'none';
+    });
+}
+
+function renderShiftLogHtml(doc) {
+    const history    = doc.shiftHistory || [];
+
+    const loadingExcas = (doc.excas || []).filter(e => AREAS_LOADING.includes(e.assignedArea));
+    const curRitase  = doc.simulatedRitase || 0;
+    const curTonnage = parseFloat((doc.simulatedTonnage || 0).toFixed(1));
+    const curExcaSummary = loadingExcas.length > 0 ? loadingExcas.map((e, i) => {
+        const base = Math.floor(curRitase / loadingExcas.length);
+        const extra = i < (curRitase % loadingExcas.length) ? 1 : 0;
+        return { code: e.code, ritase: base + extra };
+    }) : [];
+    const currentRow = { shift: 'Siang', date: doc.createdDate || '-', ritase: curRitase, tonnage: curTonnage, isCurrent: true, excaSummary: curExcaSummary };
+
+    const rows = [...history, currentRow];
+
+    const totalRitase  = rows.reduce((s, r) => s + (r.ritase || 0), 0);
+    const totalTonnage = rows.reduce((s, r) => s + (r.tonnage || 0), 0);
+    const overallAch   = doc.targetTonase > 0 ? Math.min(100, Math.round(totalTonnage / doc.targetTonase * 100)) : 0;
+
+    // By Shift view
+    const shiftRowHtml = rows.map((r, idx) => {
+        const shiftLabel = r.shift + (r.isCurrent ? ' <span class="badge available-b" style="font-size:9px;padding:1px 6px;">Berjalan</span>' : '');
+        const tonnageStr = typeof r.tonnage === 'number' ? r.tonnage.toFixed(1) : (r.tonnage || 0);
+        const hasDetail = r.excaSummary && r.excaSummary.length > 0;
+        const toggleBtn = hasDetail
+            ? `<button id="shift-toggle-${idx}" onclick="toggleShiftDetail(${idx})" style="background:none;border:none;cursor:pointer;color:#6366f1;font-size:11px;padding:0 4px 0 0;line-height:1;">▶</button>`
+            : `<span style="display:inline-block;width:16px;"></span>`;
+        const detailHtml = hasDetail
+            ? r.excaSummary.map(e => `<span style="display:inline-flex;align-items:center;gap:4px;background:#f1f5f9;border-radius:6px;padding:2px 8px;font-size:11px;"><strong>${e.code}</strong>: ${e.ritase} rit</span>`).join(' ')
+            : '';
+        const detailRow = hasDetail
+            ? `<tr id="shift-detail-${idx}" style="display:none;background:#f8fafc;">
+                <td colspan="4" style="padding:6px 16px 8px 32px;">
+                    <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;">
+                        <span style="font-size:11px;color:#64748b;margin-right:4px;">Exca:</span>
+                        ${detailHtml}
+                    </div>
+                </td>
+            </tr>` : '';
+        return `<tr>
+            <td>${toggleBtn}${shiftLabel}</td>
+            <td style="color:#64748b;">${r.date}</td>
+            <td style="text-align:right;font-weight:600;">${r.ritase}</td>
+            <td style="text-align:right;font-weight:600;">${tonnageStr}</td>
+        </tr>${detailRow}`;
+    }).join('');
+
+    // By Exca view
+    const excaMap = {};
+    rows.forEach(r => {
+        (r.excaSummary || []).forEach(e => {
+            if (!excaMap[e.code]) excaMap[e.code] = { ritase: 0 };
+            excaMap[e.code].ritase += e.ritase || 0;
+        });
+    });
+    const excaEntries = Object.entries(excaMap);
+    const excaRowHtml = excaEntries.length > 0
+        ? excaEntries.map(([code, stats]) => {
+            const tonnage = totalRitase > 0 ? Math.round((stats.ritase / totalRitase) * totalTonnage * 10) / 10 : 0;
+            return `<tr>
+                <td><span class="badge on-progress">${code}</span></td>
+                <td style="text-align:right;font-weight:600;">${stats.ritase}</td>
+                <td style="text-align:right;font-weight:600;">${tonnage.toFixed(1)}</td>
+            </tr>`;
+        }).join('')
+        : `<tr><td colspan="3" style="padding:14px;color:#94a3b8;text-align:center;">Belum ada data exca.</td></tr>`;
+
+    const filterBtnStyle = (mode) => `padding:3px 10px;border-radius:5px;border:1px solid #e2e8f0;font-size:11px;cursor:pointer;font-weight:600;background:${achFilter===mode?'#3B4894':'#fff'};color:${achFilter===mode?'#fff':'#475569'};`;
+
+    return `
+    <div class="section-card">
+        <div class="section-card-header">
+            <div class="section-card-title">Achievement Tonnage</div>
+            <div style="display:flex;align-items:center;gap:8px;">
+                <span style="font-size:11px;color:#64748b;">${totalRitase} rit | ${totalTonnage.toFixed(1)} MT | <strong>${overallAch}%</strong></span>
+                <div style="display:flex;gap:3px;">
+                    <button class="ach-filter-btn" data-mode="shift" onclick="setAchFilter('shift')" style="${filterBtnStyle('shift')}">By Shift</button>
+                    <button class="ach-filter-btn" data-mode="exca" onclick="setAchFilter('exca')" style="${filterBtnStyle('exca')}">By Exca</button>
+                </div>
+            </div>
+        </div>
+        <div class="section-card-body" style="padding:0;">
+            <div class="ach-view" data-view="shift" style="display:${achFilter==='shift'?'block':'none'};">
+                <table>
+                    <thead><tr>
+                        <th>Shift</th><th>Tanggal</th>
+                        <th style="text-align:right;">Ritase</th>
+                        <th style="text-align:right;">Tonnage (MT)</th>
+                    </tr></thead>
+                    <tbody>${shiftRowHtml}</tbody>
+                </table>
+            </div>
+            <div class="ach-view" data-view="exca" style="display:${achFilter==='exca'?'block':'none'};">
+                <table>
+                    <thead><tr>
+                        <th>Excavator</th>
+                        <th style="text-align:right;">Ritase</th>
+                        <th style="text-align:right;">Tonnage (MT)</th>
+                    </tr></thead>
+                    <tbody>${excaRowHtml}</tbody>
+                </table>
+            </div>
+        </div>
+    </div>`;
+}
+
+function toggleShiftDetail(idx) {
+    const el  = document.getElementById('shift-detail-' + idx);
+    const btn = document.getElementById('shift-toggle-' + idx);
+    if (!el || !btn) return;
+    const isOpen = el.style.display !== 'none';
+    el.style.display = isOpen ? 'none' : 'table-row';
+    btn.textContent  = isOpen ? '▶' : '▼';
+}
+
+function toggleDocInfo(docId) {
+    const el  = document.getElementById('doc-info-expand-' + docId);
+    const btn = document.getElementById('doc-info-btn-' + docId);
+    if (!el) return;
+    const open = el.style.display === 'none';
+    el.style.display = open ? 'block' : 'none';
+    if (btn) btn.textContent = open ? '▴ Info' : '▾ Info';
+}
+
+function showStepSnapshot(docId, status) {
+    viewingHistoricalStatus = status;
+    _refreshDetailTabs(docId);
+}
+
+function exitHistoricalView(docId) {
+    viewingHistoricalStatus = null;
+    _refreshDetailTabs(docId);
+}
+
+function _refreshDetailTabs(docId) {
+    const { documents } = getWebData();
+    const doc = documents.find(d => d.id === docId);
+    if (!doc) return;
+
+    const histStatus = viewingHistoricalStatus;
+    const effectiveDoc = histStatus ? { ...doc, status: histStatus } : doc;
+    const readonly = !!histStatus;
+
+    const showAllTabs = STATUS_ORDER.indexOf(effectiveDoc.status) >= 3;
+    if (!showAllTabs && currentDetailTab !== 'operasional') currentDetailTab = 'operasional';
+
+    const TABS = showAllTabs
+        ? [
+            { id: 'progress',    label: '📊 Progress'    },
+            { id: 'operasional', label: '⚙️ Operasional' },
+            { id: 'riwayat',     label: '📋 History'     }
+          ]
+        : [
+            { id: 'operasional', label: '⚙️ Operasional' }
+          ];
+
+    const tabBar = TABS.map(t =>
+        `<button class="tab-btn ${currentDetailTab === t.id ? 'active' : ''}" data-tab="${t.id}" onclick="switchTab('${t.id}')">${t.label}</button>`
+    ).join('');
+
+    const tabPanels = TABS.map(t => {
+        let content = '';
+        if (t.id === 'progress')         content = renderTabProgress(effectiveDoc, readonly);
+        else if (t.id === 'operasional') content = renderTabOperasional(effectiveDoc, readonly);
+        else if (t.id === 'riwayat')     content = renderTabRiwayat(effectiveDoc, readonly);
+        return `<div class="tab-panel ${currentDetailTab === t.id ? 'active' : ''}" id="tabpanel-${t.id}">${content}</div>`;
+    }).join('');
+
+    const banner = histStatus ? `
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 14px;background:#fef7e0;border:1px solid #D97706;border-radius:8px;margin-bottom:10px;">
+            <span style="font-size:12px;color:#92400e;">📌 <strong>Read-Only</strong> — Tampilan status <strong>${histStatus}</strong></span>
+            <button onclick="exitHistoricalView('${docId}')" style="background:none;border:1px solid #D97706;border-radius:5px;padding:2px 10px;cursor:pointer;font-size:11px;color:#92400e;font-weight:600;white-space:nowrap;">← Kembali ke status saat ini</button>
+        </div>` : '';
+
+    document.getElementById('detail-tabs').innerHTML = banner + `<div class="tab-bar">${tabBar}</div><div>${tabPanels}</div>`;
+}
+
+// ════════════════════════════════════════════════════════
+// MODAL HELPERS
+// ════════════════════════════════════════════════════════
+
+function closeModal(id) {
+    document.getElementById(id).classList.remove('open');
+}
+
+document.querySelectorAll('.modal-backdrop').forEach(el => {
+    el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); });
+});
+
+// ════════════════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════════════════
+
+// Seed demo data if empty; migrate existing docs if fields missing
+(function seed() {
+    const data = getWebData();
+    // Migration: ensure all docs have required fields
+    let dirty = false;
+    data.documents.forEach(doc => {
+        if (doc.status === 'Draft') { doc.status = 'Planned'; dirty = true; }
+        if (doc.simulatedRitase === undefined) { doc.simulatedRitase = 0; dirty = true; }
+        if (doc.simulatedTonnage === undefined) { doc.simulatedTonnage = 0; dirty = true; }
+        if (doc.materialDensity === undefined)  { doc.materialDensity = 1.2; dirty = true; }
+        if (!doc.shiftHistory) { doc.shiftHistory = []; dirty = true; }
+        if (typeof doc.excas[0] === 'string') {
+            doc.excas = doc.excas.map(c => ({ code: c, model: '', bucket: 1.6, assignedArea: 'EFO A' })); dirty = true;
+        } else {
+            doc.excas.forEach(e => { if (!e.assignedArea) { e.assignedArea = 'EFO A'; dirty = true; } });
+        }
+        doc.dumpTrucks.forEach(dt => {
+            if (!dt.status) { dt.status = 'available'; dirty = true; }
+            if (dt.vessel_capacity_m3 === undefined) {
+                const master = ALL_DT.find(d => d.code === dt.code);
+                dt.vessel_capacity_m3 = master ? master.vessel_capacity_m3 : 10; dirty = true;
+            }
+            if (!dt.route)        { dt.route = 'scheduled'; dirty = true; }
+            if (!dt.assignedArea) { dt.assignedArea = 'EFO A'; dirty = true; }
+        });
+    });
+    if (dirty) saveWebData(data);
+
+    if (data.documents.length === 0) {
+        data.documents.push({
+            id: 'BRG-001',
+            createdDate: '26/06/2026',
+            area: 'Jetty F',
+            barge: 'SEA TITAN',
+            material: 'Coal',
+            materialDensity: 1.2,
+            targetTonase: 4500,
+            surveyor: 'PT. Sucofindo',
+            spv: 'Budi Santoso',
+            excas: [
+                { code: 'EX-001', model: 'Hitachi PC200',   bucket: 1.6, assignedArea: 'EFO A',  status: 'available' },
+                { code: 'EX-002', model: 'Komatsu PC400',   bucket: 2.4, assignedArea: 'EFO B',  status: 'available' },
+                { code: 'EX-003', model: 'Caterpillar 320', bucket: 1.2, assignedArea: 'Jetty F', status: 'available' }
+            ],
+            dumpTrucks: [
+                { code: 'DT-01', plate: 'B 1234 ABC', vessel_capacity_m3: 10, route: 'scheduled',   assignedArea: 'EFO A', status: 'available', payload: null },
+                { code: 'DT-02', plate: 'B 5678 DEF', vessel_capacity_m3: 12, route: 'scheduled',   assignedArea: 'EFO A', status: 'available', payload: null },
+                { code: 'DT-03', plate: 'B 9012 GHI', vessel_capacity_m3: 15, route: 'unscheduled', assignedArea: 'PIT',   status: 'available', payload: null },
+                { code: 'DT-04', plate: 'B 3456 JKL', vessel_capacity_m3: 10, route: 'scheduled',   assignedArea: 'EFO B', status: 'available', payload: null },
+                { code: 'DT-05', plate: 'B 7890 MNO', vessel_capacity_m3: 8,  route: 'unscheduled', assignedArea: 'ETO',   status: 'available', payload: null }
+            ],
+            status: 'On Progress',
+            eta: '2026-06-26T08:00',
+            ata: '2026-06-26T08:45',
+            openChecklist:  { notify: true, ramp: true, excaEnter: true },
+            closeChecklist: { bargeInfo: false, closeBarge: false, finalDraft: false },
+            finalTonnage: null, documentFile: null,
+            simulatedRitase: 6, simulatedTonnage: 118.4,
+            breakdownEvents: [],
+            shiftHistory: [
+                { shift: 'Pagi',  date: '25/06/2026', ritase: 28, tonnage: 526.4,
+                  excaSummary: [{ code: 'EX-001', ritase: 16 }, { code: 'EX-002', ritase: 12 }] },
+                { shift: 'Malam', date: '25/06/2026', ritase: 22, tonnage: 413.6,
+                  excaSummary: [{ code: 'EX-001', ritase: 13 }, { code: 'EX-002', ritase: 9 }] }
+            ]
+        });
+        data.nextSeq = 2;
+        saveWebData(data);
+    }
+})();
+</script>
+</body>
+</html>

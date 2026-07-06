@@ -1,0 +1,3033 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Operator App - Production v3</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: #e8ecf4;
+            color: #1a1d2e;
+            overflow-x: hidden;
+        }
+
+        .mobile-frame {
+            width: 375px;
+            height: 740px;
+            margin: 20px auto;
+            background: #f4f6fb;
+            border-radius: 44px;
+            box-shadow:
+                0 0 0 3px #2a2d4a,
+                0 20px 60px rgba(42, 45, 74, 0.35),
+                0 0 0 8px #1a1d30;
+            overflow: hidden;
+            position: relative;
+        }
+
+        /* Notch */
+        .mobile-frame::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 150px;
+            height: 28px;
+            background: #2a2d4a;
+            border-radius: 0 0 20px 20px;
+            z-index: 100;
+        }
+
+        .screen {
+            display: none;
+            width: 100%;
+            height: 100%;
+            flex-direction: column;
+            animation: slideIn 0.25s ease;
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(16px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        /* ===== HEADER ===== */
+        .header {
+            background: linear-gradient(135deg, #3B4894 0%, #2D3570 100%);
+            color: white;
+            padding: 44px 20px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: relative;
+        }
+
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: -12px;
+            left: 0;
+            right: 0;
+            height: 24px;
+            background: #f4f6fb;
+            border-radius: 20px 20px 0 0;
+        }
+
+        .header-title {
+            font-weight: 800;
+            font-size: 18px;
+            letter-spacing: -0.3px;
+        }
+
+        .header-subtitle {
+            font-size: 12px;
+            opacity: 0.75;
+            font-weight: 500;
+            margin-top: 2px;
+        }
+
+        .back-btn {
+            background: rgba(255,255,255,0.15);
+            border: none;
+            color: white;
+            font-size: 18px;
+            cursor: pointer;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            transition: background 0.2s;
+        }
+
+        .back-btn:hover {
+            background: rgba(255,255,255,0.25);
+        }
+
+        /* ===== HOME HEADER (special) ===== */
+        .home-header {
+            background: linear-gradient(135deg, #3B4894 0%, #2D3570 100%);
+            color: white;
+            padding: 44px 20px 24px;
+            position: relative;
+        }
+
+        .home-header::after {
+            content: '';
+            position: absolute;
+            bottom: -12px;
+            left: 0;
+            right: 0;
+            height: 24px;
+            background: #f4f6fb;
+            border-radius: 20px 20px 0 0;
+        }
+
+        .home-header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .greeting-text {
+            font-size: 13px;
+            opacity: 0.8;
+            font-weight: 500;
+        }
+
+        .app-title {
+            font-size: 22px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            margin-top: 2px;
+        }
+
+        .avatar {
+            width: 40px;
+            height: 40px;
+            background: rgba(255,255,255,0.2);
+            border: 2px solid rgba(255,255,255,0.4);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 14px;
+        }
+
+        /* ===== CONTENT ===== */
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 20px 20px;
+        }
+
+        .content::-webkit-scrollbar { width: 3px; }
+        .content::-webkit-scrollbar-track { background: transparent; }
+        .content::-webkit-scrollbar-thumb { background: #ccd0de; border-radius: 3px; }
+
+        /* ===== LOGIN ===== */
+        .login-logo {
+            text-align: center;
+            margin: 48px 0 36px;
+        }
+
+        .login-logo h1 {
+            font-size: 28px;
+            font-weight: 800;
+            color: #3B4894;
+            letter-spacing: -0.5px;
+        }
+
+        .login-logo p {
+            color: #8b91a8;
+            font-size: 13px;
+            margin-top: 6px;
+            font-weight: 500;
+        }
+
+        /* ===== FORMS ===== */
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        .form-label {
+            display: block;
+            font-weight: 600;
+            font-size: 13px;
+            margin-bottom: 8px;
+            color: #4a4f68;
+        }
+
+        .form-input {
+            width: 100%;
+            height: 52px;
+            padding: 0 16px;
+            border: 1.5px solid #dde1ed;
+            border-radius: 14px;
+            font-size: 14px;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: white;
+            color: #1a1d2e;
+            transition: all 0.2s;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: #3B4894;
+            box-shadow: 0 0 0 3px rgba(59, 72, 148, 0.1);
+        }
+
+        .select-input {
+            width: 100%;
+            height: 52px;
+            padding: 0 16px;
+            border: 1.5px solid #dde1ed;
+            border-radius: 14px;
+            font-size: 14px;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background: white;
+            color: #1a1d2e;
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='%238b91a8'%3E%3Cpath d='M1 1l5 5 5-5'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 16px center;
+        }
+
+        .select-input:focus {
+            outline: none;
+            border-color: #3B4894;
+            box-shadow: 0 0 0 3px rgba(59, 72, 148, 0.1);
+        }
+
+        /* ===== BUTTONS ===== */
+        .btn {
+            width: 100%;
+            height: 52px;
+            border: none;
+            border-radius: 14px;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-weight: 700;
+            font-size: 15px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #3B4894 0%, #4A5ABF 100%);
+            color: white;
+            box-shadow: 0 4px 14px rgba(59, 72, 148, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(59, 72, 148, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .btn-success {
+            background: linear-gradient(135deg, #22A06B 0%, #1B8A58 100%);
+            color: white;
+            height: 56px;
+            font-size: 15px;
+            box-shadow: 0 4px 14px rgba(34, 160, 107, 0.3);
+        }
+
+        .btn-success:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(34, 160, 107, 0.4);
+        }
+
+        .btn-info {
+            background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%);
+            color: white;
+            height: 56px;
+            font-size: 15px;
+            box-shadow: 0 4px 14px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-info:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(59, 130, 246, 0.4);
+        }
+
+        .btn-outline {
+            background: white;
+            border: 1.5px solid #dde1ed;
+            color: #4a4f68;
+            height: 52px;
+        }
+
+        .btn-outline:hover {
+            border-color: #3B4894;
+            color: #3B4894;
+            background: #f0f1fa;
+        }
+
+        /* ===== CARDS ===== */
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 18px;
+            margin-bottom: 14px;
+            box-shadow: 0 1px 4px rgba(42, 45, 74, 0.06);
+            border: 1px solid rgba(221, 225, 237, 0.6);
+        }
+
+        /* ===== WARNING CARD ===== */
+        .warning-card {
+            background: linear-gradient(135deg, #fef7e0 0%, #fef0c3 100%);
+            border: 1.5px solid #f5d76e;
+            border-radius: 16px;
+            padding: 24px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .warning-icon { font-size: 40px; margin-bottom: 10px; }
+
+        .warning-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #78350f;
+            margin-bottom: 6px;
+        }
+
+        .warning-text {
+            font-size: 13px;
+            color: #92400e;
+            line-height: 1.5;
+        }
+
+        .warning-action {
+            margin-top: 14px;
+            background: #78350f;
+            color: white;
+            height: 44px;
+            border-radius: 12px;
+            font-weight: 700;
+            border: none;
+            cursor: pointer;
+            width: 100%;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .warning-action:hover { opacity: 0.9; }
+
+        /* ===== SUMMARY GRID ===== */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 18px;
+        }
+
+        .summary-card {
+            background: white;
+            border-radius: 14px;
+            padding: 16px 10px;
+            text-align: center;
+            box-shadow: 0 1px 4px rgba(42, 45, 74, 0.06);
+            border: 1px solid rgba(221, 225, 237, 0.6);
+        }
+
+        .summary-card.disabled { opacity: 0.45; }
+
+        .summary-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 8px;
+            font-size: 16px;
+        }
+
+        .summary-icon.loading-icon { background: #e8faf0; color: #22A06B; }
+        .summary-icon.dumping-icon { background: #e8f0fe; color: #3B82F6; }
+        .summary-icon.ritase-icon { background: #fef3e0; color: #E5870A; }
+        .summary-icon.bucket-icon { background: #f0e8fa; color: #8B5CF6; }
+        .summary-icon.tonnage-icon { background: #fde8e8; color: #EF4444; }
+
+        .summary-number {
+            font-size: 26px;
+            font-weight: 800;
+            color: #1a1d2e;
+            margin-bottom: 2px;
+        }
+
+        .summary-label {
+            font-size: 11px;
+            color: #8b91a8;
+            font-weight: 600;
+            line-height: 1.3;
+        }
+
+        /* ===== CURRENT INFO ===== */
+        .current-info {
+            background: white;
+            padding: 14px 16px;
+            border-radius: 14px;
+            margin-bottom: 18px;
+            box-shadow: 0 1px 4px rgba(42, 45, 74, 0.06);
+            border: 1px solid rgba(221, 225, 237, 0.6);
+        }
+
+        .current-info-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: #8b91a8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px;
+        }
+
+        .current-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 6px 0;
+        }
+
+        .current-label {
+            font-size: 13px;
+            color: #8b91a8;
+            font-weight: 500;
+        }
+
+        .current-value {
+            font-weight: 700;
+            color: #1a1d2e;
+            font-size: 13px;
+        }
+
+        .switch-btn {
+            background: #f0f1fa;
+            border: none;
+            padding: 5px 12px;
+            border-radius: 8px;
+            font-size: 11px;
+            color: #3B4894;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .switch-btn:hover { background: #e0e2f0; }
+
+        /* ===== ACTION BUTTONS ===== */
+        .action-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 4px;
+        }
+
+        /* ===== PROFILE ===== */
+        .profile-header {
+            text-align: center;
+            padding: 28px 20px 24px;
+            background: linear-gradient(135deg, #3B4894 0%, #2D3570 100%);
+            color: white;
+            border-radius: 20px;
+            margin-bottom: 18px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .profile-header::before {
+            content: '';
+            position: absolute;
+            top: -30px;
+            right: -30px;
+            width: 100px;
+            height: 100px;
+            background: rgba(255,255,255,0.06);
+            border-radius: 50%;
+        }
+
+        .profile-avatar {
+            width: 72px;
+            height: 72px;
+            background: rgba(255,255,255,0.2);
+            border: 3px solid rgba(255,255,255,0.4);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 10px;
+            font-size: 28px;
+            font-weight: 800;
+            color: white;
+        }
+
+        .profile-name {
+            font-size: 18px;
+            font-weight: 800;
+        }
+
+        .profile-subtitle {
+            font-size: 12px;
+            opacity: 0.75;
+            font-weight: 500;
+            margin-top: 2px;
+        }
+
+        .profile-code {
+            font-size: 12px;
+            opacity: 0.75;
+            font-weight: 500;
+            margin-top: 2px;
+        }
+
+        .profile-stats-row {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            margin-top: 16px;
+        }
+
+        .profile-stat {
+            background: rgba(255,255,255,0.12);
+            border-radius: 12px;
+            padding: 10px;
+        }
+
+        .profile-stat-number {
+            font-size: 20px;
+            font-weight: 800;
+        }
+
+        .profile-stat-label {
+            font-size: 10px;
+            opacity: 0.7;
+            font-weight: 600;
+        }
+
+        /* ===== PLAN SECTION ===== */
+        .plan-section {
+            background: white;
+            border-radius: 16px;
+            padding: 18px;
+            margin-bottom: 14px;
+            box-shadow: 0 1px 4px rgba(42, 45, 74, 0.06);
+            border: 1px solid rgba(221, 225, 237, 0.6);
+        }
+
+        .section-title {
+            font-size: 14px;
+            font-weight: 700;
+            color: #1a1d2e;
+            margin-bottom: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .plan-info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #f4f6fb;
+            font-size: 13px;
+        }
+
+        .plan-info-row:last-child { border-bottom: none; }
+        .plan-label { color: #8b91a8; font-weight: 500; }
+        .plan-value { font-weight: 700; color: #1a1d2e; }
+        .plan-value.empty { color: #8b91a8; font-style: italic; font-weight: 500; }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .status-badge.active { background: #e8faf0; color: #1B8A58; }
+        .status-badge.inactive { background: #fef7e0; color: #92400e; }
+
+        /* ===== RADIO EXCA CARDS ===== */
+        .radio-exca-card {
+            background: white;
+            border: 1.5px solid #dde1ed;
+            border-radius: 14px;
+            padding: 14px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .radio-exca-card:hover { border-color: #3B4894; }
+        .radio-exca-card.selected { border-color: #3B4894; background: #f0f1fa; }
+        .radio-exca-card.disabled { opacity: 0.45; cursor: not-allowed; }
+        .radio-exca-card.disabled:hover { border-color: #dde1ed; }
+
+        .radio-circle {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #ccd0de;
+            border-radius: 50%;
+            flex-shrink: 0;
+            margin-top: 2px;
+            position: relative;
+            transition: all 0.2s;
+        }
+
+        .radio-exca-card.selected .radio-circle {
+            border-color: #3B4894;
+        }
+
+        .radio-exca-card.selected .radio-circle::after {
+            content: '';
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: #3B4894;
+            border-radius: 50%;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        .radio-exca-info { flex: 1; }
+
+        .radio-exca-code {
+            font-weight: 700;
+            font-size: 14px;
+            color: #1a1d2e;
+            margin-bottom: 3px;
+        }
+
+        .radio-exca-model {
+            font-size: 12px;
+            color: #8b91a8;
+            font-weight: 500;
+            margin-bottom: 4px;
+        }
+
+        .radio-exca-status { font-size: 11px; font-weight: 600; }
+        .radio-exca-status.available { color: #1B8A58; }
+        .radio-exca-status.unavailable { color: #92400e; }
+
+        /* ===== NUMBER INPUT ===== */
+        .number-input-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .number-btn {
+            width: 52px;
+            height: 52px;
+            border: 1.5px solid #3B4894;
+            background: white;
+            color: #3B4894;
+            font-size: 22px;
+            font-weight: 700;
+            border-radius: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .number-btn:hover {
+            background: #3B4894;
+            color: white;
+        }
+
+        .number-input {
+            flex: 1;
+            height: 68px;
+            text-align: center;
+            font-size: 40px;
+            font-weight: 800;
+            border: 1.5px solid #dde1ed;
+            border-radius: 14px;
+            color: #3B4894;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        .number-input:focus {
+            outline: none;
+            border-color: #3B4894;
+        }
+
+        .helper-text {
+            font-size: 12px;
+            color: #8b91a8;
+            margin-top: 8px;
+            font-weight: 500;
+        }
+
+        .readonly-field {
+            background: #f4f6fb;
+            color: #8b91a8;
+            cursor: not-allowed;
+        }
+
+        /* ===== RECORD FORM BUTTONS ===== */
+        .form-actions {
+            display: grid;
+            grid-template-columns: 1fr 1.5fr;
+            gap: 12px;
+            margin-top: 24px;
+            padding-bottom: 8px;
+        }
+
+        .form-actions .btn {
+            height: 52px;
+            width: 100%;
+        }
+
+        /* ===== RITASE CARD ===== */
+        .ritase-card {
+            background: white;
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 12px;
+            box-shadow: 0 1px 4px rgba(42, 45, 74, 0.06);
+            border: 1px solid rgba(221, 225, 237, 0.6);
+        }
+
+        .ritase-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #f4f6fb;
+        }
+
+        .ritase-number { font-weight: 700; font-size: 14px; color: #1a1d2e; }
+
+        .ritase-status {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .ritase-status.completed { background: #e8faf0; color: #1B8A58; }
+        .ritase-status.incomplete { background: #fef7e0; color: #92400e; }
+        .ritase-status.breakdown { background: #fef2f2; color: #DC2626; }
+
+        .activity-item {
+            padding: 12px;
+            margin-bottom: 8px;
+            border-radius: 12px;
+            background: #f9fafb;
+            border-left: 3px solid #22A06B;
+        }
+
+        .activity-item.dumping { border-left-color: #3B82F6; }
+
+        .activity-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        .activity-type-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 700;
+        }
+
+        .activity-type-label.loading { background: #e8faf0; color: #1B8A58; }
+        .activity-type-label.dumping { background: #e8f0fe; color: #2563EB; }
+
+        .activity-time { font-size: 11px; color: #8b91a8; font-weight: 500; }
+        .activity-detail { font-size: 12px; margin-bottom: 3px; color: #4a4f68; }
+        .activity-detail strong { color: #1a1d2e; }
+        .activity-meta { font-size: 11px; color: #8b91a8; }
+
+        /* ===== STATS SECTION ===== */
+        .stats-section {
+            background: white;
+            border-radius: 16px;
+            padding: 18px;
+            margin-bottom: 14px;
+            box-shadow: 0 1px 4px rgba(42, 45, 74, 0.06);
+            border: 1px solid rgba(221, 225, 237, 0.6);
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #f4f6fb;
+        }
+
+        .stat-row:last-child { border-bottom: none; }
+        .stat-label { color: #8b91a8; font-size: 13px; font-weight: 500; }
+        .stat-value { font-weight: 700; color: #3B4894; font-size: 14px; }
+
+        /* ===== SETTINGS ===== */
+        .settings-section {
+            background: white;
+            border-radius: 16px;
+            padding: 18px;
+            margin-bottom: 14px;
+            box-shadow: 0 1px 4px rgba(42, 45, 74, 0.06);
+            border: 1px solid rgba(221, 225, 237, 0.6);
+        }
+
+        .setting-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid #f4f6fb;
+        }
+
+        .setting-row:last-child { border-bottom: none; }
+        .setting-label { font-size: 13px; color: #1a1d2e; font-weight: 600; }
+
+        .toggle {
+            width: 46px;
+            height: 26px;
+            background: #ccd0de;
+            border-radius: 13px;
+            position: relative;
+            cursor: pointer;
+            transition: all 0.25s;
+        }
+
+        .toggle.active { background: #3B4894; }
+
+        .toggle-knob {
+            width: 22px;
+            height: 22px;
+            background: white;
+            border-radius: 50%;
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            transition: all 0.25s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.15);
+        }
+
+        .toggle.active .toggle-knob { left: 22px; }
+
+        .logout-btn {
+            background: white;
+            border: 1.5px solid #EF4444;
+            color: #EF4444;
+            height: 52px;
+            font-weight: 700;
+            border-radius: 14px;
+            cursor: pointer;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            font-size: 14px;
+            width: 100%;
+            transition: all 0.2s;
+            margin-bottom: 20px;
+        }
+
+        .logout-btn:hover { background: #FEF2F2; }
+
+        /* ===== MODAL ===== */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(26, 29, 46, 0.6);
+            backdrop-filter: blur(4px);
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal.active {
+            display: flex;
+            animation: fadeIn 0.2s ease;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .modal-content {
+            background: white;
+            border-radius: 24px;
+            padding: 28px 24px;
+            margin: 0 20px;
+            max-width: 320px;
+            text-align: center;
+            animation: scaleUp 0.25s ease;
+        }
+
+        @keyframes scaleUp {
+            from { transform: scale(0.95); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        .success-icon {
+            width: 64px;
+            height: 64px;
+            background: #e8faf0;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 14px;
+            font-size: 32px;
+            color: #22A06B;
+        }
+
+        .modal-title {
+            font-size: 17px;
+            font-weight: 700;
+            color: #1a1d2e;
+            margin-bottom: 14px;
+        }
+
+        .modal-details {
+            background: #f4f6fb;
+            padding: 14px;
+            border-radius: 14px;
+            margin-bottom: 16px;
+            text-align: left;
+        }
+
+        .modal-detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            font-size: 13px;
+        }
+
+        .modal-detail-row:last-child { margin-bottom: 0; }
+        .modal-detail-label { color: #8b91a8; font-weight: 500; }
+        .modal-detail-value { font-weight: 700; color: #1a1d2e; }
+
+        .celebration {
+            background: linear-gradient(135deg, #fef7e0 0%, #fde68a 100%);
+            color: #78350f;
+            padding: 10px;
+            border-radius: 12px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            font-size: 14px;
+        }
+
+        .modal-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .modal-actions .btn { height: 46px; font-size: 13px; }
+
+        /* ===== BOTTOM NAV ===== */
+        .bottom-nav {
+            display: flex;
+            justify-content: space-around;
+            padding: 8px 16px 12px;
+            background: white;
+            border-top: 1px solid #eef0f6;
+        }
+
+        .nav-item {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            padding: 8px 6px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            border-radius: 14px;
+            transition: all 0.2s;
+            color: #8b91a8;
+        }
+
+        .nav-item.active {
+            background: #f0f1fa;
+            color: #3B4894;
+        }
+
+        .nav-icon { font-size: 20px; }
+
+        .nav-label {
+            font-size: 10px;
+            font-weight: 700;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+        }
+
+        /* ===== NAV ICONS (SVG style) ===== */
+        .nav-icon-svg {
+            width: 22px;
+            height: 22px;
+        }
+
+        /* ===== EMPTY STATE ===== */
+        .empty-state {
+            text-align: center;
+            padding: 48px 20px;
+        }
+
+        .empty-icon { font-size: 48px; margin-bottom: 12px; }
+
+        .empty-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: #1a1d2e;
+            margin-bottom: 6px;
+        }
+
+        .empty-text { font-size: 13px; color: #8b91a8; }
+
+        /* ===== INFO BOX ===== */
+        .info-box {
+            padding: 14px;
+            border-radius: 12px;
+            margin-bottom: 18px;
+            font-size: 12px;
+            line-height: 1.5;
+        }
+
+        .info-box.blue {
+            background: #eef3fe;
+            border-left: 3px solid #3B82F6;
+            color: #1e40af;
+        }
+
+        .info-box.yellow {
+            background: #fef7e0;
+            border-left: 3px solid #f5d76e;
+            color: #78350f;
+        }
+
+        .info-box strong { font-weight: 700; }
+
+        /* ===== ACTIVITY ACTION BUTTONS ===== */
+        .activity-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+            justify-content: flex-end;
+        }
+
+        .action-btn-sm {
+            padding: 6px 14px;
+            border-radius: 8px;
+            font-size: 11px;
+            font-weight: 700;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .action-btn-sm.edit {
+            background: #eef3fe;
+            color: #3B4894;
+        }
+
+        .action-btn-sm.edit:hover { background: #dde4f8; }
+
+        .action-btn-sm.delete {
+            background: #fef2f2;
+            color: #DC2626;
+        }
+
+        .action-btn-sm.delete:hover { background: #fde8e8; }
+
+        /* ===== GENERIC MODAL (reusable) ===== */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(26, 29, 46, 0.6);
+            backdrop-filter: blur(4px);
+            align-items: center;
+            justify-content: center;
+            z-index: 1001;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+            animation: fadeIn 0.2s ease;
+        }
+
+        .modal-overlay .modal-box {
+            background: white;
+            border-radius: 24px;
+            padding: 28px 24px;
+            margin: 0 20px;
+            max-width: 340px;
+            width: 100%;
+            animation: scaleUp 0.25s ease;
+        }
+
+        .modal-box-title {
+            font-size: 17px;
+            font-weight: 800;
+            color: #1a1d2e;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+
+        .modal-box-icon {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 14px;
+            font-size: 28px;
+        }
+
+        .modal-box-text {
+            font-size: 13px;
+            color: #4a4f68;
+            line-height: 1.6;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-box .form-group { margin-bottom: 14px; }
+        .modal-box .form-label { font-size: 12px; }
+        .modal-box .form-input { height: 46px; font-size: 13px; }
+        .modal-box .select-input { height: 46px; font-size: 13px; }
+
+        .modal-box-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .modal-box-actions .btn { height: 46px; font-size: 13px; }
+
+        /* Single button variant */
+        .modal-box-actions.single {
+            grid-template-columns: 1fr;
+        }
+
+        /* ===== CHANGE PASSWORD SECTION ===== */
+        .change-pw-section {
+            background: white;
+            border-radius: 16px;
+            padding: 18px;
+            margin-bottom: 14px;
+            box-shadow: 0 1px 4px rgba(42, 45, 74, 0.06);
+            border: 1px solid rgba(221, 225, 237, 0.6);
+        }
+
+        .pw-success-msg {
+            background: #e8faf0;
+            color: #1B8A58;
+            padding: 10px 14px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 600;
+            text-align: center;
+            margin-top: 12px;
+            display: none;
+        }
+
+        .pw-success-msg.show { display: block; animation: fadeIn 0.3s ease; }
+
+        /* ===== PERSONAL INFO SECTION (Profile) ===== */
+        .personal-info-section {
+            background: white;
+            border-radius: 16px;
+            padding: 18px;
+            margin-bottom: 14px;
+            box-shadow: 0 1px 4px rgba(42, 45, 74, 0.06);
+            border: 1px solid rgba(221, 225, 237, 0.6);
+        }
+
+        .personal-info-row {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 10px 0;
+            border-bottom: 1px solid #f4f6fb;
+        }
+
+        .personal-info-row:last-child { border-bottom: none; }
+
+        .personal-info-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            flex-shrink: 0;
+            margin-top: 2px;
+        }
+
+        .personal-info-icon.blue { background: #eef3fe; }
+        .personal-info-icon.green { background: #e8faf0; }
+        .personal-info-icon.purple { background: #f0e8fa; }
+        .personal-info-icon.orange { background: #fef7e0; }
+
+        .personal-info-content { flex: 1; }
+
+        .personal-info-label {
+            font-size: 11px;
+            color: #8b91a8;
+            font-weight: 600;
+        }
+
+        .personal-info-value {
+            font-size: 13px;
+            color: #1a1d2e;
+            font-weight: 700;
+            margin-top: 1px;
+        }
+    </style>
+</head>
+<body>
+
+<div class="mobile-frame">
+    
+    <!-- SCREEN 1: LOGIN -->
+    <div class="screen active" id="login-screen">
+        <div class="content" style="padding-top: 40px;">
+            <div class="login-logo">
+                <div style="width: 64px; height: 64px; background: linear-gradient(135deg, #3B4894, #4A5ABF); border-radius: 18px; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; box-shadow: 0 6px 20px rgba(59,72,148,0.3);">
+                    <span style="color: white; font-size: 28px; font-weight: 800;">O</span>
+                </div>
+                <h1>Operator App</h1>
+                <p>Excavator Operator Barging System</p>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Username</label>
+                <input type="text" class="form-input" id="login-username" placeholder="Masukkan username" value="operator001">
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Password</label>
+                <input type="password" class="form-input" id="login-password" placeholder="Masukkan password" value="password123">
+            </div>
+            
+            <button class="btn btn-primary" onclick="login()" style="margin-top: 8px;">Login</button>
+            
+            <p style="text-align: center; margin-top: 16px; font-size: 13px; color: #8b91a8;">
+                Lupa password? <a href="#" onclick="showForgotPassword(); return false;" style="color: #3B4894; font-weight: 700; text-decoration: none;">Reset</a>
+            </p>
+
+            <div class="info-box yellow" style="margin-top: 28px;">
+                <strong>Demo Info:</strong><br>
+                Data disimpan di localStorage browser. Refresh halaman untuk persist data.
+            </div>
+        </div>
+    </div>
+
+    <!-- SCREEN 2: HOME -->
+    <div class="screen" id="home-screen">
+        <div class="home-header">
+            <div class="home-header-top">
+                <div>
+                    <div class="greeting-text" id="greeting-text">Selamat siang, Operator!</div>
+                    <div class="app-title">Operator App</div>
+                </div>
+                <div class="avatar" id="operator-avatar">JD</div>
+            </div>
+        </div>
+        <div class="content">
+            <div id="home-content"></div>
+        </div>
+        <div class="bottom-nav">
+            <button class="nav-item active" onclick="showScreen('home-screen'); updateNav(this); renderHome();">
+                <div class="nav-icon">🏠</div>
+                <div class="nav-label">Home</div>
+            </button>
+            <button class="nav-item" onclick="showScreen('history-screen'); updateNav(this); renderHistory();">
+                <div class="nav-icon">📋</div>
+                <div class="nav-label">History</div>
+            </button>
+            <button class="nav-item" onclick="showScreen('profile-screen'); updateNav(this); renderProfile();">
+                <div class="nav-icon">👤</div>
+                <div class="nav-label">Profile</div>
+            </button>
+        </div>
+    </div>
+
+    <!-- SCREEN 3: BARGING PLAN SETUP -->
+    <div class="screen" id="plan-screen">
+        <div class="header">
+            <button class="back-btn" onclick="backToProfile()">←</button>
+            <div>
+                <div class="header-title">Setup Barging Plan</div>
+                <div class="header-subtitle" id="plan-date">13 Feb 2026</div>
+            </div>
+            <div style="width: 36px;"></div>
+        </div>
+        <div class="content" style="padding-top: 16px;">
+            <div class="form-group">
+                <label class="form-label">Kategori Area</label>
+                <select class="select-input" id="category-select" onchange="filterAreasByCategory()">
+                    <option value="">Pilih kategori...</option>
+                    <option value="Loading">📍 Loading</option>
+                    <option value="Dumping">🚢 Dumping</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Pilih Area</label>
+                <select class="select-input" id="area-select" onchange="loadExcasForArea()" disabled>
+                    <option value="">Pilih kategori dulu...</option>
+                </select>
+            </div>
+
+            <div id="exca-list-plan">
+                <div style="text-align: center; padding: 36px 20px; color: #8b91a8; font-size: 13px;">
+                    Pilih area terlebih dahulu untuk melihat excavator yang tersedia
+                </div>
+            </div>
+
+            <button class="btn btn-primary" id="save-plan-btn" onclick="savePlan()" style="margin-top: 16px;" disabled>
+                Simpan & Mulai Kerja
+            </button>
+        </div>
+    </div>
+
+    <!-- SCREEN 4: PROFILE -->
+    <div class="screen" id="profile-screen">
+        <div class="header" style="justify-content: center;">
+            <div class="header-title">Profile</div>
+        </div>
+        <div class="content" style="padding-top: 16px;" id="profile-content"></div>
+        <div class="bottom-nav">
+            <button class="nav-item" onclick="showScreen('home-screen'); updateNav(this); renderHome();">
+                <div class="nav-icon">🏠</div>
+                <div class="nav-label">Home</div>
+            </button>
+            <button class="nav-item" onclick="showScreen('history-screen'); updateNav(this); renderHistory();">
+                <div class="nav-icon">📋</div>
+                <div class="nav-label">History</div>
+            </button>
+            <button class="nav-item active" onclick="showScreen('profile-screen'); updateNav(this); renderProfile();">
+                <div class="nav-icon">👤</div>
+                <div class="nav-label">Profile</div>
+            </button>
+        </div>
+    </div>
+
+    <!-- SCREEN 5: RECORD LOADING -->
+    <div class="screen" id="loading-screen">
+        <div class="header">
+            <button class="back-btn" onclick="showScreen('home-screen'); renderHome();">←</button>
+            <div class="header-title">Record Loading</div>
+            <div style="width: 36px;"></div>
+        </div>
+        <div class="content" style="padding-top: 16px;">
+            <div class="form-group">
+                <label class="form-label">Pilih Truck</label>
+                <select class="select-input" id="loading-truck">
+                    <option value="">Pilih unit truck...</option>
+                </select>
+                <p class="helper-text" id="loading-truck-hint" style="color: #3B4894;"></p>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Jenis Aktivitas</label>
+                <input type="text" class="form-input readonly-field" value="Loading" readonly>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label">Jumlah Bucket</label>
+                <div class="number-input-group">
+                    <button class="number-btn" onclick="decrementBucket()">−</button>
+                    <input type="number" class="number-input" id="bucket-count" value="5" min="1" max="15">
+                    <button class="number-btn" onclick="incrementBucket()">+</button>
+                </div>
+                <p class="helper-text">Capacity bucket: <span id="bucket-capacity-display">1.6</span> m³ | Est. tonnage: <span id="est-tonnage">12.8</span> ton</p>
+            </div>
+            
+            <div class="form-group">
+                <label class="form-label" style="color: #8b91a8;">Lokasi</label>
+                <input type="text" class="form-input readonly-field" id="loading-location" value="📍 EFO A" readonly>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" style="color: #8b91a8;">Excavator</label>
+                <input type="text" class="form-input readonly-field" id="loading-exca" value="Exca PC200-17" readonly>
+            </div>
+            
+            <div class="form-actions">
+                <button class="btn btn-outline" onclick="showScreen('home-screen'); renderHome();">Cancel</button>
+                <button class="btn btn-success" onclick="submitLoading()">✓ Submit Loading</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCREEN 6: RECORD DUMPING -->
+    <div class="screen" id="dumping-screen">
+        <div class="header">
+            <button class="back-btn" onclick="showScreen('home-screen'); renderHome();">←</button>
+            <div class="header-title">Record Dumping</div>
+            <div style="width: 36px;"></div>
+        </div>
+        <div class="content" style="padding-top: 16px;">
+            <div class="form-group">
+                <label class="form-label">Pilih Truck</label>
+                <select class="select-input" id="dumping-truck" onchange="onDumpingTruckChange()">
+                    <option value="">Pilih unit truck...</option>
+                </select>
+                <p class="helper-text" id="dumping-truck-hint" style="color: #8b91a8;"></p>
+            </div>
+
+            <!-- Logic 1: Scheduled — info dari loading EFO -->
+            <div id="scheduled-info-box" style="display:none;background:#e8faf0;border:1px solid #1B8A58;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;">
+            </div>
+
+            <!-- Logic 2: Unscheduled — operator masukkan vessel tonnage -->
+            <div id="unscheduled-tonnage-section" style="display:none;">
+                <div style="background:#fef7e0;border:1px solid #D97706;border-radius:8px;padding:10px 14px;margin-bottom:12px;font-size:12px;">
+                    <strong>Unscheduled (Direct)</strong>: Truck ini tidak memiliki data loading dari EFO. Masukkan tonnage berdasarkan vessel capacity.
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Vessel Capacity</label>
+                    <input type="text" class="form-input readonly-field" id="vessel-cap-display" readonly>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Actual Tonnage (MT)</label>
+                    <input type="number" class="form-input" id="unscheduled-tonnage" placeholder="Masukkan actual tonnage" step="0.1" min="0.1">
+                </div>
+            </div>
+
+            <!-- Logic 3: Transfer checkbox (muncul saat Scheduled dipilih) -->
+            <div id="transfer-checkbox-section" style="display:none;">
+                <div style="display:flex;align-items:flex-start;gap:10px;padding:12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;margin-bottom:12px;">
+                    <input type="checkbox" id="transfer-checkbox" onchange="onTransferCheckboxChange()" style="margin-top:2px;width:18px;height:18px;accent-color:#3B4894;">
+                    <div>
+                        <div style="font-weight:600;font-size:13px;color:#1a1d2e;">Muatan ditransfer dari DT lain?</div>
+                        <div style="font-size:12px;color:#64748b;margin-top:2px;">Centang jika SPV info via HT bahwa truck ini menerima transfer muatan dari DT yang breakdown</div>
+                    </div>
+                </div>
+                <div id="transfer-from-section" style="display:none;">
+                    <div class="form-group">
+                        <label class="form-label">Transfer dari DT:</label>
+                        <select class="select-input" id="transfer-from-truck">
+                            <option value="">Pilih DT sumber transfer...</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Jenis Aktivitas</label>
+                <input type="text" class="form-input readonly-field" value="Dumping" readonly>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" style="color: #8b91a8;">Lokasi</label>
+                <input type="text" class="form-input readonly-field" id="dumping-location" readonly>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" style="color: #8b91a8;">Excavator</label>
+                <input type="text" class="form-input readonly-field" id="dumping-exca" readonly>
+            </div>
+
+            <div class="info-box blue">
+                <strong>Info:</strong> Setiap submit dumping otomatis terhitung +1 ritase (ritase by barge)
+            </div>
+
+            <div class="form-actions">
+                <button class="btn btn-outline" onclick="showScreen('home-screen'); renderHome();">Cancel</button>
+                <button class="btn btn-info" onclick="submitDumping()">✓ Submit Dumping</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCREEN 7: HISTORY -->
+    <div class="screen" id="history-screen">
+        <div class="header">
+            <div>
+                <div class="header-title">History</div>
+                <div class="header-subtitle" id="history-date">13 Feb 2026</div>
+            </div>
+            <div style="width: 36px;"></div>
+        </div>
+        <div class="content" style="padding-top: 16px;">
+            <div class="summary-grid" style="margin-bottom: 16px;">
+                <div class="summary-card">
+                    <div class="summary-icon loading-icon">📦</div>
+                    <div class="summary-number" style="font-size: 22px;" id="history-stats-loading">0</div>
+                    <div class="summary-label">Loading</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-icon dumping-icon">🚛</div>
+                    <div class="summary-number" style="font-size: 22px;" id="history-stats-dumping">0</div>
+                    <div class="summary-label">Dumping</div>
+                </div>
+                <div class="summary-card">
+                    <div class="summary-icon ritase-icon">🔄</div>
+                    <div class="summary-number" style="font-size: 22px;" id="history-stats-ritase">0</div>
+                    <div class="summary-label">Ritase</div>
+                </div>
+            </div>
+            
+            <div id="ritase-list"></div>
+        </div>
+        <div class="bottom-nav">
+            <button class="nav-item" onclick="showScreen('home-screen'); updateNav(this); renderHome();">
+                <div class="nav-icon">🏠</div>
+                <div class="nav-label">Home</div>
+            </button>
+            <button class="nav-item active" onclick="showScreen('history-screen'); updateNav(this); renderHistory();">
+                <div class="nav-icon">📋</div>
+                <div class="nav-label">History</div>
+            </button>
+            <button class="nav-item" onclick="showScreen('profile-screen'); updateNav(this); renderProfile();">
+                <div class="nav-icon">👤</div>
+                <div class="nav-label">Profile</div>
+            </button>
+        </div>
+    </div>
+
+</div>
+
+<!-- MODAL: SUCCESS -->
+<div class="modal" id="success-modal">
+    <div class="modal-content">
+        <div class="success-icon">✓</div>
+        <div class="modal-title" id="modal-title">Aktivitas Berhasil Direkam!</div>
+        <div class="modal-details" id="modal-details"></div>
+        <div class="celebration" id="celebration" style="display: none;">🎉 1 Ritase Completed! 🎉</div>
+        <div class="modal-actions">
+            <button class="btn btn-outline" onclick="closeModalAndContinue()">Lanjut Input</button>
+            <button class="btn btn-primary" onclick="closeModal()">OK</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: FORGOT PASSWORD -->
+<div class="modal-overlay" id="forgot-pw-modal">
+    <div class="modal-box">
+        <div class="modal-box-icon" style="background: #fef7e0;">📨</div>
+        <div class="modal-box-title">Lupa Password</div>
+        <div class="form-group">
+            <label class="form-label">Username Anda</label>
+            <input type="text" class="form-input" id="forgot-pw-username" placeholder="Masukkan username">
+        </div>
+        <div class="modal-box-text" style="margin-top: 4px;">
+            Request reset password akan dikirimkan ke Admin.<br><br>
+            <strong style="color: #1a1d2e;">Butuh segera?</strong> Hubungi SPV Produksi via Handy Talkie agar SPV bisa menghubungi Admin secepatnya.
+        </div>
+        <div id="forgot-pw-result" style="display: none;"></div>
+        <div class="modal-box-actions">
+            <button class="btn btn-outline" onclick="closeForgotPassword()">Batal</button>
+            <button class="btn btn-primary" onclick="submitForgotPassword()">Kirim Request</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: EDIT ACTIVITY -->
+<div class="modal-overlay" id="edit-activity-modal">
+    <div class="modal-box">
+        <div class="modal-box-title" id="edit-modal-title">Edit Aktivitas</div>
+        <div id="edit-modal-body"></div>
+        <div class="modal-box-actions">
+            <button class="btn btn-outline" onclick="closeEditModal()">Batal</button>
+            <button class="btn btn-primary" onclick="saveEditActivity()">Simpan</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: DELETE CONFIRM -->
+<div class="modal-overlay" id="delete-confirm-modal">
+    <div class="modal-box">
+        <div class="modal-box-icon" style="background: #fef2f2;">🗑️</div>
+        <div class="modal-box-title">Hapus Record?</div>
+        <div class="modal-box-text" id="delete-confirm-text">Record ini akan dihapus permanen.</div>
+        <div class="modal-box-actions">
+            <button class="btn btn-outline" onclick="closeDeleteModal()">Batal</button>
+            <button class="btn btn-primary" style="background: linear-gradient(135deg, #DC2626, #B91C1C); box-shadow: 0 4px 14px rgba(220,38,38,0.3);" onclick="confirmDeleteActivity()">Hapus</button>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: CHANGE PASSWORD -->
+<div class="modal-overlay" id="change-pw-modal">
+    <div class="modal-box">
+        <div class="modal-box-icon" style="background: #eef3fe;">🔑</div>
+        <div class="modal-box-title">Ganti Password</div>
+        <div class="form-group">
+            <label class="form-label">Password Lama</label>
+            <input type="password" class="form-input" id="change-pw-old" placeholder="Masukkan password lama">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Password Baru</label>
+            <input type="password" class="form-input" id="change-pw-new" placeholder="Masukkan password baru">
+        </div>
+        <div class="form-group">
+            <label class="form-label">Konfirmasi Password Baru</label>
+            <input type="password" class="form-input" id="change-pw-confirm" placeholder="Ulangi password baru">
+        </div>
+        <div id="change-pw-error" style="display: none; background: #fef2f2; color: #DC2626; padding: 8px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; text-align: center; margin-bottom: 8px;"></div>
+        <div class="modal-box-actions">
+            <button class="btn btn-outline" onclick="closeChangePwModal()">Batal</button>
+            <button class="btn btn-primary" onclick="submitChangePassword()">Simpan</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ============================================
+    // DATA & STORAGE
+    // ============================================
+
+    const AREAS = {
+        'EFO A':                   { type: 'loading',  area_category: 'Loading' },
+        'EFO B':                   { type: 'loading',  area_category: 'Loading' },
+        'Stockpile A':             { type: 'loading',  area_category: 'Loading' },
+        'Jetty F - Barge Ship 12': { type: 'dumping',  area_category: 'Dumping' },
+        'Jetty F - Barge Ship 14': { type: 'dumping',  area_category: 'Dumping' },
+        'Jetty G - Barge Ship 4':  { type: 'dumping',  area_category: 'Dumping' }
+    };
+
+    const ALL_EXCAS = [
+        { code: 'Exca PC200-17',  model: 'Hitachi PC200',    bucket: 1.6, status: 'available',  category: 'Loading' },
+        { code: 'Exca PC400-12',  model: 'Komatsu PC400',    bucket: 2.4, status: 'available',  category: 'Loading' },
+        { code: 'Exca CAT320-05', model: 'Caterpillar 320',  bucket: 1.2, status: 'in_use',     category: 'Loading' },
+        { code: 'Exca PC200-08',  model: 'Hitachi PC200',    bucket: 1.6, status: 'available',  category: 'Loading' },
+        { code: 'Exca PC400-11',  model: 'Komatsu PC400',    bucket: 2.4, status: 'maintenance', category: 'Loading' },
+        { code: 'Exca CAT320-19', model: 'Caterpillar 320',  bucket: 1.2, status: 'available',  category: 'Loading' },
+        { code: 'Exca PC200-14',  model: 'Hitachi PC200',    bucket: 1.6, status: 'available',  category: 'Loading' },
+        { code: 'Exca CAT320-22', model: 'Caterpillar 320',  bucket: 1.2, status: 'available',  category: 'Dumping' },
+        { code: 'Exca PC400-18',  model: 'Komatsu PC400',    bucket: 2.4, status: 'available',  category: 'Loading' },
+        { code: 'Exca PC200-09',  model: 'Hitachi PC200',    bucket: 1.6, status: 'available',  category: 'Dumping' },
+        { code: 'Exca PC400-15',  model: 'Komatsu PC400',    bucket: 2.4, status: 'available',  category: 'Loading' }
+    ];
+
+    class DataStore {
+        constructor() {
+            this.storageKey = 'operatorAppData_v2';
+            this.init();
+        }
+
+        init() {
+            if (!localStorage.getItem(this.storageKey)) {
+                const initialData = {
+                    operator: { id: 'OP-001', name: 'John Doe', username: 'operator001', password: 'password123' },
+                    currentSession: null,
+                    activities: [],
+                    ritases: []
+                };
+                this.save(initialData);
+            } else {
+                // Migration: add password if not present
+                const data = this.get();
+                if (!data.operator.password) {
+                    data.operator.password = 'password123';
+                    this.save(data);
+                }
+            }
+        }
+
+        get() { return JSON.parse(localStorage.getItem(this.storageKey)); }
+        save(data) { localStorage.setItem(this.storageKey, JSON.stringify(data)); }
+
+        update(updates) {
+            const data = this.get();
+            const updated = { ...data, ...updates };
+            this.save(updated);
+            return updated;
+        }
+
+        addActivity(activity) {
+            const data = this.get();
+            data.activities.push(activity);
+            this.save(data);
+            return activity;
+        }
+
+        updateActivity(activityId, updates) {
+            const data = this.get();
+            const idx = data.activities.findIndex(a => a.id === activityId);
+            if (idx !== -1) {
+                data.activities[idx] = { ...data.activities[idx], ...updates };
+                this.save(data);
+                return data.activities[idx];
+            }
+            return null;
+        }
+
+        deleteActivity(activityId) {
+            const data = this.get();
+            data.activities = data.activities.filter(a => a.id !== activityId);
+            this.save(data);
+        }
+
+        addRitase(ritase) {
+            const data = this.get();
+            data.ritases.push(ritase);
+            this.save(data);
+            return ritase;
+        }
+
+        deleteRitase(ritaseId) {
+            const data = this.get();
+            data.ritases = data.ritases.filter(r => r.id !== ritaseId);
+            this.save(data);
+        }
+
+        updateRitase(ritaseId, updates) {
+            const data = this.get();
+            const idx = data.ritases.findIndex(r => r.id === ritaseId);
+            if (idx !== -1) {
+                data.ritases[idx] = { ...data.ritases[idx], ...updates };
+                this.save(data);
+                return data.ritases[idx];
+            }
+            return null;
+        }
+
+        getRitaseByDumpingId(dumpingId) {
+            return this.get().ritases.find(r => r.dumpingId === dumpingId) || null;
+        }
+
+        getRitaseByLoadingId(loadingId) {
+            return this.get().ritases.find(r => r.loadingId === loadingId) || null;
+        }
+
+        getActivities() { return this.get().activities; }
+        getRitases() { return this.get().ritases; }
+
+        // Reads payload transfers written by the Web POC (shared localStorage key)
+        getPayloadTransfers() {
+            try {
+                const shared = JSON.parse(localStorage.getItem('bargingSystem_v1_shared') || '{}');
+                return (shared.payloadTransfers || []).filter(t => !t.completed);
+            } catch { return []; }
+        }
+
+        markTransferComplete(transferId) {
+            try {
+                const shared = JSON.parse(localStorage.getItem('bargingSystem_v1_shared') || '{}');
+                shared.payloadTransfers = (shared.payloadTransfers || []).map(t =>
+                    t.id === transferId ? { ...t, completed: true } : t
+                );
+                localStorage.setItem('bargingSystem_v1_shared', JSON.stringify(shared));
+            } catch {}
+        }
+
+        clear() {
+            localStorage.removeItem(this.storageKey);
+            this.init();
+        }
+    }
+
+    const db = new DataStore();
+    let selectedAreaForPlan = null;
+    let selectedExcaForPlan = null;
+
+    // ============================================
+    // LOGIN & NAVIGATION
+    // ============================================
+
+    function login() {
+        const username = document.getElementById('login-username').value;
+        const password = document.getElementById('login-password').value;
+
+        if (!username || !password) { alert('Silakan masukkan username dan password'); return; }
+
+        const data = db.get();
+        if (username === data.operator.username && password === data.operator.password) {
+            showScreen('home-screen');
+            renderHome();
+            updateCurrentDate();
+            updateGreeting();
+        } else {
+            alert('Username atau password salah');
+        }
+    }
+
+    function logout() {
+        if (confirm('Apakah Anda yakin ingin logout?')) {
+            const data = db.get();
+            data.currentSession = null;
+            db.save(data);
+            showScreen('login-screen');
+        }
+    }
+
+    function showScreen(screenId) {
+        document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+        document.getElementById(screenId).classList.add('active');
+    }
+
+    function updateNav(clickedBtn) {
+        // Find which index was clicked (0=Home, 1=History, 2=Profile)
+        const navContainer = clickedBtn.closest('.bottom-nav');
+        if (!navContainer) return;
+        const buttons = Array.from(navContainer.querySelectorAll('.nav-item'));
+        const activeIndex = buttons.indexOf(clickedBtn);
+
+        // Update ALL bottom navs across all screens
+        document.querySelectorAll('.bottom-nav').forEach(nav => {
+            const navButtons = nav.querySelectorAll('.nav-item');
+            navButtons.forEach((btn, i) => {
+                if (i === activeIndex) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+        });
+    }
+
+    function updateGreeting() {
+        const hour = new Date().getHours();
+        let greeting = 'Selamat pagi';
+        if (hour >= 11 && hour < 15) greeting = 'Selamat siang';
+        else if (hour >= 15 && hour < 18) greeting = 'Selamat sore';
+        else if (hour >= 18) greeting = 'Selamat malam';
+
+        const data = db.get();
+        const firstName = data.operator.name.split(' ')[0];
+        const el = document.getElementById('greeting-text');
+        if (el) el.textContent = `${greeting}, ${firstName}!`;
+    }
+
+    // ============================================
+    // HOME SCREEN
+    // ============================================
+
+    function renderHome() {
+        const session = db.get().currentSession;
+        const container = document.getElementById('home-content');
+        updateGreeting();
+
+        if (!session) {
+            container.innerHTML = `
+                <div class="warning-card">
+                    <div class="warning-icon">⚠️</div>
+                    <div class="warning-title">Setup Required</div>
+                    <div class="warning-text">Silakan pilih excavator di menu Profile untuk mulai bekerja hari ini</div>
+                    <button class="warning-action" onclick="showScreen('profile-screen'); renderProfile();">
+                        Buka Profile →
+                    </button>
+                </div>
+
+                <div class="summary-grid">
+                    <div class="summary-card disabled">
+                        <div class="summary-icon loading-icon">📦</div>
+                        <div class="summary-number">0</div>
+                        <div class="summary-label">Loading</div>
+                    </div>
+                    <div class="summary-card disabled">
+                        <div class="summary-icon dumping-icon">🚛</div>
+                        <div class="summary-number">0</div>
+                        <div class="summary-label">Dumping</div>
+                    </div>
+                    <div class="summary-card disabled">
+                        <div class="summary-icon ritase-icon">🔄</div>
+                        <div class="summary-number">0</div>
+                        <div class="summary-label">Ritase</div>
+                    </div>
+                </div>
+            `;
+        } else {
+            const activities = db.getActivities();
+            const ritases = db.getRitases();
+            const loadingActivities = activities.filter(a => a.type === 'loading');
+            const dumpingActivities = activities.filter(a => a.type === 'dumping');
+            const totalBucket = loadingActivities.reduce((sum, a) => sum + a.bucketCount, 0);
+            const totalTonnage = loadingActivities.reduce((sum, a) => sum + a.tonnage, 0).toFixed(1);
+
+            const actionButton = session.areaType === 'loading' ?
+                `<button class="btn btn-success" onclick="showScreen('loading-screen'); prepareLoadingForm();" style="height: 60px; font-size: 16px;">
+                    <span style="font-size: 20px;">📦</span> Record Loading
+                </button>` :
+                `<button class="btn btn-info" onclick="showScreen('dumping-screen'); prepareDumpingForm();" style="height: 60px; font-size: 16px;">
+                    <span style="font-size: 20px;">🚛</span> Record Dumping
+                </button>`;
+
+            container.innerHTML = `
+                <div class="current-info">
+                    <div class="current-info-title">Current Session</div>
+                    <div class="current-row">
+                        <span class="current-label">Area</span>
+                        <span class="current-value">${session.area}</span>
+                    </div>
+                    <div class="current-row">
+                        <span class="current-label">Excavator</span>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span class="current-value">${session.exca.code}</span>
+                            <button class="switch-btn" onclick="showScreen('plan-screen'); renderPlanScreen();">Ganti</button>
+                        </div>
+                    </div>
+                    <div class="current-row">
+                        <span class="current-label">Bucket</span>
+                        <span class="current-value">${session.exca.bucket} m³</span>
+                    </div>
+                </div>
+                
+                <div class="summary-grid">
+                    <div class="summary-card">
+                        <div class="summary-icon loading-icon">📦</div>
+                        <div class="summary-number">${loadingActivities.length}</div>
+                        <div class="summary-label">Loading</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-icon dumping-icon">🚛</div>
+                        <div class="summary-number">${dumpingActivities.length}</div>
+                        <div class="summary-label">Dumping</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-icon ritase-icon">🔄</div>
+                        <div class="summary-number">${ritases.length}</div>
+                        <div class="summary-label">Ritase</div>
+                    </div>
+                </div>
+
+                <div class="summary-grid" style="grid-template-columns: repeat(2, 1fr);">
+                    <div class="summary-card">
+                        <div class="summary-icon bucket-icon">🪣</div>
+                        <div class="summary-number" style="font-size: 22px;">${totalBucket}</div>
+                        <div class="summary-label">Total Bucket</div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="summary-icon tonnage-icon">⚖️</div>
+                        <div class="summary-number" style="font-size: 20px;">${totalTonnage}</div>
+                        <div class="summary-label">Est. Tonnage (ton)</div>
+                    </div>
+                </div>
+
+                <div class="action-buttons">${actionButton}</div>
+            `;
+
+            document.getElementById('bucket-capacity-display').textContent = session.exca.bucket;
+            document.getElementById('loading-location').value = '📍 ' + session.area;
+            document.getElementById('loading-exca').value = session.exca.code;
+            document.getElementById('dumping-location').value = '📍 ' + session.area;
+            document.getElementById('dumping-exca').value = session.exca.code;
+        }
+
+        updateOperatorAvatar();
+    }
+
+    function updateOperatorAvatar() {
+        const data = db.get();
+        const initials = data.operator.name.split(' ').map(n => n[0]).join('');
+        document.getElementById('operator-avatar').textContent = initials;
+    }
+
+    // ============================================
+    // BARGING PLAN SETUP (no filter tabs)
+    // ============================================
+
+    function renderPlanScreen() {
+        selectedAreaForPlan = null;
+        selectedExcaForPlan = null;
+
+        const catSel = document.getElementById('category-select');
+        if (catSel) catSel.value = '';
+        const areaSel = document.getElementById('area-select');
+        if (areaSel) { areaSel.innerHTML = '<option value="">Pilih kategori dulu...</option>'; areaSel.disabled = true; }
+
+        document.getElementById('exca-list-plan').innerHTML = `
+            <div style="text-align: center; padding: 36px 20px; color: #8b91a8; font-size: 13px;">
+                Pilih area terlebih dahulu untuk melihat excavator yang tersedia
+            </div>
+        `;
+        document.getElementById('save-plan-btn').disabled = true;
+        updateCurrentDate();
+    }
+
+    function populateAreaDropdown() {
+        // No-op: areas now populated by filterAreasByCategory()
+    }
+
+    function filterAreasByCategory() {
+        const category = document.getElementById('category-select').value;
+        const areaSelect = document.getElementById('area-select');
+
+        // Reset area and exca
+        areaSelect.innerHTML = '';
+        selectedAreaForPlan = null;
+        selectedExcaForPlan = null;
+        document.getElementById('exca-list-plan').innerHTML = `
+            <div style="text-align: center; padding: 36px 20px; color: #8b91a8; font-size: 13px;">
+                Pilih area untuk melihat excavator yang tersedia
+            </div>`;
+        document.getElementById('save-plan-btn').disabled = true;
+
+        if (!category) {
+            areaSelect.disabled = true;
+            areaSelect.innerHTML = '<option value="">Pilih kategori dulu...</option>';
+            return;
+        }
+
+        areaSelect.disabled = false;
+        areaSelect.innerHTML = '<option value="">Pilih area...</option>';
+
+        Object.keys(AREAS).forEach(areaName => {
+            const areaInfo = AREAS[areaName];
+            if (areaInfo.area_category === category) {
+                const option = document.createElement('option');
+                option.value = areaName;
+                option.textContent = areaName;
+                areaSelect.appendChild(option);
+            }
+        });
+    }
+
+    function loadExcasForArea() {
+        const areaName = document.getElementById('area-select').value;
+        if (!areaName) {
+            document.getElementById('exca-list-plan').innerHTML = `
+                <div style="text-align: center; padding: 36px 20px; color: #8b91a8; font-size: 13px;">
+                    Pilih area terlebih dahulu untuk melihat excavator yang tersedia
+                </div>
+            `;
+            return;
+        }
+
+        selectedAreaForPlan = areaName;
+        selectedExcaForPlan = null;
+
+        const container = document.getElementById('exca-list-plan');
+        const areaInfo = AREAS[areaName];
+        const areaCategory = areaInfo ? areaInfo.area_category : null;
+
+        container.innerHTML = `
+            <div style="font-size: 12px; color: #64748b; margin-bottom: 10px; font-weight: 600;">
+                Area: ${areaName} (${areaCategory || ''})<br>
+                Pilih unit excavator dari Master Populasi:
+            </div>
+        ` + ALL_EXCAS.map((exca, idx) => {
+            const isAvailable = exca.status === 'available';
+            const statusText = exca.status === 'available' ? '✅ Available' :
+                              exca.status === 'in_use' ? '🔒 In Use' : '🔧 Maintenance';
+            const statusClass = isAvailable ? 'available' : 'unavailable';
+
+            return `
+                <div class="radio-exca-card ${!isAvailable ? 'disabled' : ''}" data-exca-code="${exca.code}" onclick="${isAvailable ? `selectExcaForPlan('${exca.code}')` : ''}">
+                    <div class="radio-circle"></div>
+                    <div class="radio-exca-info">
+                        <div class="radio-exca-code">${exca.code}</div>
+                        <div class="radio-exca-model">${exca.model} | Bucket: ${exca.bucket} m³</div>
+                        <div class="radio-exca-status ${statusClass}">${statusText}</div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        document.getElementById('save-plan-btn').disabled = true;
+    }
+
+    function selectExcaForPlan(code) {
+        const exca = ALL_EXCAS.find(e => e.code === code);
+        if (!exca || exca.status !== 'available') return;
+
+        selectedExcaForPlan = exca;
+        document.querySelectorAll('.radio-exca-card').forEach(card => card.classList.remove('selected'));
+        const card = document.querySelector(`.radio-exca-card[data-exca-code="${code}"]`);
+        if (card) card.classList.add('selected');
+        document.getElementById('save-plan-btn').disabled = false;
+    }
+
+    function savePlan() {
+        if (!selectedAreaForPlan || !selectedExcaForPlan) {
+            alert('Silakan pilih area dan excavator terlebih dahulu');
+            return;
+        }
+
+        const session = {
+            area: selectedAreaForPlan,
+            areaType: AREAS[selectedAreaForPlan].type,
+            exca: { code: selectedExcaForPlan.code, model: selectedExcaForPlan.model, bucket: selectedExcaForPlan.bucket },
+            startTime: new Date().toISOString()
+        };
+
+        db.update({ currentSession: session });
+        showScreen('profile-screen');
+        renderProfile();
+    }
+
+    function backToProfile() {
+        showScreen('profile-screen');
+        renderProfile();
+    }
+
+    // ============================================
+    // PROFILE
+    // ============================================
+
+    function renderProfile() {
+        const data = db.get();
+        const session = data.currentSession;
+        const operator = data.operator;
+        const activities = db.getActivities();
+        const ritases = db.getRitases();
+
+        const initials = operator.name.split(' ').map(n => n[0]).join('');
+        const loadingActivities = activities.filter(a => a.type === 'loading');
+        const dumpingActivities = activities.filter(a => a.type === 'dumping');
+        const totalBucket = loadingActivities.reduce((sum, a) => sum + a.bucketCount, 0);
+        const totalTonnage = loadingActivities.reduce((sum, a) => sum + a.tonnage, 0).toFixed(1);
+        const avgBucket = loadingActivities.length > 0 ? (totalBucket / loadingActivities.length).toFixed(1) : 0;
+
+        const container = document.getElementById('profile-content');
+
+        container.innerHTML = `
+            <div class="profile-header">
+                <div class="profile-avatar">${initials}</div>
+                <div class="profile-name">${operator.name}</div>
+                <div class="profile-subtitle">Senior Excavator Operator</div>
+                <div class="profile-code">${operator.id}</div>
+                ${activities.length > 0 ? `
+                <div class="profile-stats-row">
+                    <div class="profile-stat">
+                        <div class="profile-stat-number">${ritases.length}</div>
+                        <div class="profile-stat-label">Total Ritase</div>
+                    </div>
+                    <div class="profile-stat">
+                        <div class="profile-stat-number">${totalBucket}</div>
+                        <div class="profile-stat-label">Total Buckets</div>
+                    </div>
+                </div>
+                ` : ''}
+            </div>
+
+            <div class="personal-info-section">
+                <div class="section-title">Personal Information</div>
+                <div class="personal-info-row">
+                    <div class="personal-info-icon blue">👤</div>
+                    <div class="personal-info-content">
+                        <div class="personal-info-label">Full Name</div>
+                        <div class="personal-info-value">${operator.name}</div>
+                    </div>
+                </div>
+                <div class="personal-info-row">
+                    <div class="personal-info-icon green">🏗️</div>
+                    <div class="personal-info-content">
+                        <div class="personal-info-label">Excavator ID</div>
+                        <div class="personal-info-value">${session ? session.exca.code : '-'}</div>
+                    </div>
+                </div>
+                <div class="personal-info-row">
+                    <div class="personal-info-icon purple">📍</div>
+                    <div class="personal-info-content">
+                        <div class="personal-info-label">Current Location</div>
+                        <div class="personal-info-value">${session ? session.area : '-'}</div>
+                    </div>
+                </div>
+                <div class="personal-info-row">
+                    <div class="personal-info-icon orange">📅</div>
+                    <div class="personal-info-content">
+                        <div class="personal-info-label">Shift</div>
+                        <div class="personal-info-value">Shift 1 (07:00 - 15:00)</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="plan-section">
+                <div class="section-title">📋 Jadwal Kerja Hari Ini</div>
+                <div class="plan-info-row">
+                    <span class="plan-label">Status</span>
+                    <span class="plan-value">${session ? '<span class="status-badge active">Active</span>' : '<span class="status-badge inactive">Belum Setup</span>'}</span>
+                </div>
+                <div class="plan-info-row">
+                    <span class="plan-label">Tanggal</span>
+                    <span class="plan-value" id="profile-date">13 Feb 2026</span>
+                </div>
+                <div class="plan-info-row">
+                    <span class="plan-label">Area</span>
+                    <span class="plan-value ${!session ? 'empty' : ''}">${session ? session.area : '-'}</span>
+                </div>
+                <div class="plan-info-row">
+                    <span class="plan-label">Excavator</span>
+                    <span class="plan-value ${!session ? 'empty' : ''}">${session ? session.exca.code + ' (' + session.exca.bucket + ' m³)' : '-'}</span>
+                </div>
+                <button class="btn btn-primary" onclick="showScreen('plan-screen'); renderPlanScreen();" style="margin-top: 14px; height: 46px; font-size: 13px;">
+                    ${session ? '⚙️ Ganti Excavator' : '⚙️ Setup Barging Plan'}
+                </button>
+            </div>
+
+            ${activities.length > 0 ? `
+            <div class="stats-section">
+                <div class="section-title">📊 Performa Hari Ini</div>
+                <div class="stat-row">
+                    <span class="stat-label">Loading Activities</span>
+                    <span class="stat-value">${loadingActivities.length}</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Dumping Activities</span>
+                    <span class="stat-value">${dumpingActivities.length}</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Total Ritase</span>
+                    <span class="stat-value">${ritases.length}</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Total Bucket Loaded</span>
+                    <span class="stat-value">${totalBucket}</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Est. Tonnage</span>
+                    <span class="stat-value">${totalTonnage} ton</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-label">Avg Bucket / Loading</span>
+                    <span class="stat-value">${avgBucket}</span>
+                </div>
+            </div>
+            ` : ''}
+
+            <div class="settings-section">
+                <div class="section-title">🔒 Keamanan Akun</div>
+                <div class="setting-row" style="cursor: pointer;" onclick="openChangePwModal()">
+                    <span class="setting-label">Ganti Password</span>
+                    <span style="color: #8b91a8; font-size: 18px;">→</span>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <div class="section-title">Settings & Preferences</div>
+                <div class="setting-row">
+                    <span class="setting-label">Bahasa Indonesia</span>
+                    <div class="toggle active" onclick="toggleSetting(this)">
+                        <div class="toggle-knob"></div>
+                    </div>
+                </div>
+                <div class="setting-row">
+                    <span class="setting-label">Notifikasi</span>
+                    <div class="toggle active" onclick="toggleSetting(this)">
+                        <div class="toggle-knob"></div>
+                    </div>
+                </div>
+            </div>
+
+            <button class="logout-btn" onclick="logout()">Logout</button>
+        `;
+
+        updateCurrentDate();
+    }
+
+    function toggleSetting(element) { element.classList.toggle('active'); }
+
+    // ============================================
+    // LOADING ACTIVITY
+    // ============================================
+
+    const ALL_TRUCKS = [
+        { plate: 'B 1234 ABC', code: 'DT-01', vessel_capacity_m3: 10, route: 'scheduled' },
+        { plate: 'B 5678 DEF', code: 'DT-02', vessel_capacity_m3: 12, route: 'scheduled' },
+        { plate: 'B 9012 GHI', code: 'DT-03', vessel_capacity_m3: 15, route: 'unscheduled' },
+        { plate: 'B 3456 JKL', code: 'DT-04', vessel_capacity_m3: 10, route: 'scheduled' },
+        { plate: 'B 7890 MNO', code: 'DT-05', vessel_capacity_m3: 8,  route: 'unscheduled' }
+    ];
+    function plateCode(plate) {
+        const t = ALL_TRUCKS.find(t => t.plate === plate);
+        return t ? t.code : plate;
+    }
+
+    function getLoadedTruckPlates() {
+        const activities = db.getActivities();
+        const transfers = db.getPayloadTransfers();
+        const fromActivities = new Set(
+            activities.filter(a => a.type === 'loading' && !a.ritaseId && !a.breakdown).map(a => a.truck)
+        );
+        const fromTransfers = new Set(transfers.map(t => t.toTruck));
+        return { fromActivities, fromTransfers, all: new Set([...fromActivities, ...fromTransfers]) };
+    }
+
+    function prepareLoadingForm() {
+        const { all: loadedSet } = getLoadedTruckPlates();
+        const available = ALL_TRUCKS.filter(t => !loadedSet.has(t.plate));
+        const sel = document.getElementById('loading-truck');
+        sel.innerHTML = '<option value="">Pilih unit truck...</option>' +
+            available.map(t => `<option value="${t.plate}">${t.code}</option>`).join('');
+        const hint = document.getElementById('loading-truck-hint');
+        if (available.length === 0) {
+            hint.textContent = 'Semua truck sedang dalam status loaded. Tunggu hingga ada yang dumping.';
+            hint.style.color = '#DC2626';
+        } else {
+            hint.textContent = `${available.length} unit tersedia untuk loading.`;
+            hint.style.color = '#3B4894';
+        }
+        document.getElementById('bucket-count').value = '5';
+        sel.value = '';
+        updateTonnageEstimate();
+    }
+
+    function incrementBucket() {
+        const input = document.getElementById('bucket-count');
+        const val = parseInt(input.value) || 0;
+        if (val < 15) { input.value = val + 1; updateTonnageEstimate(); }
+    }
+
+    function decrementBucket() {
+        const input = document.getElementById('bucket-count');
+        const val = parseInt(input.value) || 0;
+        if (val > 1) { input.value = val - 1; updateTonnageEstimate(); }
+    }
+
+    function updateTonnageEstimate() {
+        const session = db.get().currentSession;
+        if (!session) return;
+        const bucketCount = parseInt(document.getElementById('bucket-count').value) || 0;
+        const tonnage = (bucketCount * session.exca.bucket * 1.6).toFixed(1);
+        document.getElementById('est-tonnage').textContent = tonnage;
+    }
+
+    function submitLoading() {
+        const truck = document.getElementById('loading-truck').value;
+        if (!truck) { alert('Silakan pilih truck terlebih dahulu'); return; }
+
+        const session = db.get().currentSession;
+        const bucketCount = parseInt(document.getElementById('bucket-count').value);
+        const tonnage = parseFloat(document.getElementById('est-tonnage').textContent);
+
+        const activity = {
+            id: 'ACT-' + Date.now(),
+            timestamp: new Date().toISOString(),
+            type: 'loading',
+            truck, exca: session.exca.code, excaModel: session.exca.model,
+            area: session.area, bucketCount, tonnage,
+            operator: db.get().operator.name
+        };
+
+        db.addActivity(activity);
+        showSuccessModal('loading', { truck, bucket: bucketCount, tonnage, exca: session.exca.code, area: session.area });
+    }
+
+    // ============================================
+    // DUMPING ACTIVITY
+    // ============================================
+
+    function prepareDumpingForm() {
+        const { fromActivities } = getLoadedTruckPlates();
+        const activities = db.getActivities();
+        const sel = document.getElementById('dumping-truck');
+        sel.innerHTML = '<option value="">Pilih unit truck...</option>';
+        let optCount = 0;
+
+        // Logic 1: Scheduled trucks (loaded dari EFO)
+        fromActivities.forEach(plate => {
+            const loadingAct = [...activities].reverse().find(a =>
+                a.type === 'loading' && a.truck === plate && !a.ritaseId && !a.breakdown
+            );
+            const areaInfo = loadingAct ? ` — Loaded dari ${loadingAct.area}` : ' — Loaded (Scheduled)';
+            const opt = document.createElement('option');
+            opt.value = plate;
+            opt.setAttribute('data-route', 'scheduled');
+            opt.textContent = `${plateCode(plate)}${areaInfo}`;
+            sel.appendChild(opt);
+            optCount++;
+        });
+
+        // Logic 2: Unscheduled trucks (arrived directly, no EFO loading)
+        ALL_TRUCKS.filter(t => t.route === 'unscheduled' && !fromActivities.has(t.plate)).forEach(truck => {
+            const opt = document.createElement('option');
+            opt.value = truck.plate;
+            opt.setAttribute('data-route', 'unscheduled');
+            opt.setAttribute('data-cap', truck.vessel_capacity_m3);
+            opt.textContent = `${truck.code} — (Unscheduled/Direct, ${truck.vessel_capacity_m3}m³)`;
+            sel.appendChild(opt);
+            optCount++;
+        });
+
+        // Reset all logic sections
+        document.getElementById('scheduled-info-box').style.display = 'none';
+        document.getElementById('unscheduled-tonnage-section').style.display = 'none';
+        document.getElementById('transfer-checkbox-section').style.display = 'none';
+        document.getElementById('transfer-from-section').style.display = 'none';
+        const transferCb = document.getElementById('transfer-checkbox');
+        if (transferCb) transferCb.checked = false;
+
+        const hint = document.getElementById('dumping-truck-hint');
+        if (optCount === 0) {
+            hint.textContent = 'Belum ada truck siap dumping. Operator EFO perlu record loading terlebih dahulu.';
+            hint.style.color = '#DC2626';
+        } else {
+            hint.textContent = `${optCount} unit siap dumping.`;
+            hint.style.color = '#1B8A58';
+        }
+    }
+
+    function onDumpingTruckChange() {
+        const sel = document.getElementById('dumping-truck');
+        const selected = sel.options[sel.selectedIndex];
+        const route = selected ? selected.getAttribute('data-route') : null;
+        const plate = sel.value;
+
+        // Reset all sections
+        document.getElementById('scheduled-info-box').style.display = 'none';
+        document.getElementById('unscheduled-tonnage-section').style.display = 'none';
+        document.getElementById('transfer-checkbox-section').style.display = 'none';
+        document.getElementById('transfer-from-section').style.display = 'none';
+        const transferCb = document.getElementById('transfer-checkbox');
+        if (transferCb) transferCb.checked = false;
+
+        if (!plate) return;
+
+        if (route === 'scheduled') {
+            const activities = db.getActivities();
+            const loadingAct = [...activities].reverse().find(a =>
+                a.type === 'loading' && a.truck === plate && !a.ritaseId && !a.breakdown
+            );
+            const infoBox = document.getElementById('scheduled-info-box');
+            if (loadingAct) {
+                infoBox.style.display = 'block';
+                infoBox.innerHTML = `<strong>✅ Scheduled</strong>: Truck ini loaded dari <strong>${loadingAct.area}</strong>. Bucket: <strong>${loadingAct.bucketCount}</strong> | Est. Tonnage: <strong>${loadingAct.tonnage} ton</strong>.`;
+            }
+            // Logic 3: Show transfer checkbox
+            document.getElementById('transfer-checkbox-section').style.display = 'block';
+            const fromSel = document.getElementById('transfer-from-truck');
+            const otherTrucks = ALL_TRUCKS.filter(t => t.plate !== plate && t.route === 'scheduled');
+            fromSel.innerHTML = '<option value="">Pilih DT sumber transfer...</option>' +
+                otherTrucks.map(t => `<option value="${t.plate}">${t.code} (${t.plate})</option>`).join('');
+        } else if (route === 'unscheduled') {
+            const cap = selected ? selected.getAttribute('data-cap') : '?';
+            document.getElementById('unscheduled-tonnage-section').style.display = 'block';
+            document.getElementById('vessel-cap-display').value = `${cap} m³`;
+            document.getElementById('unscheduled-tonnage').value = '';
+        }
+    }
+
+    function onTransferCheckboxChange() {
+        const checked = document.getElementById('transfer-checkbox').checked;
+        document.getElementById('transfer-from-section').style.display = checked ? 'block' : 'none';
+    }
+
+    function submitDumping() {
+        const sel = document.getElementById('dumping-truck');
+        const truck = sel.value;
+        if (!truck) { alert('Silakan pilih truck terlebih dahulu'); return; }
+
+        const selected = sel.options[sel.selectedIndex];
+        const route = selected ? selected.getAttribute('data-route') : 'scheduled';
+
+        // Logic 2: Unscheduled — validate tonnage input
+        let unschedTonnage = null;
+        if (route === 'unscheduled') {
+            const tonnageInput = document.getElementById('unscheduled-tonnage').value;
+            if (!tonnageInput || parseFloat(tonnageInput) <= 0) {
+                alert('Masukkan actual tonnage untuk truck Unscheduled');
+                return;
+            }
+            unschedTonnage = parseFloat(tonnageInput);
+        }
+
+        // Logic 3: Transfer — validate if checkbox checked
+        const transferCb = document.getElementById('transfer-checkbox');
+        const transferChecked = transferCb && transferCb.checked;
+        let transferFromTruck = null;
+        if (transferChecked) {
+            transferFromTruck = document.getElementById('transfer-from-truck')?.value;
+            if (!transferFromTruck) {
+                alert('Pilih DT sumber transfer terlebih dahulu');
+                return;
+            }
+        }
+
+        const session = db.get().currentSession;
+        const timestamp = new Date().toISOString();
+
+        const activity = {
+            id: 'ACT-' + Date.now(),
+            timestamp,
+            type: 'dumping',
+            truck,
+            exca: session.exca.code,
+            excaModel: session.exca.model,
+            area: session.area,
+            operator: db.get().operator.name,
+            dumpingRoute: route,
+            transferFrom: transferFromTruck || null,
+            unschedTonnage: unschedTonnage || null
+        };
+
+        db.addActivity(activity);
+
+        // Ritase: setiap dumping = +1 ritase
+        const allActivities = db.getActivities();
+        const matchingLoading = route === 'scheduled'
+            ? [...allActivities].reverse().find(a =>
+                a.type === 'loading' && a.truck === truck && !a.ritaseId && !a.breakdown
+              )
+            : null;
+
+        const ritase = {
+            id: 'RIT-' + Date.now(),
+            dumpingId: activity.id,
+            loadingId: matchingLoading ? matchingLoading.id : null,
+            truck,
+            completed: true,
+            timestamp
+        };
+        db.addRitase(ritase);
+        activity.ritaseId = ritase.id;
+
+        if (matchingLoading) {
+            const data2 = db.get();
+            const idx = data2.activities.findIndex(a => a.id === matchingLoading.id);
+            if (idx !== -1) data2.activities[idx].ritaseId = ritase.id;
+            const dIdx = data2.activities.findIndex(a => a.id === activity.id);
+            if (dIdx !== -1) data2.activities[dIdx].ritaseId = ritase.id;
+            db.save(data2);
+        }
+
+        showSuccessModal('dumping', {
+            truck,
+            exca: session.exca.code,
+            area: session.area,
+            ritaseCompleted: true,
+            route,
+            transferFrom: transferFromTruck
+        });
+    }
+
+    // ============================================
+    // MODAL
+    // ============================================
+
+    function showSuccessModal(type, data) {
+        const detailsContainer = document.getElementById('modal-details');
+        const celebration = document.getElementById('celebration');
+
+        if (type === 'loading') {
+            document.getElementById('modal-title').textContent = 'Loading Berhasil Direkam!';
+            detailsContainer.innerHTML = `
+                <div class="modal-detail-row"><span class="modal-detail-label">Truck</span><span class="modal-detail-value">${plateCode(data.truck)}</span></div>
+                <div class="modal-detail-row"><span class="modal-detail-label">Bucket</span><span class="modal-detail-value">${data.bucket} bucket</span></div>
+                <div class="modal-detail-row"><span class="modal-detail-label">Est. Tonnage</span><span class="modal-detail-value">${data.tonnage} ton</span></div>
+                <div class="modal-detail-row"><span class="modal-detail-label">Excavator</span><span class="modal-detail-value">${data.exca}</span></div>
+                <div class="modal-detail-row"><span class="modal-detail-label">Lokasi</span><span class="modal-detail-value">${data.area}</span></div>
+            `;
+            celebration.style.display = 'none';
+        } else {
+            document.getElementById('modal-title').textContent = 'Dumping Berhasil Direkam!';
+            const routeLabel = data.route === 'unscheduled' ? '🟣 Unscheduled (Direct)' : '🟢 Scheduled';
+            const transferRow = data.transferFrom
+                ? `<div class="modal-detail-row"><span class="modal-detail-label">Transfer dari</span><span class="modal-detail-value">${plateCode(data.transferFrom)}</span></div>`
+                : '';
+            detailsContainer.innerHTML = `
+                <div class="modal-detail-row"><span class="modal-detail-label">Truck</span><span class="modal-detail-value">${plateCode(data.truck)}</span></div>
+                <div class="modal-detail-row"><span class="modal-detail-label">Route</span><span class="modal-detail-value">${routeLabel}</span></div>
+                ${transferRow}
+                <div class="modal-detail-row"><span class="modal-detail-label">Excavator</span><span class="modal-detail-value">${data.exca}</span></div>
+                <div class="modal-detail-row"><span class="modal-detail-label">Lokasi</span><span class="modal-detail-value">${data.area}</span></div>
+            `;
+            celebration.style.display = data.ritaseCompleted ? 'block' : 'none';
+        }
+
+        document.getElementById('success-modal').classList.add('active');
+    }
+
+    function closeModal() {
+        document.getElementById('success-modal').classList.remove('active');
+        showScreen('home-screen');
+        renderHome();
+    }
+
+    function closeModalAndContinue() {
+        document.getElementById('success-modal').classList.remove('active');
+    }
+
+    // ============================================
+    // HISTORY
+    // ============================================
+
+    function renderHistory() {
+        const activities = db.getActivities();
+        const ritases = db.getRitases();
+        const container = document.getElementById('ritase-list');
+
+        const loadingActivities = activities.filter(a => a.type === 'loading');
+        const dumpingActivities = activities.filter(a => a.type === 'dumping');
+
+        document.getElementById('history-stats-loading').textContent = loadingActivities.length;
+        document.getElementById('history-stats-dumping').textContent = dumpingActivities.length;
+        document.getElementById('history-stats-ritase').textContent = ritases.length;
+
+        if (activities.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <div class="empty-icon">📋</div>
+                    <div class="empty-title">Belum ada aktivitas</div>
+                    <div class="empty-text">Mulai record loading atau dumping untuk melihat riwayat</div>
+                </div>
+            `;
+            return;
+        }
+
+        let html = '';
+
+        // Show ritases — each has dumping, may or may not have loading
+        [...ritases].reverse().forEach((ritase, index) => {
+            const dumping = activities.find(a => a.id === ritase.dumpingId);
+            const loading = ritase.loadingId ? activities.find(a => a.id === ritase.loadingId) : null;
+            if (!dumping) return;
+
+            let loadingHtml = '';
+            if (loading) {
+                loadingHtml = `
+                    <div class="activity-item loading">
+                        <div class="activity-header">
+                            <span class="activity-type-label loading">🟢 Loading</span>
+                            <span class="activity-time">${formatTime(loading.timestamp)}</span>
+                        </div>
+                        <div class="activity-detail"><strong>Truck:</strong> ${plateCode(loading.truck)}</div>
+                        ${loading.bucketCount ? `<div class="activity-detail">${loading.bucketCount} Bucket | ${loading.tonnage} ton est.</div>` : ''}
+                        <div class="activity-meta">${loading.area} | ${loading.exca}</div>
+                        <div class="activity-actions">
+                            <button class="action-btn-sm edit" onclick="openEditModal('${loading.id}')">✏️ Edit</button>
+                            <button class="action-btn-sm delete" onclick="openDeleteModal('${loading.id}')">🗑️ Hapus</button>
+                        </div>
+                    </div>
+                `;
+            }
+
+            html += `
+                <div class="ritase-card">
+                    <div class="ritase-header">
+                        <span class="ritase-number">RITASE #${ritases.length - index}</span>
+                        <span class="ritase-status completed">✓ COMPLETED</span>
+                    </div>
+                    ${loadingHtml}
+                    <div class="activity-item dumping">
+                        <div class="activity-header">
+                            <span class="activity-type-label dumping">🔵 Dumping</span>
+                            <span class="activity-time">${formatTime(dumping.timestamp)}</span>
+                        </div>
+                        <div class="activity-detail"><strong>Truck:</strong> ${plateCode(dumping.truck)}</div>
+                        <div class="activity-meta">${dumping.area} | ${dumping.exca}</div>
+                        <div class="activity-actions">
+                            <button class="action-btn-sm edit" onclick="openEditModal('${dumping.id}')">✏️ Edit</button>
+                            <button class="action-btn-sm delete" onclick="openDeleteModal('${dumping.id}')">🗑️ Hapus</button>
+                        </div>
+                    </div>
+                    ${!loading ? '<p style="font-size: 11px; color: #8b91a8; margin-top: 4px; font-weight: 500;">Dumping langsung tanpa loading (lanjutan shift sebelumnya)</p>' : ''}
+                </div>
+            `;
+        });
+
+        // Show standalone loading activities (not yet paired with any ritase)
+        const unpairedLoadings = loadingActivities.filter(a => !a.ritaseId);
+        [...unpairedLoadings].reverse().forEach(activity => {
+            const isBreakdown = activity.breakdown === true;
+            const statusBadge = isBreakdown
+                ? `<span class="ritase-status breakdown">⚠️ Breakdown</span>`
+                : `<span class="ritase-status" style="background: #fef7e0; color: #92400e;">⏳ Belum Dumping</span>`;
+            const breakdownNote = isBreakdown
+                ? `<p style="font-size: 11px; color: #DC2626; margin-top: 4px; font-weight: 600;">Muatan dipindah ke unit lain (breakdown — ditandai SPV via web)</p>`
+                : '';
+            const actionBtns = `<button class="action-btn-sm edit" onclick="openEditModal('${activity.id}')">✏️ Edit</button>
+                   <button class="action-btn-sm delete" onclick="openDeleteModal('${activity.id}')">🗑️ Hapus</button>`;
+            html += `
+                <div class="ritase-card">
+                    <div class="ritase-header">
+                        <span class="ritase-number">LOADING</span>
+                        ${statusBadge}
+                    </div>
+                    <div class="activity-item loading">
+                        <div class="activity-header">
+                            <span class="activity-type-label loading">🟢 Loading</span>
+                            <span class="activity-time">${formatTime(activity.timestamp)}</span>
+                        </div>
+                        <div class="activity-detail"><strong>Truck:</strong> ${plateCode(activity.truck)}</div>
+                        ${activity.bucketCount ? `<div class="activity-detail">${activity.bucketCount} Bucket | ${activity.tonnage} ton est.</div>` : ''}
+                        <div class="activity-meta">${activity.area} | ${activity.exca}</div>
+                        ${breakdownNote}
+                        <div class="activity-actions">
+                            ${actionBtns}
+                        </div>
+                    </div>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
+    }
+
+    // ============================================
+    // FORGOT PASSWORD
+    // ============================================
+
+    function showForgotPassword() {
+        document.getElementById('forgot-pw-username').value = '';
+        document.getElementById('forgot-pw-result').style.display = 'none';
+        document.getElementById('forgot-pw-modal').classList.add('active');
+    }
+
+    function closeForgotPassword() {
+        document.getElementById('forgot-pw-modal').classList.remove('active');
+    }
+
+    function submitForgotPassword() {
+        const username = document.getElementById('forgot-pw-username').value.trim();
+        if (!username) { alert('Silakan masukkan username Anda'); return; }
+
+        const resultEl = document.getElementById('forgot-pw-result');
+        resultEl.innerHTML = `
+            <div style="background: #e8faf0; border-radius: 12px; padding: 14px; text-align: center;">
+                <div style="font-size: 24px; margin-bottom: 8px;">✅</div>
+                <div style="font-size: 13px; font-weight: 700; color: #1B8A58; margin-bottom: 6px;">Request Terkirim!</div>
+                <div style="font-size: 12px; color: #4a4f68; line-height: 1.5;">
+                    Request reset password untuk <strong>${username}</strong> telah dikirim ke Admin.<br><br>
+                    Jika butuh segera, hubungi <strong>SPV Produksi via Handy Talkie</strong> agar bisa diproses secepatnya.
+                </div>
+            </div>
+        `;
+        resultEl.style.display = 'block';
+
+        // Change buttons to just close
+        setTimeout(() => {
+            const actionsEl = resultEl.closest('.modal-box').querySelector('.modal-box-actions');
+            actionsEl.innerHTML = `<button class="btn btn-primary" onclick="closeForgotPassword()" style="grid-column: 1 / -1;">Kembali ke Login</button>`;
+        }, 100);
+    }
+
+    // ============================================
+    // CHANGE PASSWORD
+    // ============================================
+
+    function openChangePwModal() {
+        document.getElementById('change-pw-old').value = '';
+        document.getElementById('change-pw-new').value = '';
+        document.getElementById('change-pw-confirm').value = '';
+        document.getElementById('change-pw-error').style.display = 'none';
+        document.getElementById('change-pw-modal').classList.add('active');
+    }
+
+    function closeChangePwModal() {
+        document.getElementById('change-pw-modal').classList.remove('active');
+    }
+
+    function submitChangePassword() {
+        const oldPw = document.getElementById('change-pw-old').value;
+        const newPw = document.getElementById('change-pw-new').value;
+        const confirmPw = document.getElementById('change-pw-confirm').value;
+        const errorEl = document.getElementById('change-pw-error');
+
+        errorEl.style.display = 'none';
+
+        if (!oldPw || !newPw || !confirmPw) {
+            errorEl.textContent = 'Semua field harus diisi';
+            errorEl.style.display = 'block';
+            return;
+        }
+
+        const data = db.get();
+        if (oldPw !== data.operator.password) {
+            errorEl.textContent = 'Password lama salah';
+            errorEl.style.display = 'block';
+            return;
+        }
+
+        if (newPw.length < 6) {
+            errorEl.textContent = 'Password baru minimal 6 karakter';
+            errorEl.style.display = 'block';
+            return;
+        }
+
+        if (newPw !== confirmPw) {
+            errorEl.textContent = 'Konfirmasi password tidak cocok';
+            errorEl.style.display = 'block';
+            return;
+        }
+
+        if (newPw === oldPw) {
+            errorEl.textContent = 'Password baru tidak boleh sama dengan password lama';
+            errorEl.style.display = 'block';
+            return;
+        }
+
+        // Save new password
+        data.operator.password = newPw;
+        db.save(data);
+
+        closeChangePwModal();
+        alert('Password berhasil diganti!');
+    }
+
+    // ============================================
+    // EDIT & DELETE ACTIVITIES
+    // ============================================
+
+    let editingActivityId = null;
+    let deletingActivityId = null;
+
+    function openEditModal(activityId) {
+        const activities = db.getActivities();
+        const activity = activities.find(a => a.id === activityId);
+        if (!activity) return;
+
+        editingActivityId = activityId;
+        const isLoading = activity.type === 'loading';
+
+        document.getElementById('edit-modal-title').textContent = isLoading ? 'Edit Loading Record' : 'Edit Dumping Record';
+
+        const truckOptions = ALL_TRUCKS
+            .map(t => `<option value="${t.plate}" ${t.plate === activity.truck ? 'selected' : ''}>${t.code}</option>`)
+            .join('');
+
+        let bodyHtml = `
+            <div class="form-group">
+                <label class="form-label">Truck</label>
+                <select class="select-input" id="edit-truck">
+                    ${truckOptions}
+                </select>
+            </div>
+        `;
+
+        if (isLoading) {
+            bodyHtml += `
+                <div class="form-group">
+                    <label class="form-label">Jumlah Bucket</label>
+                    <input type="number" class="form-input" id="edit-bucket" value="${activity.bucketCount}" min="1" max="15" style="text-align: center; font-weight: 700;">
+                </div>
+            `;
+        }
+
+        document.getElementById('edit-modal-body').innerHTML = bodyHtml;
+        document.getElementById('edit-activity-modal').classList.add('active');
+    }
+
+    function closeEditModal() {
+        document.getElementById('edit-activity-modal').classList.remove('active');
+        editingActivityId = null;
+    }
+
+    function saveEditActivity() {
+        if (!editingActivityId) return;
+
+        const activities = db.getActivities();
+        const activity = activities.find(a => a.id === editingActivityId);
+        if (!activity) return;
+
+        const newTruck = document.getElementById('edit-truck').value;
+        const updates = { truck: newTruck };
+
+        if (activity.type === 'loading') {
+            const newBucket = parseInt(document.getElementById('edit-bucket').value) || activity.bucketCount;
+            // Recalculate tonnage: find the exca bucket size from the session or estimate
+            const session = db.get().currentSession;
+            const bucketSize = session ? session.exca.bucket : 1.6;
+            updates.bucketCount = newBucket;
+            updates.tonnage = parseFloat((newBucket * bucketSize * 1.6).toFixed(1));
+        }
+
+        db.updateActivity(editingActivityId, updates);
+
+        // If this is a dumping activity, update the truck on the linked ritase too
+        if (activity.type === 'dumping') {
+            const ritase = db.getRitaseByDumpingId(editingActivityId);
+            if (ritase) {
+                db.updateRitase(ritase.id, { truck: newTruck });
+            }
+        }
+
+        // If truck changed on loading and it was linked to a ritase, update ritase truck
+        if (activity.type === 'loading' && activity.ritaseId) {
+            const ritase = db.getRitaseByLoadingId(editingActivityId);
+            if (ritase) {
+                db.updateRitase(ritase.id, { truck: newTruck });
+            }
+        }
+
+        closeEditModal();
+        renderHistory();
+        renderHome();
+    }
+
+    function openDeleteModal(activityId) {
+        const activities = db.getActivities();
+        const activity = activities.find(a => a.id === activityId);
+        if (!activity) return;
+
+        deletingActivityId = activityId;
+
+        let warningText = '';
+        if (activity.type === 'dumping') {
+            warningText = `Menghapus record dumping ini juga akan menghapus ritase terkait. Truck: <strong>${plateCode(activity.truck)}</strong>`;
+        } else {
+            // Check if this loading is linked to a ritase
+            const ritase = db.getRitaseByLoadingId(activityId);
+            if (ritase) {
+                warningText = `Record loading ini terhubung dengan ritase. Loading akan dihapus dari ritase tetapi ritase tetap ada. Truck: <strong>${plateCode(activity.truck)}</strong>`;
+            } else {
+                warningText = `Record loading untuk truck <strong>${plateCode(activity.truck)}</strong> akan dihapus permanen.`;
+            }
+        }
+
+        document.getElementById('delete-confirm-text').innerHTML = warningText;
+        document.getElementById('delete-confirm-modal').classList.add('active');
+    }
+
+    function closeDeleteModal() {
+        document.getElementById('delete-confirm-modal').classList.remove('active');
+        deletingActivityId = null;
+    }
+
+    function confirmDeleteActivity() {
+        if (!deletingActivityId) return;
+
+        const activities = db.getActivities();
+        const activity = activities.find(a => a.id === deletingActivityId);
+        if (!activity) { closeDeleteModal(); return; }
+
+        if (activity.type === 'dumping') {
+            // Delete ritase linked to this dumping
+            const ritase = db.getRitaseByDumpingId(deletingActivityId);
+            if (ritase) {
+                // If ritase had a loading linked, unlink it
+                if (ritase.loadingId) {
+                    db.updateActivity(ritase.loadingId, { ritaseId: undefined });
+                    // Need to actually remove the ritaseId key
+                    const data = db.get();
+                    const lIdx = data.activities.findIndex(a => a.id === ritase.loadingId);
+                    if (lIdx !== -1) delete data.activities[lIdx].ritaseId;
+                    db.save(data);
+                }
+                db.deleteRitase(ritase.id);
+            }
+            db.deleteActivity(deletingActivityId);
+        } else {
+            // Loading: if linked to ritase, remove linkage but keep ritase (dumping-only ritase)
+            const ritase = db.getRitaseByLoadingId(deletingActivityId);
+            if (ritase) {
+                db.updateRitase(ritase.id, { loadingId: null });
+            }
+            db.deleteActivity(deletingActivityId);
+        }
+
+        closeDeleteModal();
+        renderHistory();
+        renderHome();
+    }
+
+    // ============================================
+    // UTILITIES
+    // ============================================
+
+    function formatTime(isoString) {
+        return new Date(isoString).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    function updateCurrentDate() {
+        const formatted = new Date().toLocaleDateString('id-ID', { day: '2-digit', month: 'short', year: 'numeric' });
+        ['plan-date', 'profile-date', 'history-date'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = formatted;
+        });
+    }
+
+    // ============================================
+    // INIT
+    // ============================================
+
+    document.addEventListener('DOMContentLoaded', function() {
+        const data = db.get();
+        if (data.operator.username) {
+            showScreen('home-screen');
+            renderHome();
+        }
+
+        const bucketInput = document.getElementById('bucket-count');
+        if (bucketInput) bucketInput.addEventListener('input', updateTonnageEstimate);
+
+        updateCurrentDate();
+        updateGreeting();
+    });
+</script>
+
+</body>
+</html>
