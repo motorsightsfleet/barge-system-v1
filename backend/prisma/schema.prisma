@@ -1,0 +1,194 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum BargeStatus {
+  AVAILABLE
+  UNAVAILABLE
+}
+
+model Barge {
+  id         String      @id @default(cuid())
+  code       String      @unique
+  name       String
+  owner      String
+  capacityMt Int
+  type       String
+  status     BargeStatus @default(AVAILABLE)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+  deletedAt  DateTime?
+
+  @@index([deletedAt])
+  @@map("barges")
+}
+
+model Site {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  areas     Area[]
+  units     Unit[]
+
+  @@map("sites")
+}
+
+model Area {
+  id                String    @id @default(cuid())
+  areaName          String
+  siteId            String
+  site              Site      @relation(fields: [siteId], references: [id])
+  category          String
+  polygonCoordinates String   @db.Text
+  isActive          Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  deletedAt         DateTime?
+
+  @@unique([areaName, siteId])
+  @@index([deletedAt])
+  @@map("areas")
+}
+
+model Shift {
+  id         String    @id @default(cuid())
+  shiftName  String    @unique
+  shiftStart String
+  shiftEnd   String
+  isActive   Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
+
+  @@index([deletedAt])
+  @@map("shifts")
+}
+
+model Brand {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  isActive  Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  deletedAt DateTime?
+  engines   Engine[]
+
+  @@index([deletedAt])
+  @@map("brands")
+}
+
+model UnitType {
+  id                    String                  @id @default(cuid())
+  name                  String                  @unique
+  isActive              Boolean                 @default(true)
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+  deletedAt             DateTime?
+  variantSpecifications VariantSpecification[]
+
+  @@index([deletedAt])
+  @@map("unit_types")
+}
+
+model Engine {
+  id                    String                  @id @default(cuid())
+  name                  String
+  brandId               String
+  brand                 Brand                   @relation(fields: [brandId], references: [id])
+  isActive              Boolean                 @default(true)
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+  deletedAt             DateTime?
+  variantSpecifications VariantSpecification[]
+  unitOverrides         Unit[]                  @relation("UnitEngineOverride")
+
+  @@unique([name, brandId])
+  @@index([deletedAt])
+  @@map("engines")
+}
+
+model UnitModel {
+  id                    String                  @id @default(cuid())
+  name                  String                  @unique
+  isActive              Boolean                 @default(true)
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+  deletedAt             DateTime?
+  variants              UnitModelVariant[]
+  variantSpecifications VariantSpecification[]
+
+  @@index([deletedAt])
+  @@map("unit_models")
+}
+
+model UnitModelVariant {
+  id                    String                  @id @default(cuid())
+  name                  String
+  unitModelId           String
+  unitModel             UnitModel               @relation(fields: [unitModelId], references: [id])
+  isActive              Boolean                 @default(true)
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+  deletedAt             DateTime?
+  variantSpecifications VariantSpecification[]
+
+  @@unique([name, unitModelId])
+  @@index([deletedAt])
+  @@map("unit_model_variants")
+}
+
+model VariantSpecification {
+  id                 String            @id @default(cuid())
+  unitTypeId         String
+  unitType           UnitType          @relation(fields: [unitTypeId], references: [id])
+  unitModelId        String
+  unitModel          UnitModel         @relation(fields: [unitModelId], references: [id])
+  unitModelVariantId String
+  unitModelVariant   UnitModelVariant  @relation(fields: [unitModelVariantId], references: [id])
+  engineId           String
+  engine             Engine            @relation(fields: [engineId], references: [id])
+  capacityVessel     Float
+  axleConfiguration  String
+  totalWheel         Int
+  wheelSize          Float
+  isActive           Boolean           @default(true)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  deletedAt          DateTime?
+  units              Unit[]
+
+  @@unique([unitTypeId, unitModelId, unitModelVariantId, engineId])
+  @@index([deletedAt])
+  @@map("variant_specifications")
+}
+
+model Unit {
+  id                        String               @id @default(cuid())
+  unitCode                  String               @unique
+  siteId                    String
+  site                      Site                 @relation(fields: [siteId], references: [id])
+  variantSpecificationId    String
+  variantSpecification      VariantSpecification @relation(fields: [variantSpecificationId], references: [id])
+  unitStatus                String
+  serialNumber              String
+  arriveDate                DateTime
+  isActive                  Boolean              @default(true)
+  engineOverrideId          String?
+  engineOverride            Engine?              @relation("UnitEngineOverride", fields: [engineOverrideId], references: [id])
+  capacityVesselOverride    Float?
+  axleConfigurationOverride String?
+  totalWheelOverride        Int?
+  wheelSizeOverride         Float?
+  createdAt                 DateTime             @default(now())
+  updatedAt                 DateTime             @updatedAt
+  deletedAt                 DateTime?
+
+  @@index([deletedAt])
+  @@map("units")
+}

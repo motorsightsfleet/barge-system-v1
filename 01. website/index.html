@@ -27,33 +27,92 @@
 
     /* ── LOGIN ── */
     #login-page {
-        display: flex; align-items: center; justify-content: center;
+        display: flex;
         min-height: 100vh;
-        background: linear-gradient(135deg, var(--navy) 0%, #2a2d4a 50%, #1a2038 100%);
+        background: #ffffff;
     }
+
+    /* Left visual panel — hidden on mobile, shown from tablet up */
+    .login-visual {
+        display: none;
+        position: relative;
+        width: 42%;
+        min-height: 100vh;
+        overflow: hidden;
+        background:
+            radial-gradient(circle at 18% 12%, rgba(45,212,191,0.20), transparent 40%),
+            radial-gradient(circle at 82% 88%, rgba(91,95,199,0.30), transparent 45%),
+            linear-gradient(165deg, #0f1120 0%, var(--navy) 55%, #1a2038 100%);
+    }
+    .login-visual::before {
+        content: '';
+        position: absolute; inset: 0;
+        background-image:
+            linear-gradient(180deg, rgba(0,0,0,0.1), rgba(0,0,0,0.55) 85%),
+            repeating-linear-gradient(90deg, rgba(255,255,255,0.035) 0 1px, transparent 1px 64px);
+    }
+    .login-visual-content { position: relative; z-index: 2; height: 100%; display: flex; flex-direction: column; padding: 56px 44px; }
+    .login-visual-title { font-size: 36px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; line-height: 1.15; color: #fff; text-wrap: balance; }
+    .login-visual-title span { color: var(--teal); }
+    .login-visual-tagline { font-size: 13.5px; line-height: 1.5; color: rgba(241,245,249,0.75); margin-top: 14px; max-width: 300px; }
+    .login-visual-footer { margin-top: auto; font-size: 11px; letter-spacing: .4px; color: rgba(241,245,249,0.45); }
+    .login-hud {
+        position: absolute; z-index: 2; padding: 10px 14px;
+        background: rgba(255,255,255,0.07); backdrop-filter: blur(12px);
+        border: 1px solid rgba(255,255,255,0.14); border-radius: 10px;
+        font-size: 11.5px; font-weight: 600; color: rgba(241,245,249,0.9);
+    }
+    .login-hud .hud-label { display: block; font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px; color: var(--teal); margin-bottom: 5px; }
+    .login-hud .hud-bars { display: flex; align-items: flex-end; gap: 3px; height: 20px; margin-top: 6px; }
+    .login-hud .hud-bars i { width: 5px; border-radius: 2px; background: var(--teal); opacity: .85; }
+    .hud-1 { top: 46%; left: 8%; }
+    .hud-2 { top: 30%; right: 7%; }
+    .hud-3 { bottom: 20%; left: 9%; }
+    @media (min-width: 768px) {
+        .login-visual { display: flex; }
+    }
+
+    /* Right form panel */
+    .login-form-panel {
+        flex: 1; position: relative; overflow: hidden;
+        display: flex; align-items: center; justify-content: center;
+        background: #ffffff; padding: 24px;
+    }
+    .login-decor { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+    .login-decor i { position: absolute; border-radius: 50%; background: var(--indigo); opacity: .07; }
     .login-box {
-        background: rgba(255,255,255,0.06); backdrop-filter: blur(20px);
-        border: 1px solid var(--border); border-radius: 20px;
-        padding: 40px 36px; width: 360px;
+        position: relative; z-index: 1;
+        background: #fff; border: 1px solid #eef0f6; border-radius: 24px;
+        box-shadow: 0 20px 45px -12px rgba(30,41,59,0.16);
+        padding: 44px 40px; width: 380px; max-width: 92vw;
     }
-    .login-logo { text-align: center; margin-bottom: 28px; }
-    .login-logo .brand { font-size: 22px; font-weight: 700; color: var(--teal); letter-spacing: 1px; }
-    .login-logo .sub  { font-size: 12px; color: var(--text-dim); margin-top: 4px; }
-    .login-title { font-size: 18px; font-weight: 600; color: var(--text); margin-bottom: 20px; text-align: center; }
-    .login-group { margin-bottom: 16px; }
-    .login-label { display: block; font-size: 12px; color: var(--text-dim); margin-bottom: 6px; font-weight: 500; }
+    .login-logo { display: flex; align-items: center; justify-content: center; gap: 10px; }
+    .login-logo .mark { width: 26px; height: 26px; display: grid; grid-template-columns: repeat(2,1fr); grid-template-rows: repeat(2,1fr); gap: 3px; }
+    .login-logo .mark i { border-radius: 50%; background: var(--indigo); }
+    .login-logo .mark i:nth-child(2) { background: var(--teal); }
+    .login-logo .mark i:nth-child(3) { background: var(--teal2); }
+    .login-logo .brand { font-size: 20px; font-weight: 800; color: #1a1d2e; letter-spacing: .3px; }
+    .login-sub { text-align: center; font-size: 11.5px; color: #94a3b8; margin-top: 4px; margin-bottom: 30px; }
+    .login-group { margin-bottom: 22px; }
+    .login-label { display: block; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 7px; }
     .login-input {
-        width: 100%; padding: 11px 14px; border-radius: 8px;
-        background: rgba(255,255,255,0.08); border: 1px solid var(--border);
-        color: var(--text); font-size: 14px; outline: none;
+        width: 100%; padding: 8px 2px; border: none; border-bottom: 1.5px solid #e2e8f0; border-radius: 0;
+        background: transparent; color: #1e293b; font-size: 14px; outline: none;
+        transition: border-color .15s;
     }
-    .login-input:focus { border-color: var(--teal); }
+    .login-input::placeholder { color: #cbd5e1; }
+    .login-input:focus { border-bottom-color: var(--indigo); }
+    .login-helper { font-size: 11px; color: #94a3b8; margin-top: 6px; }
     .login-btn {
-        width: 100%; padding: 13px; border: none; border-radius: 10px; cursor: pointer;
-        background: linear-gradient(135deg, var(--teal), var(--teal2));
-        color: #0f2824; font-size: 15px; font-weight: 700; margin-top: 8px;
+        width: 100%; margin-top: 10px; padding: 14px; border: none; border-radius: 999px; cursor: pointer;
+        background: var(--indigo); color: #fff; font-size: 15px; font-weight: 700;
+        box-shadow: 0 10px 20px -6px rgba(91,95,199,0.45);
+        transition: background .15s;
     }
-    .login-error { color: #f87171; font-size: 12px; text-align: center; margin-top: 10px; display: none; }
+    .login-btn:hover { background: var(--indigo2); }
+    .login-error { color: #dc2626; font-size: 12px; text-align: center; margin-top: 14px; display: none; }
+    .login-forgot { display: block; text-align: center; margin-top: 20px; font-size: 13px; font-weight: 600; color: var(--indigo); }
+    .login-demo-hint { text-align: center; font-size: 10.5px; color: #b6bcc8; margin-top: 12px; }
 
     /* ── SHELL ── */
     #app { display: none; }
@@ -279,23 +338,53 @@
 
 <!-- ══════════════ LOGIN PAGE ══════════════ -->
 <div id="login-page">
-    <div class="login-box">
-        <div class="login-logo">
-            <div class="brand">ITI ONE</div>
-            <div class="sub">Barge System — Web App</div>
+    <div class="login-visual">
+        <div class="login-visual-content">
+            <div class="login-visual-title">Barge <span>as One</span></div>
+            <div class="login-visual-tagline">Satu platform terintegrasi untuk seluruh operasional tongkang — dari kedatangan hingga penutupan.</div>
+            <div class="login-visual-footer">ITI ONE · Barge System</div>
         </div>
-        <div class="login-title">Masuk ke Sistem</div>
-        <div class="login-group">
-            <label class="login-label">Username</label>
-            <input type="text" class="login-input" id="login-user" placeholder="contoh: spv001" value="spv001">
+        <div class="login-hud hud-1">
+            <span class="hud-label">Vessel Tracking</span>
+            SEA TITAN · Jetty Timur
         </div>
-        <div class="login-group">
-            <label class="login-label">Password</label>
-            <input type="password" class="login-input" id="login-pass" placeholder="password" value="password123">
+        <div class="login-hud hud-2">
+            <span class="hud-label">Tonnage Today</span>
+            <div class="hud-bars"><i style="height:40%"></i><i style="height:70%"></i><i style="height:55%"></i><i style="height:90%"></i><i style="height:65%"></i></div>
         </div>
-        <button class="login-btn" onclick="doLogin()">Masuk</button>
-        <div class="login-error" id="login-error">Username atau password salah.</div>
-        <p style="text-align:center;font-size:11px;color:#94a3b8;margin-top:14px;">Demo: spv001 / password123 &nbsp;|&nbsp; pjo001 / password123</p>
+        <div class="login-hud hud-3">
+            <span class="hud-label">Shift Status</span>
+            Day Shift · On Progress
+        </div>
+    </div>
+
+    <div class="login-form-panel">
+        <div class="login-decor">
+            <i style="width:220px;height:220px;right:-70px;bottom:-70px;"></i>
+            <i style="width:140px;height:140px;right:40px;bottom:10px;"></i>
+            <i style="width:70px;height:70px;right:160px;bottom:-20px;"></i>
+        </div>
+        <div class="login-box">
+            <div class="login-logo">
+                <span class="mark"><i></i><i></i><i></i><i></i></span>
+                <span class="brand">ITI ONE</span>
+            </div>
+            <div class="login-sub">Barge System — Web App</div>
+            <div class="login-group">
+                <label class="login-label">Username</label>
+                <input type="text" class="login-input" id="login-user" placeholder="contoh: spv001" value="spv001">
+                <div class="login-helper">Gunakan username yang terdaftar di sistem.</div>
+            </div>
+            <div class="login-group">
+                <label class="login-label">Password</label>
+                <input type="password" class="login-input" id="login-pass" placeholder="password" value="password123">
+                <div class="login-helper">Minimal 8 karakter.</div>
+            </div>
+            <button class="login-btn" onclick="doLogin()">Masuk</button>
+            <div class="login-error" id="login-error">Username atau password salah.</div>
+            <span class="login-forgot">Lupa Password?</span>
+            <p class="login-demo-hint">Demo: spv001 / password123 &nbsp;|&nbsp; pjo001 / password123</p>
+        </div>
     </div>
 </div>
 
