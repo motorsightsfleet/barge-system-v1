@@ -66,67 +66,61 @@ Data semua hardcoded. Tombol "Manage Operations" mengarah ke `/transactional/ope
 
 ## 5. Master Data
 
-Keempat halaman master memiliki **pola UI yang identik**:
-- Header + tombol "Add New ..."
-- Search input
-- Tabel dengan kolom spesifik
-- Pagination (Previous / Next, belum fungsional)
-- Tombol Edit & Delete per baris (belum ada handler)
+Keempat halaman master (Area, Barge, Shift, Population) memiliki pola UI yang identik: header + tombol "Add New ...", search input, tabel dengan kolom spesifik, pagination Previous/Next, dan tombol Edit & Delete per baris. Status implementasi masing-masing (handler, filter, dll.) — lihat [§9 Catatan Implementasi](#9-catatan-implementasi).
 
 ### 5.1 Master Area (`/master/area`)
 Mengelola lokasi/area bongkar muat barge.
 
-**Field:** Area Code, Area Name, Type, Remark, Status
+**Field:** Area Code, Area Name, Type, Remark, Status (Active/Inactive)
 
 | Tipe Area | Contoh |
 |---|---|
 | Jetty | Jetty Timur, Jetty Barat |
 | Anchorage | Anchorage Point 1 (area tunggu) |
 
-**Status:** Active / Inactive
-
 ---
 
 ### 5.2 Master Barge (`/master/barge`)
 Registry armada tongkang.
 
-**Field:** Barge Code, Barge Name, Capacity (MT), Remark, Status
+**Field:** Barge Code, Barge Name, Capacity (MT), Remark, Status (Active/Inactive)
 
-**Contoh data:**
-- BG-001 · SEA TITAN · 5.000 MT · Active
-- BG-002 · RIVER KING · 3.500 MT · Active
-- BG-003 · OCEAN BLUE · 4.000 MT · Inactive (maintenance)
+| Barge | Kapasitas | Status |
+|---|---|---|
+| BG-001 · SEA TITAN | 5.000 MT | Active |
+| BG-002 · RIVER KING | 3.500 MT | Active |
+| BG-003 · OCEAN BLUE | 4.000 MT | Inactive (maintenance) |
 
 ---
 
 ### 5.3 Master Shift (`/master/shift`)
 Pengaturan jam kerja operasional.
 
-**Field:** Shift ID, Nama Shift, Jam Mulai, Jam Selesai, Remark, Status
+**Field:** Shift ID, Nama Shift, Jam Mulai, Jam Selesai, Remark, Status (Active/Inactive)
 
 | Shift | Waktu |
 |---|---|
-| Shift A (Day Shift) | 07:00 – 19:00 |
-| Shift B (Night Shift) | 19:00 – 07:00 |
+| Shift A (Day Shift) | 07:00–19:00 |
+| Shift B (Night Shift) | 19:00–07:00 |
 
 ---
 
 ### 5.4 Master Population (`/master/population`)
 Registry alat berat yang digunakan dalam operasi barging.
 
-**Field:** Unit Code, Category, Unit Type, Fleet Number, Plate Number, Vendor, Op Status, Life Status
+**Field:** Unit Code, Category, Unit Type, Fleet Number, Plate Number, Vendor, Op Status, Life Status (Active/Inactive)
 
-**Kategori unit:**
-- **Dump Truck** (DT-xxx) — contoh: HD785
-- **Excavator** (EX-xxx) — contoh: PC2000, PC1250
+| Kategori | Kode | Contoh Unit Type |
+|---|---|---|
+| Dump Truck | DT-xxx | HD785 |
+| Excavator | EX-xxx | PC2000, PC1250 |
 
-**Op Status:**
-- `Available` — siap dipakai
-- `Operating` — sedang beroperasi
-- `Maintenance` — dalam perawatan terjadwal
-- `Breakdown` — rusak/tidak bisa digunakan
-
-**Life Status:** Active / Inactive
+| Op Status | Arti |
+|---|---|
+| Available | Siap dipakai |
+| Operating | Sedang beroperasi |
+| Maintenance | Dalam perawatan terjadwal |
+| Breakdown | Rusak / tidak bisa digunakan |
 
 ---
 
