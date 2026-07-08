@@ -340,8 +340,8 @@ export default function MasterShift() {
       {deleteModal === "success" && (
         <ActionModal
           variant="success"
-          title="Shift successfully deleted"
-          message={`"${deleteTarget?.shiftName}" has been removed.`}
+          title="Data Shift successfully deleted"
+          message="This item has been removed."
           onClose={handleModalClose}
         />
       )}

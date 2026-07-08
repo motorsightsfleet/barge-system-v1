@@ -361,8 +361,8 @@ export default function MasterArea() {
       {deleteModal === "success" && (
         <ActionModal
           variant="success"
-          title="Area successfully deleted"
-          message={`"${deleteTarget?.areaName}" has been removed.`}
+          title="Data Area successfully deleted"
+          message="This item has been removed."
           onClose={handleModalClose}
         />
       )}

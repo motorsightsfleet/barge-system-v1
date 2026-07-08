@@ -8,11 +8,11 @@ import {
   MoreVertical,
   ChevronLeft,
   ChevronRight,
-  AlertTriangle,
 } from "lucide-react";
 import { bargeApi, Barge, BargeStatus, BARGE_TYPES, Pagination } from "../../lib/bargeApi";
 import { ApiError } from "../../lib/api";
 import { buildPageList } from "../../lib/pagination";
+import ActionModal from "../common/ActionModal";
 
 const SORTABLE_COLUMNS: { key: string; label: string }[] = [
   { key: "code", label: "Barge Code" },
@@ -51,7 +51,9 @@ export default function MasterBarge() {
 
   const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Barge | null>(null);
+  const [deleteModal, setDeleteModal] = useState<"confirm" | "success" | "failed" | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState("");
 
   useEffect(() => {
     const handle = setTimeout(() => {
@@ -98,18 +100,31 @@ export default function MasterBarge() {
     setPage(1);
   }
 
+  function handleDeleteClick(barge: Barge) {
+    setDeleteTarget(barge);
+    setDeleteModal("confirm");
+    setOpenMenuId(null);
+  }
+
   async function handleConfirmDelete() {
     if (!deleteTarget) return;
     setDeleting(true);
     try {
       await bargeApi.remove(deleteTarget.id);
-      setDeleteTarget(null);
-      await fetchBarges();
+      setDeleteModal("success");
     } catch (err) {
-      setErrorMsg(err instanceof ApiError ? err.message : "Failed to delete barge");
+      setDeleteError(err instanceof ApiError ? err.message : "Failed to delete barge");
+      setDeleteModal("failed");
     } finally {
       setDeleting(false);
     }
+  }
+
+  function handleModalClose() {
+    const wasSuccess = deleteModal === "success";
+    setDeleteModal(null);
+    setDeleteTarget(null);
+    if (wasSuccess) fetchBarges();
   }
 
   const from = pagination.total === 0 ? 0 : (pagination.page - 1) * pagination.pageSize + 1;
@@ -246,7 +261,7 @@ export default function MasterBarge() {
                             Edit
                           </Link>
                           <button
-                            onClick={() => { setDeleteTarget(barge); setOpenMenuId(null); }}
+                            onClick={() => handleDeleteClick(barge)}
                             className="w-full text-left px-4 py-2.5 text-sm font-medium text-rose-600 hover:bg-rose-50"
                           >
                             Delete
@@ -330,36 +345,31 @@ export default function MasterBarge() {
         </div>
       </div>
 
-      {/* Delete confirmation modal */}
-      {deleteTarget && (
-        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
-            <div className="p-6 flex flex-col items-center text-center gap-3">
-              <div className="w-12 h-12 rounded-full bg-rose-100 flex items-center justify-center">
-                <AlertTriangle className="w-6 h-6 text-rose-600" />
-              </div>
-              <h3 className="text-lg font-bold text-gray-900">Delete Barge?</h3>
-              <p className="text-sm text-gray-500">
-                Are you sure you want to delete <strong>{deleteTarget.name}</strong> ({deleteTarget.code})? This action cannot be undone.
-              </p>
-            </div>
-            <div className="flex border-t border-gray-100">
-              <button
-                onClick={() => setDeleteTarget(null)}
-                className="flex-1 px-5 py-3.5 text-sm font-bold text-gray-600 hover:bg-gray-50 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleConfirmDelete}
-                disabled={deleting}
-                className="flex-1 px-5 py-3.5 text-sm font-bold text-white bg-rose-600 hover:bg-rose-700 disabled:opacity-60 transition-colors"
-              >
-                {deleting ? "Deleting..." : "Delete"}
-              </button>
-            </div>
-          </div>
-        </div>
+      {deleteModal === "confirm" && (
+        <ActionModal
+          variant="confirm"
+          title="Are you sure?"
+          message="Any data you want to delete this data?"
+          loading={deleting}
+          onConfirm={handleConfirmDelete}
+          onCancel={handleModalClose}
+        />
+      )}
+      {deleteModal === "success" && (
+        <ActionModal
+          variant="success"
+          title="Data Barge successfully deleted"
+          message="This item has been removed."
+          onClose={handleModalClose}
+        />
+      )}
+      {deleteModal === "failed" && (
+        <ActionModal
+          variant="failed"
+          title="Delete failed"
+          message={deleteError || "Please check and modify the data you entered before resubmitting."}
+          onClose={handleModalClose}
+        />
       )}
     </div>
   );

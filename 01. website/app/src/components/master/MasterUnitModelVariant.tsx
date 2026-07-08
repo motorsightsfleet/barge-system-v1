@@ -344,7 +344,7 @@ export default function MasterUnitModelVariant() {
       {deleteModal === "success" && (
         <ActionModal
           variant="success"
-          title={`Data Unit Model Variant '${deleteTarget?.name}' successfully deleted`}
+          title="Data Unit Model Variant successfully deleted"
           message="This item has been removed."
           onClose={handleModalClose}
         />

@@ -344,7 +344,7 @@ export default function MasterEngine() {
       {deleteModal === "success" && (
         <ActionModal
           variant="success"
-          title={`Data Engine '${deleteTarget?.name}' successfully deleted`}
+          title="Data Engine successfully deleted"
           message="This item has been removed."
           onClose={handleModalClose}
         />

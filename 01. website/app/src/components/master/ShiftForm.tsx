@@ -203,8 +203,8 @@ export default function ShiftForm() {
       {modal === "failed" && (
         <ActionModal
           variant="failed"
-          title={`${isEdit ? "Update" : "Create"} failed`}
-          message={resultMessage || "Please check and modify the data you entered before resubmitting."}
+          title="Submission Failed"
+          message={resultMessage || "Please check and modify the following information before resubmit."}
           onClose={handleModalClose}
         />
       )}

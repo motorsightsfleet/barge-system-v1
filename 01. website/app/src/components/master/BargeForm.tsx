@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 import { bargeApi, BARGE_TYPES, BargeStatus } from "../../lib/bargeApi";
 import { ApiError } from "../../lib/api";
+import ActionModal, { ActionModalVariant } from "../common/ActionModal";
 
 interface FormState {
   code: string;
@@ -23,7 +24,10 @@ export default function BargeForm() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [loading, setLoading] = useState(isEdit);
+
+  const [modal, setModal] = useState<ActionModalVariant | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [resultMessage, setResultMessage] = useState("");
 
   useEffect(() => {
     if (!id) return;
@@ -43,8 +47,12 @@ export default function BargeForm() {
       .finally(() => setLoading(false));
   }, [id]);
 
-  async function handleSubmit(e: React.FormEvent) {
+  function handleSubmitClick(e: React.FormEvent) {
     e.preventDefault();
+    setModal("confirm");
+  }
+
+  async function handleConfirmSubmit() {
     setSubmitting(true);
     setFieldErrors({});
     setFormError(null);
@@ -60,24 +68,33 @@ export default function BargeForm() {
     try {
       if (isEdit && id) {
         await bargeApi.update(id, payload);
+        setResultMessage("Data Barge successfully updated");
       } else {
         await bargeApi.create(payload);
+        setResultMessage("Data Barge successfully created");
       }
-      navigate("/master/barge");
+      setModal("success");
     } catch (err) {
       if (err instanceof ApiError) {
-        setFormError(err.message);
+        setResultMessage(err.message);
         if (err.errors) {
           const mapped: Record<string, string> = {};
           err.errors.forEach((e) => { mapped[e.field] = e.message; });
           setFieldErrors(mapped);
         }
       } else {
-        setFormError("Failed to save barge");
+        setResultMessage("Please check and modify the following information before resubmit.");
       }
+      setModal("failed");
     } finally {
       setSubmitting(false);
     }
+  }
+
+  function handleModalClose() {
+    const wasSuccess = modal === "success";
+    setModal(null);
+    if (wasSuccess) navigate("/master/barge");
   }
 
   if (loading) {
@@ -101,7 +118,7 @@ export default function BargeForm() {
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
+      <form onSubmit={handleSubmitClick} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-6">
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">Barge Code</label>
@@ -222,6 +239,28 @@ export default function BargeForm() {
           </button>
         </div>
       </form>
+
+      {modal === "confirm" && (
+        <ActionModal
+          variant="confirm"
+          title="Are you sure?"
+          message={`Any data you want to ${isEdit ? "update" : "create"} this data?`}
+          loading={submitting}
+          onConfirm={handleConfirmSubmit}
+          onCancel={() => setModal(null)}
+        />
+      )}
+      {modal === "success" && (
+        <ActionModal variant="success" title={resultMessage} message="You'll be redirected to the barge list." onClose={handleModalClose} />
+      )}
+      {modal === "failed" && (
+        <ActionModal
+          variant="failed"
+          title="Submission Failed"
+          message={resultMessage || "Please check and modify the following information before resubmit."}
+          onClose={handleModalClose}
+        />
+      )}
     </div>
   );
 }

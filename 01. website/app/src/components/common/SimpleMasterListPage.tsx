@@ -343,7 +343,7 @@ export default function SimpleMasterListPage({ title, subtitle, breadcrumb, base
       {deleteModal === "success" && (
         <ActionModal
           variant="success"
-          title={`Data '${deleteTarget?.name}' successfully deleted`}
+          title={`Data ${title} successfully deleted`}
           message="This item has been removed."
           onClose={handleModalClose}
         />
