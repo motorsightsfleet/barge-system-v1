@@ -5,9 +5,7 @@ import { bargeRouter } from "./modules/barge/barge.routes";
 import { areaRouter } from "./modules/area/area.routes";
 import { siteRouter } from "./modules/site/site.routes";
 import { shiftRouter } from "./modules/shift/shift.routes";
-import { brandRouter } from "./modules/brand/brand.routes";
-import { unitTypeRouter } from "./modules/unitType/unitType.routes";
-import { unitModelRouter } from "./modules/unitModel/unitModel.routes";
+import { createReferenceDataRouter } from "./modules/referenceData/referenceData.routes";
 import { engineRouter } from "./modules/engine/engine.routes";
 import { unitModelVariantRouter } from "./modules/unitModelVariant/unitModelVariant.routes";
 import { variantSpecificationRouter } from "./modules/variantSpecification/variantSpecification.routes";
@@ -24,9 +22,13 @@ app.use("/api/barges", bargeRouter);
 app.use("/api/areas", areaRouter);
 app.use("/api/sites", siteRouter);
 app.use("/api/shifts", shiftRouter);
-app.use("/api/brands", brandRouter);
-app.use("/api/unit-types", unitTypeRouter);
-app.use("/api/unit-models", unitModelRouter);
+// Brand / Unit Type / Unit Model are structurally identical (name + isActive) and share
+// one generic module (see modules/referenceData). Legacy per-type paths are preserved so
+// Engine and Variant Specification, which reference them, don't need to change.
+app.use("/api/brands", createReferenceDataRouter("brand"));
+app.use("/api/unit-types", createReferenceDataRouter("unit-type"));
+app.use("/api/unit-models", createReferenceDataRouter("unit-model"));
+app.use("/api/reference-data", createReferenceDataRouter());
 app.use("/api/engines", engineRouter);
 app.use("/api/unit-model-variants", unitModelVariantRouter);
 app.use("/api/variant-specifications", variantSpecificationRouter);

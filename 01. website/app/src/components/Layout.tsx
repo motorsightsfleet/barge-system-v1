@@ -22,11 +22,9 @@ import { useState } from 'react';
 
 const POPULATION_SUBMENU = [
   { label: 'Unit', path: '/master/population/unit' },
-  { label: 'Brand', path: '/master/population/brand' },
-  { label: 'Unit Type', path: '/master/population/unit-type' },
+  { label: 'Reference Data', path: '/master/population/reference-data' },
   { label: 'Engine', path: '/master/population/engine' },
   { label: 'Variant Specification', path: '/master/population/variant-specification' },
-  { label: 'Unit Model', path: '/master/population/unit-model' },
   { label: 'Unit Model Variant', path: '/master/population/unit-model-variant' },
 ];
 

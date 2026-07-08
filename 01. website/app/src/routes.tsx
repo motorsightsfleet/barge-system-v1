@@ -8,12 +8,8 @@ import MasterBarge from "./components/master/MasterBarge";
 import BargeForm from "./components/master/BargeForm";
 import MasterShift from "./components/master/MasterShift";
 import ShiftForm from "./components/master/ShiftForm";
-import MasterBrand from "./components/master/MasterBrand";
-import BrandForm from "./components/master/BrandForm";
-import MasterUnitType from "./components/master/MasterUnitType";
-import UnitTypeForm from "./components/master/UnitTypeForm";
-import MasterUnitModel from "./components/master/MasterUnitModel";
-import UnitModelForm from "./components/master/UnitModelForm";
+import MasterReferenceData from "./components/master/MasterReferenceData";
+import ReferenceDataForm from "./components/master/ReferenceDataForm";
 import MasterEngine from "./components/master/MasterEngine";
 import EngineForm from "./components/master/EngineForm";
 import MasterUnitModelVariant from "./components/master/MasterUnitModelVariant";
@@ -51,17 +47,10 @@ export const routeConfig: RouteObject[] = [
       { path: "master/population/variant-specification/create", Component: VariantSpecificationForm },
       { path: "master/population/variant-specification/:id/edit", Component: VariantSpecificationForm },
 
-      { path: "master/population/brand", Component: MasterBrand },
-      { path: "master/population/brand/create", Component: BrandForm },
-      { path: "master/population/brand/:id/edit", Component: BrandForm },
-
-      { path: "master/population/unit-type", Component: MasterUnitType },
-      { path: "master/population/unit-type/create", Component: UnitTypeForm },
-      { path: "master/population/unit-type/:id/edit", Component: UnitTypeForm },
-
-      { path: "master/population/unit-model", Component: MasterUnitModel },
-      { path: "master/population/unit-model/create", Component: UnitModelForm },
-      { path: "master/population/unit-model/:id/edit", Component: UnitModelForm },
+      { path: "master/population/reference-data", element: <Navigate to="/master/population/reference-data/brand" replace /> },
+      { path: "master/population/reference-data/:type", Component: MasterReferenceData },
+      { path: "master/population/reference-data/:type/create", Component: ReferenceDataForm },
+      { path: "master/population/reference-data/:type/:id/edit", Component: ReferenceDataForm },
 
       { path: "master/population/engine", Component: MasterEngine },
       { path: "master/population/engine/create", Component: EngineForm },
