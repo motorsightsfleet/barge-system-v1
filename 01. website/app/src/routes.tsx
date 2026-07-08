@@ -19,6 +19,7 @@ import EngineForm from "./components/master/EngineForm";
 import MasterUnitModelVariant from "./components/master/MasterUnitModelVariant";
 import UnitModelVariantForm from "./components/master/UnitModelVariantForm";
 import MasterUnit from "./components/master/MasterUnit";
+import UnitForm from "./components/master/UnitForm";
 import MasterVariantSpecification from "./components/master/MasterVariantSpecification";
 import VariantSpecificationForm from "./components/master/VariantSpecificationForm";
 import Planning from "./components/transactional/Planning";
@@ -43,6 +44,9 @@ export const routeConfig: RouteObject[] = [
       { path: "master/shift/:id/edit", Component: ShiftForm },
 
       { path: "master/population/unit", Component: MasterUnit },
+      { path: "master/population/unit/create", Component: UnitForm },
+      { path: "master/population/unit/:id/edit", Component: UnitForm },
+
       { path: "master/population/variant-specification", Component: MasterVariantSpecification },
       { path: "master/population/variant-specification/create", Component: VariantSpecificationForm },
       { path: "master/population/variant-specification/:id/edit", Component: VariantSpecificationForm },

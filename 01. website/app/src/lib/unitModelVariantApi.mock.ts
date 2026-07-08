@@ -1,14 +1,6 @@
 import { ApiError } from "./api";
-import type { UnitModelVariant, UnitModelVariantInput, UnitModelVariantListParams, Pagination } from "./unitModelVariantTypes";
-
-const MOCK_UNIT_MODELS = [
-  { id: "unit-model-ms700", name: "MS700" },
-  { id: "unit-model-pc2000", name: "PC2000" },
-];
-
-function unitModelById(id: string) {
-  return MOCK_UNIT_MODELS.find((m) => m.id === id) ?? MOCK_UNIT_MODELS[0];
-}
+import type { UnitModelVariant, UnitModelVariantInput, UnitModelVariantListParams, Pagination, UnitModelRef } from "./unitModelVariantTypes";
+import { unitModelApi } from "./unitModelApi";
 
 let seq = 0;
 function nextId() {
@@ -19,21 +11,47 @@ function now() {
   return new Date().toISOString();
 }
 
-const SEED = [
-  { name: "8x4", unitModelId: "unit-model-ms700" },
-  { name: "6x4", unitModelId: "unit-model-ms700" },
-  { name: "Standard", unitModelId: "unit-model-pc2000" },
+const SEED_DEFS = [
+  { name: "8x4", unitModelName: "MS700" },
+  { name: "6x4", unitModelName: "MS700" },
+  { name: "Standard", unitModelName: "PC2000" },
 ];
 
-let store: UnitModelVariant[] = SEED.map((v) => ({
-  id: nextId(),
-  name: v.name,
-  unitModelId: v.unitModelId,
-  unitModel: unitModelById(v.unitModelId),
-  isActive: true,
-  createdAt: now(),
-  updatedAt: now(),
-}));
+let store: UnitModelVariant[] = [];
+let seedingPromise: Promise<void> | null = null;
+
+function ensureSeeded(): Promise<void> {
+  if (!seedingPromise) {
+    seedingPromise = (async () => {
+      const unitModelsRes = await unitModelApi.list({ pageSize: 100 });
+      const unitModels = unitModelsRes.data as unknown as UnitModelRef[];
+
+      const built: UnitModelVariant[] = [];
+      for (const def of SEED_DEFS) {
+        const unitModel = unitModels.find((m) => m.name === def.unitModelName);
+        if (!unitModel) continue;
+        built.push({
+          id: nextId(),
+          name: def.name,
+          unitModelId: unitModel.id,
+          unitModel: { id: unitModel.id, name: unitModel.name },
+          isActive: true,
+          createdAt: now(),
+          updatedAt: now(),
+        });
+      }
+      store = built;
+    })();
+  }
+  return seedingPromise;
+}
+
+async function resolveUnitModel(unitModelId: string): Promise<UnitModelRef> {
+  const unitModelsRes = await unitModelApi.list({ pageSize: 100 });
+  const unitModel = (unitModelsRes.data as unknown as UnitModelRef[]).find((m) => m.id === unitModelId);
+  if (!unitModel) throw new ApiError("Unit model is required", [{ field: "unitModelId", message: "Unit model is required" }]);
+  return { id: unitModel.id, name: unitModel.name };
+}
 
 function validate(input: UnitModelVariantInput): { field: string; message: string }[] {
   const errors: { field: string; message: string }[] = [];
@@ -47,9 +65,8 @@ function delay<T>(value: T, ms = 200): Promise<T> {
 }
 
 export const unitModelVariantApiMock = {
-  mockUnitModels: MOCK_UNIT_MODELS,
-
   async list(params: UnitModelVariantListParams): Promise<{ data: UnitModelVariant[]; pagination: Pagination }> {
+    await ensureSeeded();
     const { query, status, unitModelId, page = 1, pageSize = 10, sortBy = "createdAt", sortDir = "desc" } = params;
 
     let filtered = store.filter((v) => {
@@ -74,23 +91,26 @@ export const unitModelVariantApiMock = {
   },
 
   async getOne(id: string): Promise<{ data: UnitModelVariant }> {
+    await ensureSeeded();
     const variant = store.find((v) => v.id === id);
     if (!variant) throw new ApiError("Unit model variant not found");
     return delay({ data: variant });
   },
 
   async create(input: UnitModelVariantInput): Promise<{ data: UnitModelVariant }> {
+    await ensureSeeded();
     const errors = validate(input);
     if (errors.length > 0) throw new ApiError(errors[0].message, errors);
 
     const duplicate = store.some((v) => v.name.toLowerCase() === input.name.toLowerCase() && v.unitModelId === input.unitModelId);
     if (duplicate) throw new ApiError("Unit model variant name already exists for this unit model");
 
+    const unitModel = await resolveUnitModel(input.unitModelId);
     const variant: UnitModelVariant = {
       id: nextId(),
       name: input.name,
       unitModelId: input.unitModelId,
-      unitModel: unitModelById(input.unitModelId),
+      unitModel,
       isActive: input.isActive ?? true,
       createdAt: now(),
       updatedAt: now(),
@@ -100,6 +120,7 @@ export const unitModelVariantApiMock = {
   },
 
   async update(id: string, input: UnitModelVariantInput): Promise<{ data: UnitModelVariant }> {
+    await ensureSeeded();
     const errors = validate(input);
     if (errors.length > 0) throw new ApiError(errors[0].message, errors);
 
@@ -111,11 +132,12 @@ export const unitModelVariantApiMock = {
     );
     if (duplicate) throw new ApiError("Unit model variant name already exists for this unit model");
 
+    const unitModel = await resolveUnitModel(input.unitModelId);
     const updated: UnitModelVariant = {
       ...store[idx],
       name: input.name,
       unitModelId: input.unitModelId,
-      unitModel: unitModelById(input.unitModelId),
+      unitModel,
       isActive: input.isActive ?? true,
       updatedAt: now(),
     };
@@ -124,6 +146,7 @@ export const unitModelVariantApiMock = {
   },
 
   async remove(id: string): Promise<{ data: null }> {
+    await ensureSeeded();
     const idx = store.findIndex((v) => v.id === id);
     if (idx === -1) throw new ApiError("Unit model variant not found");
     store = [...store.slice(0, idx), ...store.slice(idx + 1)];
