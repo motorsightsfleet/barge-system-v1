@@ -142,7 +142,7 @@ export default function Layout() {
                       : 'text-gray-400 hover:text-white'
                   }`}
                 >
-                  <div className={`w-1.5 h-1.5 rounded-full ${isActive('/master/area') ? 'bg-[#5B5FC7]' : 'bg-transparent'}`}></div>
+                  <MapPin className="w-4 h-4" />
                   <span>Area</span>
                 </Link>
 
@@ -154,7 +154,7 @@ export default function Layout() {
                       : 'text-gray-400 hover:text-white'
                   }`}
                 >
-                  <div className={`w-1.5 h-1.5 rounded-full ${isActive('/master/barge') ? 'bg-[#5B5FC7]' : 'bg-transparent'}`}></div>
+                  <Anchor className="w-4 h-4" />
                   <span>Barge</span>
                 </Link>
 
@@ -166,7 +166,7 @@ export default function Layout() {
                       : 'text-gray-400 hover:text-white'
                   }`}
                 >
-                  <div className={`w-1.5 h-1.5 rounded-full ${isActive('/master/shift') ? 'bg-[#5B5FC7]' : 'bg-transparent'}`}></div>
+                  <Clock className="w-4 h-4" />
                   <span>Shift</span>
                 </Link>
 

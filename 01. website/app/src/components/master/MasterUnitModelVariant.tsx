@@ -5,7 +5,6 @@ import {
   Download,
   Search,
   ChevronsUpDown,
-  MoreVertical,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -15,6 +14,7 @@ import { ApiError } from "../../lib/api";
 import { buildPageList } from "../../lib/pagination";
 import ActionModal from "../common/ActionModal";
 import PopulationConfigTabs from "./PopulationConfigTabs";
+import RowActionMenu from "../common/RowActionMenu";
 
 function StatusBadge({ isActive }: { isActive: boolean }) {
   return (
@@ -45,7 +45,6 @@ export default function MasterUnitModelVariant() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [goToInput, setGoToInput] = useState("");
 
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<UnitModelVariant | null>(null);
   const [deleteModal, setDeleteModal] = useState<"confirm" | "success" | "failed" | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -99,7 +98,6 @@ export default function MasterUnitModelVariant() {
   function handleDeleteClick(variant: UnitModelVariant) {
     setDeleteTarget(variant);
     setDeleteModal("confirm");
-    setOpenMenuId(null);
   }
 
   async function handleConfirmDelete() {
@@ -130,7 +128,7 @@ export default function MasterUnitModelVariant() {
     <div>
       <PopulationConfigTabs />
 
-      <div className="p-8 max-w-[1600px] mx-auto space-y-6" onClick={() => setOpenMenuId(null)}>
+      <div className="p-8 max-w-[1600px] mx-auto space-y-6">
       <div className="text-sm text-gray-500">
         Master Data <span className="mx-1">&gt;</span> Population <span className="mx-1">&gt;</span>{" "}
         <Link to="/master/population/reference-data" className="hover:text-[#5B5FC7]">Konfigurasi Unit</Link>{" "}
@@ -229,29 +227,18 @@ export default function MasterUnitModelVariant() {
                     <td className="px-5 py-3.5 text-sm font-semibold text-gray-900">{variant.name}</td>
                     <td className="px-5 py-3.5 text-sm text-gray-600">{variant.unitModel.name}</td>
                     <td className="px-5 py-3.5 text-sm"><StatusBadge isActive={variant.isActive} /></td>
-                    <td className="px-5 py-3.5 text-right relative">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === variant.id ? null : variant.id); }}
-                        className="p-1.5 rounded-lg bg-[#5B5FC7] text-white hover:bg-indigo-700 transition-colors"
-                      >
-                        <MoreVertical className="w-4 h-4" />
-                      </button>
-                      {openMenuId === variant.id && (
-                        <div
-                          onClick={(e) => e.stopPropagation()}
-                          className="absolute right-5 top-11 z-10 w-36 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden"
+                    <td className="px-5 py-3.5 text-right">
+                      <RowActionMenu>
+                        <Link to={`/master/population/unit-model-variant/${variant.id}/edit`} className="block px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                          Edit
+                        </Link>
+                        <button
+                          onClick={() => handleDeleteClick(variant)}
+                          className="w-full text-left px-4 py-2.5 text-sm font-medium text-rose-600 hover:bg-rose-50"
                         >
-                          <Link to={`/master/population/unit-model-variant/${variant.id}/edit`} className="block px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
-                            Edit
-                          </Link>
-                          <button
-                            onClick={() => handleDeleteClick(variant)}
-                            className="w-full text-left px-4 py-2.5 text-sm font-medium text-rose-600 hover:bg-rose-50"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      )}
+                          Delete
+                        </button>
+                      </RowActionMenu>
                     </td>
                   </tr>
                 ))

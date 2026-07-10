@@ -5,7 +5,6 @@ import {
   Download,
   Search,
   ChevronsUpDown,
-  MoreVertical,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
@@ -14,6 +13,7 @@ import { siteApi } from "../../lib/siteApi";
 import { ApiError } from "../../lib/api";
 import { buildPageList } from "../../lib/pagination";
 import ActionModal from "../common/ActionModal";
+import RowActionMenu from "../common/RowActionMenu";
 
 const SORTABLE_COLUMNS: { key: string; label: string }[] = [
   { key: "areaName", label: "Area Name" },
@@ -49,7 +49,6 @@ export default function MasterArea() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [goToInput, setGoToInput] = useState("");
 
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Area | null>(null);
   const [deleteModal, setDeleteModal] = useState<"confirm" | "success" | "failed" | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -107,7 +106,6 @@ export default function MasterArea() {
   function handleDeleteClick(area: Area) {
     setDeleteTarget(area);
     setDeleteModal("confirm");
-    setOpenMenuId(null);
   }
 
   async function handleConfirmDelete() {
@@ -135,7 +133,7 @@ export default function MasterArea() {
   const to = Math.min(pagination.page * pagination.pageSize, pagination.total);
 
   return (
-    <div className="p-8 max-w-[1600px] mx-auto space-y-6" onClick={() => setOpenMenuId(null)}>
+    <div className="p-8 max-w-[1600px] mx-auto space-y-6">
       <div className="text-sm text-gray-500">
         Master Data <span className="mx-1">&gt;</span> <span className="text-[#5B5FC7] font-semibold">Area</span>
       </div>
@@ -235,32 +233,21 @@ export default function MasterArea() {
                     <td className="px-5 py-3.5 text-sm font-semibold text-gray-900">{area.areaName}</td>
                     <td className="px-5 py-3.5 text-sm text-gray-600">{area.site.name}</td>
                     <td className="px-5 py-3.5 text-sm"><StatusBadge isActive={area.isActive} /></td>
-                    <td className="px-5 py-3.5 text-right relative">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === area.id ? null : area.id); }}
-                        className="p-1.5 rounded-lg bg-[#5B5FC7] text-white hover:bg-indigo-700 transition-colors"
-                      >
-                        <MoreVertical className="w-4 h-4" />
-                      </button>
-                      {openMenuId === area.id && (
-                        <div
-                          onClick={(e) => e.stopPropagation()}
-                          className="absolute right-5 top-11 z-10 w-40 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden"
+                    <td className="px-5 py-3.5 text-right">
+                      <RowActionMenu width={160}>
+                        <Link to={`/master/area/${area.id}`} className="block px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                          View Detail
+                        </Link>
+                        <Link to={`/master/area/${area.id}/edit`} className="block px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                          Edit
+                        </Link>
+                        <button
+                          onClick={() => handleDeleteClick(area)}
+                          className="w-full text-left px-4 py-2.5 text-sm font-medium text-rose-600 hover:bg-rose-50"
                         >
-                          <Link to={`/master/area/${area.id}`} className="block px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
-                            View Detail
-                          </Link>
-                          <Link to={`/master/area/${area.id}/edit`} className="block px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
-                            Edit
-                          </Link>
-                          <button
-                            onClick={() => handleDeleteClick(area)}
-                            className="w-full text-left px-4 py-2.5 text-sm font-medium text-rose-600 hover:bg-rose-50"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      )}
+                          Delete
+                        </button>
+                      </RowActionMenu>
                     </td>
                   </tr>
                 ))

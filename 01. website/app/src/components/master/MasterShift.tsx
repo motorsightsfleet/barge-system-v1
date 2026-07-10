@@ -5,7 +5,6 @@ import {
   Download,
   Search,
   ChevronsUpDown,
-  MoreVertical,
   ChevronLeft,
   ChevronRight,
   Clock,
@@ -13,6 +12,7 @@ import {
 import { shiftApi, Shift, Pagination } from "../../lib/shiftApi";
 import { ApiError } from "../../lib/api";
 import { buildPageList } from "../../lib/pagination";
+import RowActionMenu from "../common/RowActionMenu";
 import ActionModal from "../common/ActionModal";
 
 function StatusBadge({ isActive }: { isActive: boolean }) {
@@ -42,7 +42,6 @@ export default function MasterShift() {
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [goToInput, setGoToInput] = useState("");
 
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<Shift | null>(null);
   const [deleteModal, setDeleteModal] = useState<"confirm" | "success" | "failed" | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -95,7 +94,6 @@ export default function MasterShift() {
   function handleDeleteClick(shift: Shift) {
     setDeleteTarget(shift);
     setDeleteModal("confirm");
-    setOpenMenuId(null);
   }
 
   async function handleConfirmDelete() {
@@ -123,7 +121,7 @@ export default function MasterShift() {
   const to = Math.min(pagination.page * pagination.pageSize, pagination.total);
 
   return (
-    <div className="p-8 max-w-[1600px] mx-auto space-y-6" onClick={() => setOpenMenuId(null)}>
+    <div className="p-8 max-w-[1600px] mx-auto space-y-6">
       <div className="text-sm text-gray-500">
         Master Data <span className="mx-1">&gt;</span> <span className="text-[#5B5FC7] font-semibold">Shift</span>
       </div>
@@ -218,29 +216,18 @@ export default function MasterShift() {
                       <span className="inline-flex items-center gap-1.5"><Clock className="w-3.5 h-3.5 text-gray-400" />{shift.shiftEnd}</span>
                     </td>
                     <td className="px-5 py-3.5 text-sm"><StatusBadge isActive={shift.isActive} /></td>
-                    <td className="px-5 py-3.5 text-right relative">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === shift.id ? null : shift.id); }}
-                        className="p-1.5 rounded-lg bg-[#5B5FC7] text-white hover:bg-indigo-700 transition-colors"
-                      >
-                        <MoreVertical className="w-4 h-4" />
-                      </button>
-                      {openMenuId === shift.id && (
-                        <div
-                          onClick={(e) => e.stopPropagation()}
-                          className="absolute right-5 top-11 z-10 w-36 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden"
+                    <td className="px-5 py-3.5 text-right">
+                      <RowActionMenu>
+                        <Link to={`/master/shift/${shift.id}/edit`} className="block px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                          Edit
+                        </Link>
+                        <button
+                          onClick={() => handleDeleteClick(shift)}
+                          className="w-full text-left px-4 py-2.5 text-sm font-medium text-rose-600 hover:bg-rose-50"
                         >
-                          <Link to={`/master/shift/${shift.id}/edit`} className="block px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
-                            Edit
-                          </Link>
-                          <button
-                            onClick={() => handleDeleteClick(shift)}
-                            className="w-full text-left px-4 py-2.5 text-sm font-medium text-rose-600 hover:bg-rose-50"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      )}
+                          Delete
+                        </button>
+                      </RowActionMenu>
                     </td>
                   </tr>
                 ))

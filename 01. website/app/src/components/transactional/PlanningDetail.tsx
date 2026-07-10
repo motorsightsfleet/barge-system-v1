@@ -1,11 +1,12 @@
 import {
   ArrowLeft, Save, Check, X, MapPin, Target, Truck, ChevronRight,
   ChevronDown, ChevronUp, TrendingUp, Play, AlertTriangle, Flag,
-  History, RefreshCw, Search, MoreHorizontal, BarChart3, Settings,
+  History, RefreshCw, Search, BarChart3, Settings,
 } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router";
 import { Fragment, useEffect, useRef, useState } from "react";
 import ActionModal from "../common/ActionModal";
+import RowActionMenu from "../common/RowActionMenu";
 import { areaApi } from "../../lib/areaApi";
 import {
   ACTIVE_STATUSES,
@@ -300,7 +301,6 @@ export default function PlanningDetail() {
   // all dead code in index.html, never wired to a button). ───────────────────────────────
   const [dtSearch, setDtSearch] = useState("");
   const [excaSearch, setExcaSearch] = useState("");
-  const [openMenuKey, setOpenMenuKey] = useState<string | null>(null);
   const [removeTarget, setRemoveTarget] = useState<{ type: "dt" | "exca"; code: string } | null>(null);
 
   function simulateLoaded(code: string) {
@@ -756,7 +756,6 @@ export default function PlanningDetail() {
                                   {filteredDt.length === 0 ? (
                                     <tr><td colSpan={5} className="px-4 py-4 text-xs text-gray-400 text-center">Belum ada Dump Truck (auto-populate dari Operator App).</td></tr>
                                   ) : filteredDt.map(dt => {
-                                    const menuKey = `dt-${dt.code}`;
                                     return (
                                       <tr key={dt.code}>
                                         <td className="px-4 py-2.5"><span className="text-xs font-bold bg-gray-100 px-1.5 py-0.5 rounded">{dt.code}</span></td>
@@ -767,24 +766,14 @@ export default function PlanningDetail() {
                                           </span>
                                         </td>
                                         <td className="px-4 py-2.5 text-xs text-gray-500">{dt.assignedArea || "—"}</td>
-                                        <td className="px-4 py-2.5 relative">
+                                        <td className="px-4 py-2.5">
                                           {readonly || dt.status !== "available" ? (
                                             <span className="text-[11px] text-gray-300">—</span>
                                           ) : (
-                                            <>
-                                              <button onClick={() => setOpenMenuKey(k => k === menuKey ? null : menuKey)} className="p-1 border border-gray-200 rounded-md text-gray-500 hover:bg-gray-50">
-                                                <MoreHorizontal className="w-3.5 h-3.5" />
-                                              </button>
-                                              {openMenuKey === menuKey && (
-                                                <>
-                                                  <div className="fixed inset-0 z-10" onClick={() => setOpenMenuKey(null)} />
-                                                  <div className="absolute right-4 top-full mt-1 z-20 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[130px] overflow-hidden">
-                                                    <button onClick={() => { simulateLoaded(dt.code); setOpenMenuKey(null); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 border-b border-gray-100">▶ Sim</button>
-                                                    <button onClick={() => { setRemoveTarget({ type: "dt", code: dt.code }); setOpenMenuKey(null); }} className="w-full text-left px-3 py-2 text-xs text-rose-600 hover:bg-rose-50">Remove</button>
-                                                  </div>
-                                                </>
-                                              )}
-                                            </>
+                                            <RowActionMenu variant="subtle" width={130}>
+                                              <button onClick={() => simulateLoaded(dt.code)} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 border-b border-gray-100">▶ Sim</button>
+                                              <button onClick={() => setRemoveTarget({ type: "dt", code: dt.code })} className="w-full text-left px-3 py-2 text-xs text-rose-600 hover:bg-rose-50">Remove</button>
+                                            </RowActionMenu>
                                           )}
                                         </td>
                                       </tr>
@@ -818,30 +807,19 @@ export default function PlanningDetail() {
                                   {filteredExca.length === 0 ? (
                                     <tr><td colSpan={5} className="px-4 py-4 text-xs text-gray-400 text-center">Belum ada Excavator (auto-populate dari Operator App).</td></tr>
                                   ) : filteredExca.map(ex => {
-                                    const menuKey = `exca-${ex.code}`;
                                     return (
                                       <tr key={ex.code}>
                                         <td className="px-4 py-2.5"><span className="text-xs font-bold bg-indigo-100 text-[#5B5FC7] px-1.5 py-0.5 rounded">{ex.code}</span></td>
                                         <td className="px-4 py-2.5 text-xs text-gray-600">{ex.model}</td>
                                         <td className="px-4 py-2.5 text-xs text-gray-500">{ex.bucket}m³/bkt</td>
                                         <td className="px-4 py-2.5 text-xs text-gray-500">{ex.assignedArea || "—"}</td>
-                                        <td className="px-4 py-2.5 relative">
+                                        <td className="px-4 py-2.5">
                                           {readonly ? (
                                             <span className="text-[11px] text-gray-300">—</span>
                                           ) : (
-                                            <>
-                                              <button onClick={() => setOpenMenuKey(k => k === menuKey ? null : menuKey)} className="p-1 border border-gray-200 rounded-md text-gray-500 hover:bg-gray-50">
-                                                <MoreHorizontal className="w-3.5 h-3.5" />
-                                              </button>
-                                              {openMenuKey === menuKey && (
-                                                <>
-                                                  <div className="fixed inset-0 z-10" onClick={() => setOpenMenuKey(null)} />
-                                                  <div className="absolute right-4 top-full mt-1 z-20 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[130px] overflow-hidden">
-                                                    <button onClick={() => { setRemoveTarget({ type: "exca", code: ex.code }); setOpenMenuKey(null); }} className="w-full text-left px-3 py-2 text-xs text-rose-600 hover:bg-rose-50">Remove</button>
-                                                  </div>
-                                                </>
-                                              )}
-                                            </>
+                                            <RowActionMenu variant="subtle" width={130}>
+                                              <button onClick={() => setRemoveTarget({ type: "exca", code: ex.code })} className="w-full text-left px-3 py-2 text-xs text-rose-600 hover:bg-rose-50">Remove</button>
+                                            </RowActionMenu>
                                           )}
                                         </td>
                                       </tr>

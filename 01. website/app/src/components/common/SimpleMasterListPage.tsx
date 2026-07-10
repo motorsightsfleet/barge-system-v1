@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router";
-import { Plus, Download, Search, ChevronsUpDown, MoreVertical, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Download, Search, ChevronsUpDown, ChevronLeft, ChevronRight } from "lucide-react";
 import type { SimpleMasterEntity, Pagination } from "../../lib/simpleMasterTypes";
 import { ApiError } from "../../lib/api";
 import { buildPageList } from "../../lib/pagination";
 import ActionModal from "./ActionModal";
+import RowActionMenu from "./RowActionMenu";
 
 interface SimpleMasterApi {
   list: (params: { query?: string; status?: "active" | "inactive" | ""; page?: number; pageSize?: number; sortBy?: string; sortDir?: "asc" | "desc" }) => Promise<{ data: SimpleMasterEntity[]; pagination: Pagination }>;
@@ -52,7 +53,6 @@ export default function SimpleMasterListPage({ title, breadcrumb, basePath, api,
   const [sortDir, setSortDir] = useState<"asc" | "desc">("desc");
   const [goToInput, setGoToInput] = useState("");
 
-  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<SimpleMasterEntity | null>(null);
   const [deleteModal, setDeleteModal] = useState<"confirm" | "success" | "failed" | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -101,7 +101,6 @@ export default function SimpleMasterListPage({ title, breadcrumb, basePath, api,
   function handleDeleteClick(item: SimpleMasterEntity) {
     setDeleteTarget(item);
     setDeleteModal("confirm");
-    setOpenMenuId(null);
   }
 
   async function handleConfirmDelete() {
@@ -129,7 +128,7 @@ export default function SimpleMasterListPage({ title, breadcrumb, basePath, api,
   const to = Math.min(pagination.page * pagination.pageSize, pagination.total);
 
   return (
-    <div className="p-8 max-w-[1600px] mx-auto space-y-6" onClick={() => setOpenMenuId(null)}>
+    <div className="p-8 max-w-[1600px] mx-auto space-y-6">
       <div className="text-sm text-gray-500">
         {breadcrumb.map((item, idx) => (
           <span key={item.label}>
@@ -222,29 +221,18 @@ export default function SimpleMasterListPage({ title, breadcrumb, basePath, api,
                     <td className="px-5 py-3.5 text-sm text-gray-500">{from + idx}</td>
                     <td className="px-5 py-3.5 text-sm font-semibold text-gray-900">{item.name}</td>
                     <td className="px-5 py-3.5 text-sm"><StatusBadge isActive={item.isActive} /></td>
-                    <td className="px-5 py-3.5 text-right relative">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setOpenMenuId(openMenuId === item.id ? null : item.id); }}
-                        className="p-1.5 rounded-lg bg-[#5B5FC7] text-white hover:bg-indigo-700 transition-colors"
-                      >
-                        <MoreVertical className="w-4 h-4" />
-                      </button>
-                      {openMenuId === item.id && (
-                        <div
-                          onClick={(e) => e.stopPropagation()}
-                          className="absolute right-5 top-11 z-10 w-36 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden"
+                    <td className="px-5 py-3.5 text-right">
+                      <RowActionMenu>
+                        <Link to={`${basePath}/${item.id}/edit`} className="block px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
+                          Edit
+                        </Link>
+                        <button
+                          onClick={() => handleDeleteClick(item)}
+                          className="w-full text-left px-4 py-2.5 text-sm font-medium text-rose-600 hover:bg-rose-50"
                         >
-                          <Link to={`${basePath}/${item.id}/edit`} className="block px-4 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50">
-                            Edit
-                          </Link>
-                          <button
-                            onClick={() => handleDeleteClick(item)}
-                            className="w-full text-left px-4 py-2.5 text-sm font-medium text-rose-600 hover:bg-rose-50"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      )}
+                          Delete
+                        </button>
+                      </RowActionMenu>
                     </td>
                   </tr>
                 ))
