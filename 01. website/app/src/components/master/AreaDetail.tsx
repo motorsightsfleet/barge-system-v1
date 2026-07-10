@@ -31,11 +31,11 @@ export default function AreaDetail() {
         <span className="mx-1">&gt;</span> <span className="text-[#5B5FC7] font-semibold">Detail</span>
       </div>
 
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900">{area.areaName}</h1>
-        <span className={`inline-flex items-center gap-1.5 mt-1.5 text-xs font-semibold ${area.isActive ? "text-emerald-600" : "text-rose-500"}`}>
+      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4 flex items-center gap-3">
+        <span className="text-sm font-bold text-gray-900">{area.areaName}</span>
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${area.isActive ? "bg-emerald-100 text-emerald-700" : "bg-rose-100 text-rose-600"}`}>
           <span className={`w-1.5 h-1.5 rounded-full ${area.isActive ? "bg-emerald-500" : "bg-rose-500"}`} />
-          {area.isActive ? "active" : "inactive"}
+          {area.isActive ? "Active" : "Inactive"}
         </span>
       </div>
 

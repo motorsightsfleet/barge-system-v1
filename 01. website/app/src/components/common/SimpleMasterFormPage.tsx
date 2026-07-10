@@ -94,7 +94,6 @@ export default function SimpleMasterFormPage({ entityLabel, breadcrumb, basePath
   }
 
   const crumbs = breadcrumb(isEdit);
-  const title = isEdit ? `Update ${entityLabel}` : `Create ${entityLabel}`;
 
   return (
     <div className="p-8 max-w-[1600px] mx-auto space-y-6">
@@ -110,8 +109,6 @@ export default function SimpleMasterFormPage({ entityLabel, breadcrumb, basePath
           </span>
         ))}
       </div>
-
-      <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
 
       <form onSubmit={handleSubmitClick} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-6">
@@ -155,13 +152,13 @@ export default function SimpleMasterFormPage({ entityLabel, breadcrumb, basePath
             to={basePath}
             className="px-6 py-2.5 border border-gray-300 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors"
           >
-            Cancel
+            Batal
           </Link>
           <button
             type="submit"
             className="px-6 py-2.5 bg-[#5B5FC7] hover:bg-indigo-700 text-white rounded-xl text-sm font-bold transition-colors"
           >
-            Submit
+            Save
           </button>
         </div>
       </form>

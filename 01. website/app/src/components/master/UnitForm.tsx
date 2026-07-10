@@ -218,8 +218,6 @@ export default function UnitForm() {
         <span className="text-[#5B5FC7] font-semibold">{isEdit ? "Update Unit" : "Create Unit"}</span>
       </div>
 
-      <h1 className="text-2xl font-bold text-gray-900">{isEdit ? "Update Unit" : "Create Unit"}</h1>
-
       <form onSubmit={handleSubmitClick} className="space-y-6">
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 space-y-8">
           <div>
@@ -495,13 +493,13 @@ export default function UnitForm() {
             to="/master/population/unit"
             className="px-6 py-2.5 border border-gray-300 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors"
           >
-            Cancel
+            Batal
           </Link>
           <button
             type="submit"
             className="px-6 py-2.5 bg-[#5B5FC7] hover:bg-indigo-700 text-white rounded-xl text-sm font-bold transition-colors"
           >
-            Submit
+            Save
           </button>
         </div>
       </form>

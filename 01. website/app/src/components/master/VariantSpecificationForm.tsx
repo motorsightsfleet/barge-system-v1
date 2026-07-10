@@ -164,8 +164,6 @@ export default function VariantSpecificationForm() {
         <span className="text-[#5B5FC7] font-semibold">{isEdit ? "Update Variant Specification" : "Create Variant Specification"}</span>
       </div>
 
-      <h1 className="text-2xl font-bold text-gray-900">{isEdit ? "Update Variant Specification" : "Create Variant Specification"}</h1>
-
       <form onSubmit={handleSubmitClick} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 space-y-8">
         <div>
           <h3 className="text-sm font-bold text-gray-700 mb-4">Configuration</h3>
@@ -344,13 +342,13 @@ export default function VariantSpecificationForm() {
             to="/master/population/variant-specification"
             className="px-6 py-2.5 border border-gray-300 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors"
           >
-            Cancel
+            Batal
           </Link>
           <button
             type="submit"
             className="px-6 py-2.5 bg-[#5B5FC7] hover:bg-indigo-700 text-white rounded-xl text-sm font-bold transition-colors"
           >
-            Submit
+            Save
           </button>
         </div>
       </form>

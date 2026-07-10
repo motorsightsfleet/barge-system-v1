@@ -102,8 +102,6 @@ export default function ShiftForm() {
         <span className="text-[#5B5FC7] font-semibold">{isEdit ? "Update Shift" : "Create Shift"}</span>
       </div>
 
-      <h1 className="text-2xl font-bold text-gray-900">{isEdit ? "Update Shift" : "Create Shift"}</h1>
-
       <form onSubmit={handleSubmitClick} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-6">
           <div>
@@ -176,13 +174,13 @@ export default function ShiftForm() {
             to="/master/shift"
             className="px-6 py-2.5 border border-gray-300 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors"
           >
-            Cancel
+            Batal
           </Link>
           <button
             type="submit"
             className="px-6 py-2.5 bg-[#5B5FC7] hover:bg-indigo-700 text-white rounded-xl text-sm font-bold transition-colors"
           >
-            Submit
+            Save
           </button>
         </div>
       </form>

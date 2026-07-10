@@ -110,8 +110,6 @@ export default function BargeForm() {
         <span className="text-[#5B5FC7] font-semibold">{isEdit ? "Update Barge" : "Create Barge"}</span>
       </div>
 
-      <h1 className="text-2xl font-bold text-gray-900">{isEdit ? "Update Barge" : "Create Barge"}</h1>
-
       {formError && (
         <div className="bg-rose-50 border border-rose-200 text-rose-700 text-sm font-medium rounded-xl px-4 py-3">
           {formError}
@@ -228,14 +226,14 @@ export default function BargeForm() {
             to="/master/barge"
             className="px-6 py-2.5 border border-gray-300 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-50 transition-colors"
           >
-            Cancel
+            Batal
           </Link>
           <button
             type="submit"
             disabled={submitting}
             className="px-6 py-2.5 bg-[#5B5FC7] hover:bg-indigo-700 disabled:opacity-60 text-white rounded-xl text-sm font-bold transition-colors"
           >
-            {submitting ? "Saving..." : "Submit"}
+            {submitting ? "Saving..." : "Save"}
           </button>
         </div>
       </form>
