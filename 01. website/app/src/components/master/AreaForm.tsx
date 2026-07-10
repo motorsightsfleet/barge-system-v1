@@ -213,8 +213,14 @@ export default function AreaForm() {
             <p className="mt-1 text-xs text-rose-500 font-medium">{fieldErrors.polygonCoordinates}</p>
           )}
 
+          <p className="mt-1 text-xs text-gray-400">Ketik koordinat WKT langsung, atau gambar di peta di bawah.</p>
+
           <div className="mt-4">
-            <PolygonMap wkt={form.polygonCoordinates} height={300} />
+            <PolygonMap
+              wkt={form.polygonCoordinates}
+              height={300}
+              onDraw={(newWkt) => setForm({ ...form, polygonCoordinates: newWkt })}
+            />
           </div>
         </div>
 
