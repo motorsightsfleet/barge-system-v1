@@ -3,7 +3,6 @@ import { ArrowLeft } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router";
 import { variantSpecificationApi } from "../../lib/variantSpecificationApi";
 import { unitTypeApi } from "../../lib/unitTypeApi";
-import { unitModelApi } from "../../lib/unitModelApi";
 import { unitModelVariantApi, UnitModelVariant } from "../../lib/unitModelVariantApi";
 import { engineApi, Engine } from "../../lib/engineApi";
 import { ApiError } from "../../lib/api";
@@ -44,7 +43,6 @@ export default function VariantSpecificationForm() {
   const isEdit = Boolean(id);
 
   const [unitTypes, setUnitTypes] = useState<RefOption[]>([]);
-  const [unitModels, setUnitModels] = useState<RefOption[]>([]);
   const [allVariants, setAllVariants] = useState<UnitModelVariant[]>([]);
   const [engines, setEngines] = useState<Engine[]>([]);
 
@@ -58,7 +56,6 @@ export default function VariantSpecificationForm() {
 
   useEffect(() => {
     unitTypeApi.list({ pageSize: 100 }).then((res) => setUnitTypes(res.data as unknown as RefOption[]));
-    unitModelApi.list({ pageSize: 100 }).then((res) => setUnitModels(res.data as unknown as RefOption[]));
     unitModelVariantApi.list({ pageSize: 100 }).then((res) => setAllVariants(res.data));
     engineApi.list({ pageSize: 100 }).then((res) => setEngines(res.data));
   }, []);
@@ -84,19 +81,20 @@ export default function VariantSpecificationForm() {
       .finally(() => setLoading(false));
   }, [id]);
 
-  // Cascading: only show variants that belong to the selected unit model.
-  const availableVariants = useMemo(
-    () => allVariants.filter((v) => v.unitModelId === form.unitModelId),
-    [allVariants, form.unitModelId]
-  );
+  // Group variants by their parent unit model, so a single select can stand in for
+  // the old two-step "pick a model, then pick a variant of that model" cascade.
+  const variantGroups = useMemo(() => {
+    const groups = new Map<string, { modelName: string; variants: UnitModelVariant[] }>();
+    for (const v of allVariants) {
+      if (!groups.has(v.unitModelId)) groups.set(v.unitModelId, { modelName: v.unitModel.name, variants: [] });
+      groups.get(v.unitModelId)!.variants.push(v);
+    }
+    return Array.from(groups.values());
+  }, [allVariants]);
 
-  function handleUnitModelChange(unitModelId: string) {
-    setForm((prev) => ({
-      ...prev,
-      unitModelId,
-      // Reset the variant selection if it no longer belongs to the newly selected model.
-      unitModelVariantId: allVariants.find((v) => v.id === prev.unitModelVariantId)?.unitModelId === unitModelId ? prev.unitModelVariantId : "",
-    }));
+  function handleVariantChange(unitModelVariantId: string) {
+    const variant = allVariants.find((v) => v.id === unitModelVariantId);
+    setForm((prev) => ({ ...prev, unitModelVariantId, unitModelId: variant?.unitModelId ?? "" }));
   }
 
   function handleSubmitClick(e: React.FormEvent) {
@@ -209,38 +207,22 @@ export default function VariantSpecificationForm() {
 
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                Unit Model<span className="text-rose-500">*</span>
-              </label>
-              <select
-                value={form.unitModelId}
-                onChange={(e) => handleUnitModelChange(e.target.value)}
-                className={`w-full px-4 py-2.5 border rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#5B5FC7]/30 ${
-                  fieldErrors.unitModelId ? "border-rose-400" : "border-gray-300"
-                }`}
-              >
-                <option value="">Select Unit Model</option>
-                {unitModels.map((m) => (
-                  <option key={m.id} value={m.id}>{m.name}</option>
-                ))}
-              </select>
-              {fieldErrors.unitModelId && <p className="mt-1 text-xs text-rose-500 font-medium">{fieldErrors.unitModelId}</p>}
-            </div>
-
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-1.5">
                 Unit Model Variant<span className="text-rose-500">*</span>
               </label>
               <select
                 value={form.unitModelVariantId}
-                onChange={(e) => setForm({ ...form, unitModelVariantId: e.target.value })}
-                disabled={!form.unitModelId}
-                className={`w-full px-4 py-2.5 border rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#5B5FC7]/30 disabled:bg-gray-50 disabled:text-gray-400 ${
+                onChange={(e) => handleVariantChange(e.target.value)}
+                className={`w-full px-4 py-2.5 border rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#5B5FC7]/30 ${
                   fieldErrors.unitModelVariantId ? "border-rose-400" : "border-gray-300"
                 }`}
               >
-                <option value="">{form.unitModelId ? "Select Unit Model Variant" : "Select a Unit Model first"}</option>
-                {availableVariants.map((v) => (
-                  <option key={v.id} value={v.id}>{v.name}</option>
+                <option value="">Select Unit Model Variant</option>
+                {variantGroups.map((group) => (
+                  <optgroup key={group.modelName} label={group.modelName}>
+                    {group.variants.map((v) => (
+                      <option key={v.id} value={v.id}>{v.name}</option>
+                    ))}
+                  </optgroup>
                 ))}
               </select>
               {fieldErrors.unitModelVariantId && <p className="mt-1 text-xs text-rose-500 font-medium">{fieldErrors.unitModelVariantId}</p>}

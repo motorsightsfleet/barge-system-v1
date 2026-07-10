@@ -4,10 +4,9 @@ import { unitApi, UNIT_STATUSES } from "../../lib/unitApi";
 import { siteApi } from "../../lib/siteApi";
 import type { Site } from "../../lib/areaTypes";
 import { variantSpecificationApi, VariantSpecification } from "../../lib/variantSpecificationApi";
-import { engineApi, Engine } from "../../lib/engineApi";
 import { ApiError } from "../../lib/api";
 import ActionModal, { ActionModalVariant } from "../common/ActionModal";
-import { ArrowLeft, PencilLine, RotateCcw, X } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 
 interface FormState {
   unitCode: string;
@@ -17,12 +16,6 @@ interface FormState {
   serialNumber: string;
   arriveDate: string;
   isActive: boolean;
-  // Per-field overrides. Empty string = not overridden (inherit from the selected variant specification).
-  engineOverrideId: string;
-  capacityVesselOverride: string;
-  axleConfigurationOverride: string;
-  totalWheelOverride: string;
-  wheelSizeOverride: string;
 }
 
 const EMPTY_FORM: FormState = {
@@ -33,11 +26,6 @@ const EMPTY_FORM: FormState = {
   serialNumber: "",
   arriveDate: "",
   isActive: true,
-  engineOverrideId: "",
-  capacityVesselOverride: "",
-  axleConfigurationOverride: "",
-  totalWheelOverride: "",
-  wheelSizeOverride: "",
 };
 
 export default function UnitForm() {
@@ -47,10 +35,8 @@ export default function UnitForm() {
 
   const [sites, setSites] = useState<Site[]>([]);
   const [specs, setSpecs] = useState<VariantSpecification[]>([]);
-  const [engines, setEngines] = useState<Engine[]>([]);
 
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
-  const [specEditMode, setSpecEditMode] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(isEdit);
 
@@ -61,7 +47,6 @@ export default function UnitForm() {
   useEffect(() => {
     siteApi.list().then((res) => setSites(res.data));
     variantSpecificationApi.list({ pageSize: 100 }).then((res) => setSpecs(res.data));
-    engineApi.list({ pageSize: 100 }).then((res) => setEngines(res.data));
   }, []);
 
   useEffect(() => {
@@ -78,11 +63,6 @@ export default function UnitForm() {
           serialNumber: unit.serialNumber,
           arriveDate: unit.arriveDate.slice(0, 10),
           isActive: unit.isActive,
-          engineOverrideId: unit.engineOverrideId ?? "",
-          capacityVesselOverride: unit.capacityVesselOverride !== null ? String(unit.capacityVesselOverride) : "",
-          axleConfigurationOverride: unit.axleConfigurationOverride ?? "",
-          totalWheelOverride: unit.totalWheelOverride !== null ? String(unit.totalWheelOverride) : "",
-          wheelSizeOverride: unit.wheelSizeOverride !== null ? String(unit.wheelSizeOverride) : "",
         });
       })
       .finally(() => setLoading(false));
@@ -92,62 +72,6 @@ export default function UnitForm() {
     () => specs.find((s) => s.id === form.variantSpecificationId) ?? null,
     [specs, form.variantSpecificationId]
   );
-
-  const isOverridden = {
-    engine: form.engineOverrideId !== "",
-    capacityVessel: form.capacityVesselOverride !== "",
-    axleConfiguration: form.axleConfigurationOverride !== "",
-    totalWheel: form.totalWheelOverride !== "",
-    wheelSize: form.wheelSizeOverride !== "",
-  };
-
-  const resolved = selectedSpec
-    ? {
-        engineName: form.engineOverrideId
-          ? engines.find((e) => e.id === form.engineOverrideId)?.name ?? selectedSpec.engine.name
-          : selectedSpec.engine.name,
-        capacityVessel: isOverridden.capacityVessel ? form.capacityVesselOverride : String(selectedSpec.capacityVessel),
-        axleConfiguration: isOverridden.axleConfiguration ? form.axleConfigurationOverride : selectedSpec.axleConfiguration,
-        totalWheel: isOverridden.totalWheel ? form.totalWheelOverride : String(selectedSpec.totalWheel),
-        wheelSize: isOverridden.wheelSize ? form.wheelSizeOverride : String(selectedSpec.wheelSize),
-      }
-    : null;
-
-  function handleSpecChange(variantSpecificationId: string) {
-    setForm((prev) => ({
-      ...prev,
-      variantSpecificationId,
-      // A new specification invalidates any overrides tuned for the previous one.
-      engineOverrideId: "",
-      capacityVesselOverride: "",
-      axleConfigurationOverride: "",
-      totalWheelOverride: "",
-      wheelSizeOverride: "",
-    }));
-    setSpecEditMode(false);
-  }
-
-  function handleOverrideChange(field: "capacityVesselOverride" | "axleConfigurationOverride" | "totalWheelOverride" | "wheelSizeOverride", rawValue: string, baseValue: string) {
-    setForm((prev) => ({ ...prev, [field]: rawValue === baseValue ? "" : rawValue }));
-  }
-
-  function handleEngineOverrideChange(engineId: string) {
-    setForm((prev) => ({
-      ...prev,
-      engineOverrideId: engineId === selectedSpec?.engineId ? "" : engineId,
-    }));
-  }
-
-  function handleResetToDefault() {
-    setForm((prev) => ({
-      ...prev,
-      engineOverrideId: "",
-      capacityVesselOverride: "",
-      axleConfigurationOverride: "",
-      totalWheelOverride: "",
-      wheelSizeOverride: "",
-    }));
-  }
 
   function handleSubmitClick(e: React.FormEvent) {
     e.preventDefault();
@@ -166,11 +90,6 @@ export default function UnitForm() {
       serialNumber: form.serialNumber,
       arriveDate: form.arriveDate,
       isActive: form.isActive,
-      engineOverrideId: form.engineOverrideId === "" ? null : form.engineOverrideId,
-      capacityVesselOverride: form.capacityVesselOverride === "" ? null : Number(form.capacityVesselOverride),
-      axleConfigurationOverride: form.axleConfigurationOverride === "" ? null : form.axleConfigurationOverride,
-      totalWheelOverride: form.totalWheelOverride === "" ? null : Number(form.totalWheelOverride),
-      wheelSizeOverride: form.wheelSizeOverride === "" ? null : Number(form.wheelSizeOverride),
     };
 
     try {
@@ -299,7 +218,7 @@ export default function UnitForm() {
                 </label>
                 <select
                   value={form.variantSpecificationId}
-                  onChange={(e) => handleSpecChange(e.target.value)}
+                  onChange={(e) => setForm({ ...form, variantSpecificationId: e.target.value })}
                   className={`w-full px-4 py-2.5 border rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#5B5FC7]/30 ${
                     fieldErrors.variantSpecificationId ? "border-rose-400" : "border-gray-300"
                   }`}
@@ -349,141 +268,20 @@ export default function UnitForm() {
         </div>
 
         <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 space-y-5">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-sm font-bold text-gray-700">Specification</h3>
-              <p className="text-xs text-gray-500 mt-0.5">
-                {selectedSpec ? "Auto-filled from the selected variant specification. Override any field if this unit differs." : "Select a variant specification to see its details."}
-              </p>
-            </div>
-            {selectedSpec && (
-              specEditMode ? (
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={handleResetToDefault}
-                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-gray-600 bg-gray-100 hover:bg-gray-200 transition-colors"
-                  >
-                    <RotateCcw className="w-3.5 h-3.5" />
-                    Reset to Default
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setSpecEditMode(false)}
-                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-white bg-gray-500 hover:bg-gray-600 transition-colors"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                    Done
-                  </button>
-                </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setSpecEditMode(true)}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold text-[#5B5FC7] bg-indigo-50 hover:bg-indigo-100 transition-colors"
-                >
-                  <PencilLine className="w-3.5 h-3.5" />
-                  Edit Specification
-                </button>
-              )
-            )}
+          <div>
+            <h3 className="text-sm font-bold text-gray-700">Specification</h3>
+            <p className="text-xs text-gray-500 mt-0.5">Inherited from the selected variant specification.</p>
           </div>
 
           {!selectedSpec ? (
             <div className="text-sm text-gray-400 italic">No variant specification selected yet.</div>
-          ) : !specEditMode ? (
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
-              <SpecReadOnlyField label="Engine" value={resolved!.engineName} overridden={isOverridden.engine} />
-              <SpecReadOnlyField label="Capacity Vessel" value={resolved!.capacityVessel} overridden={isOverridden.capacityVessel} />
-              <SpecReadOnlyField label="Axle Configuration" value={resolved!.axleConfiguration} overridden={isOverridden.axleConfiguration} />
-              <SpecReadOnlyField label="Total Wheel" value={resolved!.totalWheel} overridden={isOverridden.totalWheel} />
-              <SpecReadOnlyField label="Wheel Size" value={resolved!.wheelSize} overridden={isOverridden.wheelSize} />
-            </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-6">
-              <div>
-                <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-1.5">
-                  Engine
-                  {isOverridden.engine && <OverrideBadge />}
-                </label>
-                <select
-                  value={form.engineOverrideId || selectedSpec.engineId}
-                  onChange={(e) => handleEngineOverrideChange(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#5B5FC7]/30"
-                >
-                  {engines.map((eng) => (
-                    <option key={eng.id} value={eng.id}>{eng.name} ({eng.brand.name})</option>
-                  ))}
-                </select>
-                {fieldErrors.engineOverrideId && <p className="mt-1 text-xs text-rose-500 font-medium">{fieldErrors.engineOverrideId}</p>}
-              </div>
-
-              <div>
-                <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-1.5">
-                  Capacity Vessel
-                  {isOverridden.capacityVessel && <OverrideBadge />}
-                </label>
-                <input
-                  type="number"
-                  min={0}
-                  value={form.capacityVesselOverride || String(selectedSpec.capacityVessel)}
-                  onChange={(e) => handleOverrideChange("capacityVesselOverride", e.target.value, String(selectedSpec.capacityVessel))}
-                  className={`w-full px-4 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5B5FC7]/30 ${
-                    fieldErrors.capacityVesselOverride ? "border-rose-400" : "border-gray-300"
-                  }`}
-                />
-                {fieldErrors.capacityVesselOverride && <p className="mt-1 text-xs text-rose-500 font-medium">{fieldErrors.capacityVesselOverride}</p>}
-              </div>
-
-              <div>
-                <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-1.5">
-                  Axle Configuration
-                  {isOverridden.axleConfiguration && <OverrideBadge />}
-                </label>
-                <input
-                  type="text"
-                  value={form.axleConfigurationOverride || selectedSpec.axleConfiguration}
-                  onChange={(e) => handleOverrideChange("axleConfigurationOverride", e.target.value, selectedSpec.axleConfiguration)}
-                  className={`w-full px-4 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5B5FC7]/30 ${
-                    fieldErrors.axleConfigurationOverride ? "border-rose-400" : "border-gray-300"
-                  }`}
-                />
-                {fieldErrors.axleConfigurationOverride && <p className="mt-1 text-xs text-rose-500 font-medium">{fieldErrors.axleConfigurationOverride}</p>}
-              </div>
-
-              <div>
-                <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-1.5">
-                  Total Wheel
-                  {isOverridden.totalWheel && <OverrideBadge />}
-                </label>
-                <input
-                  type="number"
-                  min={0}
-                  value={form.totalWheelOverride || String(selectedSpec.totalWheel)}
-                  onChange={(e) => handleOverrideChange("totalWheelOverride", e.target.value, String(selectedSpec.totalWheel))}
-                  className={`w-full px-4 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5B5FC7]/30 ${
-                    fieldErrors.totalWheelOverride ? "border-rose-400" : "border-gray-300"
-                  }`}
-                />
-                {fieldErrors.totalWheelOverride && <p className="mt-1 text-xs text-rose-500 font-medium">{fieldErrors.totalWheelOverride}</p>}
-              </div>
-
-              <div>
-                <label className="flex items-center gap-2 text-sm font-semibold text-gray-700 mb-1.5">
-                  Wheel Size
-                  {isOverridden.wheelSize && <OverrideBadge />}
-                </label>
-                <input
-                  type="number"
-                  min={0}
-                  value={form.wheelSizeOverride || String(selectedSpec.wheelSize)}
-                  onChange={(e) => handleOverrideChange("wheelSizeOverride", e.target.value, String(selectedSpec.wheelSize))}
-                  className={`w-full px-4 py-2.5 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5B5FC7]/30 ${
-                    fieldErrors.wheelSizeOverride ? "border-rose-400" : "border-gray-300"
-                  }`}
-                />
-                {fieldErrors.wheelSizeOverride && <p className="mt-1 text-xs text-rose-500 font-medium">{fieldErrors.wheelSizeOverride}</p>}
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+              <SpecReadOnlyField label="Engine" value={selectedSpec.engine.name} />
+              <SpecReadOnlyField label="Capacity Vessel" value={String(selectedSpec.capacityVessel)} />
+              <SpecReadOnlyField label="Axle Configuration" value={selectedSpec.axleConfiguration} />
+              <SpecReadOnlyField label="Total Wheel" value={String(selectedSpec.totalWheel)} />
+              <SpecReadOnlyField label="Wheel Size" value={String(selectedSpec.wheelSize)} />
             </div>
           )}
         </div>
@@ -529,19 +327,10 @@ export default function UnitForm() {
   );
 }
 
-function OverrideBadge() {
-  return (
-    <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-700">Custom</span>
-  );
-}
-
-function SpecReadOnlyField({ label, value, overridden }: { label: string; value: string; overridden: boolean }) {
+function SpecReadOnlyField({ label, value }: { label: string; value: string }) {
   return (
     <div className="bg-gray-50 border border-gray-100 rounded-xl p-4">
-      <div className="flex items-center gap-2">
-        <p className="text-xs font-semibold text-gray-500">{label}</p>
-        {overridden && <OverrideBadge />}
-      </div>
+      <p className="text-xs font-semibold text-gray-500">{label}</p>
       <p className="text-sm font-bold text-gray-900 mt-1">{value}</p>
     </div>
   );
