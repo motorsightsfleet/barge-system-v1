@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { X } from "lucide-react";
+import { ApiError } from "../../lib/api";
 
 export interface Option {
   id: string;
@@ -37,8 +38,8 @@ export default function CreatableSelect({ value, onChange, options, onCreated, c
       onChange(created.id);
       setCreating(false);
       setNewName("");
-    } catch {
-      setCreateError("Gagal membuat data baru.");
+    } catch (err) {
+      setCreateError(err instanceof ApiError ? err.message : "Gagal membuat data baru.");
     } finally {
       setSubmitting(false);
     }

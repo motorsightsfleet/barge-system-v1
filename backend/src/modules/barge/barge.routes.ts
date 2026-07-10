@@ -3,6 +3,7 @@ import * as bargeController from "./barge.controller";
 
 export const bargeRouter = Router();
 
+bargeRouter.get("/export", bargeController.exportCsv);
 bargeRouter.get("/", bargeController.list);
 bargeRouter.get("/:id", bargeController.getOne);
 bargeRouter.post("/", bargeController.create);

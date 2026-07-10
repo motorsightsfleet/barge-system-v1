@@ -36,4 +36,5 @@ export const bargeApi = {
   update: (id: string, input: BargeInput) =>
     USE_MOCK ? bargeApiMock.update(id, input) : api.put<ItemResponse>(`/barges/${id}`, input),
   remove: (id: string) => (USE_MOCK ? bargeApiMock.remove(id) : api.delete<{ data: null }>(`/barges/${id}`)),
+  exportUrl: () => `${import.meta.env.VITE_API_BASE_URL ?? "http://localhost:4000/api"}/barges/export`,
 };

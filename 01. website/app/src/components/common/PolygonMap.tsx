@@ -33,8 +33,7 @@ function LocationSearch() {
   const [term, setTerm] = useState("");
   const [searching, setSearching] = useState(false);
 
-  async function handleSearch(e: React.FormEvent) {
-    e.preventDefault();
+  async function handleSearch() {
     if (!term.trim()) return;
     setSearching(true);
     try {
@@ -52,20 +51,27 @@ function LocationSearch() {
     }
   }
 
+  // A plain <div>, not <form> — PolygonMap renders inside AreaForm's own <form>, and
+  // nested <form> elements are invalid HTML: the browser silently drops the inner one,
+  // so pressing Enter here would otherwise submit the outer Area form instead of
+  // searching. Enter-to-search is handled manually via onKeyDown instead.
   return (
-    <form
-      onSubmit={handleSearch}
-      className="absolute top-2 left-2 z-[1000] flex items-center gap-1.5 bg-white rounded-lg shadow-md px-2 py-1.5"
-    >
+    <div className="absolute top-2 left-2 z-[1000] flex items-center gap-1.5 bg-white rounded-lg shadow-md px-2 py-1.5">
       <Search className="w-3.5 h-3.5 text-gray-400" />
       <input
         value={term}
         onChange={(e) => setTerm(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            handleSearch();
+          }
+        }}
         placeholder="Search location..."
         className="text-xs outline-none w-36"
       />
       {searching && <span className="text-[10px] text-gray-400">...</span>}
-    </form>
+    </div>
   );
 }
 

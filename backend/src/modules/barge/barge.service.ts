@@ -115,3 +115,10 @@ export async function softDeleteBarge(id: string) {
   await getBargeById(id);
   await prisma.barge.update({ where: { id }, data: { deletedAt: new Date() } });
 }
+
+export async function listBargesForExport() {
+  return prisma.barge.findMany({
+    where: { deletedAt: null },
+    orderBy: { code: "asc" },
+  });
+}

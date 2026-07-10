@@ -55,3 +55,27 @@ export async function remove(req: Request, res: Response, next: NextFunction) {
     next(err);
   }
 }
+
+function csvEscape(value: string): string {
+  if (/[",\n]/.test(value)) return `"${value.replace(/"/g, '""')}"`;
+  return value;
+}
+
+export async function exportCsv(_req: Request, res: Response, next: NextFunction) {
+  try {
+    const barges = await bargeService.listBargesForExport();
+    const header = ["Barge Code", "Barge Name", "Barge Owner", "Capacity", "Type", "Status"];
+    const rows = barges.map((b) =>
+      [b.code, b.name, b.owner, b.capacityMt, b.type, b.status]
+        .map((v) => csvEscape(String(v)))
+        .join(",")
+    );
+    const csv = [header.join(","), ...rows].join("\n");
+
+    res.setHeader("Content-Type", "text/csv");
+    res.setHeader("Content-Disposition", "attachment; filename=barges.csv");
+    return res.status(200).send(csv);
+  } catch (err) {
+    next(err);
+  }
+}

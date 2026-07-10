@@ -44,6 +44,7 @@ export default function VariantSpecificationForm() {
 
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [formError, setFormError] = useState<string | null>(null);
   const [loading, setLoading] = useState(isEdit);
 
   const [modal, setModal] = useState<ActionModalVariant | null>(null);
@@ -74,6 +75,7 @@ export default function VariantSpecificationForm() {
           isActive: spec.isActive,
         });
       })
+      .catch((err) => setFormError(err instanceof ApiError ? err.message : "Failed to load variant specification"))
       .finally(() => setLoading(false));
   }, [id]);
 
@@ -158,6 +160,12 @@ export default function VariantSpecificationForm() {
         </Link>
         <span className="text-xs text-gray-500">Master Data → Population → Variant Specification → {isEdit ? "Update Variant Specification" : "Create Variant Specification"}</span>
       </div>
+
+      {formError && (
+        <div className="bg-rose-50 border border-rose-200 text-rose-700 text-sm font-medium rounded-xl px-4 py-3">
+          {formError}
+        </div>
+      )}
 
       <form onSubmit={handleSubmitClick} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8 space-y-8">
         <div>

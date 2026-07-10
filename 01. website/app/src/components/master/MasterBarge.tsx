@@ -141,10 +141,13 @@ export default function MasterBarge() {
         <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between flex-wrap gap-3">
           <h1 className="text-base font-bold text-gray-900">Barge</h1>
           <div className="flex gap-2">
-            <button className="flex items-center gap-1.5 px-3.5 py-1.5 border border-gray-300 bg-white rounded-lg text-xs font-bold text-gray-700 hover:bg-gray-50 transition-colors">
+            <a
+              href={bargeApi.exportUrl()}
+              className="flex items-center gap-1.5 px-3.5 py-1.5 border border-gray-300 bg-white rounded-lg text-xs font-bold text-gray-700 hover:bg-gray-50 transition-colors"
+            >
               <Download className="w-3.5 h-3.5" />
               Export
-            </button>
+            </a>
             <Link
               to="/master/barge/create"
               className="flex items-center gap-1.5 bg-[#5B5FC7] hover:bg-indigo-700 text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors"
