@@ -1,4 +1,4 @@
-import { ArrowLeft, Save, FileText, Check, Plus, X, Clock, Anchor, MapPin, Target, Layers, Truck, UserCircle, Briefcase, Activity, Calendar, ShieldCheck, ChevronRight, TrendingUp, Play, Upload, CheckCircle2, AlertTriangle, Flag } from "lucide-react";
+import { ArrowLeft, Save, FileText, Check, Plus, X, Clock, Anchor, MapPin, Target, Layers, Truck, UserCircle, Briefcase, Activity, Calendar, ShieldCheck, ChevronRight, TrendingUp, Play, Upload, CheckCircle2, AlertTriangle, Flag, Wrench, RotateCcw, History, ArrowRightLeft } from "lucide-react";
 import { Link, useParams } from "react-router";
 import { useState, useRef } from "react";
 
@@ -113,21 +113,149 @@ export default function PlanningDetail() {
     barge: "SEA TITAN",
     material: "Coal (GAR 4200)",
     surveyor: "PT. Sucofindo",
-    targetTonase: 5000
+    targetTonase: 5000,
+    materialDensity: 1.2
   });
+
+  interface ExcaEntry { code: string; model: string; bucket: number; assignedArea: string; status: "available" | "breakdown"; }
+  interface DtPayload { bucketCount: number | "-"; tonnage: number; fromTruck?: string; }
+  interface DtEntry { code: string; plate: string; capacity: number; route: "scheduled" | "unscheduled"; assignedArea: string; status: "available" | "loaded" | "breakdown" | "transfer"; payload?: DtPayload; transferTo?: string; }
+  interface BreakdownEvent { id: string; type: "dt_breakdown" | "exca_breakdown" | "exca_recover" | "dt_recovery"; timestamp: string; unit?: string; fromTruck?: string; toTruck?: string; bucketCount?: number | "-"; tonnage?: number; note?: string; }
 
   // Population is NOT assigned at Create — it starts empty and is only auto-populated
   // (simulating mobile/Operator App sync) once the operation reaches On Progress, matching
   // the SPV POC (confirmCreateDocument() always sets excas/dumpTrucks to empty arrays).
   const [population, setPopulation] = useState<{
-    excavators: { code: string; model: string; bucket: number; assignedArea: string }[];
-    dumpTrucks: { code: string; plate: string; capacity: number; route: "scheduled" | "unscheduled"; assignedArea: string }[];
+    excavators: ExcaEntry[];
+    dumpTrucks: DtEntry[];
     spv: string;
   }>({
     excavators: [],
     dumpTrucks: [],
     spv: "Budi Santoso"
   });
+
+  // DT status machine (web-managed, no mobile dependency): available -> loaded -> breakdown -> transfer.
+  const [breakdownEvents, setBreakdownEvents] = useState<BreakdownEvent[]>([]);
+  const [breakdownModal, setBreakdownModal] = useState(false);
+  const [breakdownFrom, setBreakdownFrom] = useState("");
+  const [breakdownTo, setBreakdownTo] = useState("");
+
+  const loadedTrucks = population.dumpTrucks.filter(d => d.status === "loaded");
+  const availableTrucksForTransfer = population.dumpTrucks.filter(d => d.status === "available");
+
+  function openBreakdownModal(preselect?: string) {
+    setBreakdownFrom(preselect || loadedTrucks[0]?.code || "");
+    setBreakdownTo("");
+    setBreakdownModal(true);
+  }
+
+  function simulateLoaded(code: string) {
+    const density = generalInfo.materialDensity || 1.2;
+    setPopulation(prev => ({
+      ...prev,
+      dumpTrucks: prev.dumpTrucks.map(dt => {
+        if (dt.code !== code || dt.status !== "available") return dt;
+        if (dt.route === "unscheduled") {
+          const tonnage = Math.round(dt.capacity * density * 10) / 10;
+          return { ...dt, status: "loaded" as const, payload: { bucketCount: "-" as const, tonnage } };
+        }
+        const exca = prev.excavators.find(e => e.status !== "breakdown") || prev.excavators[0];
+        const bucketSize = exca?.bucket || 1.6;
+        const bucketCount = Math.floor(Math.random() * 5) + 3; // 3-7
+        const tonnage = Math.round(bucketCount * bucketSize * density * 10) / 10;
+        return { ...dt, status: "loaded" as const, payload: { bucketCount, tonnage } };
+      }),
+    }));
+  }
+
+  function toggleExcaBreakdown(code: string) {
+    const exca = population.excavators.find(e => e.code === code);
+    if (!exca) return;
+    const wasBreakdown = exca.status === "breakdown";
+    setPopulation(prev => ({
+      ...prev,
+      excavators: prev.excavators.map(e => e.code === code ? { ...e, status: wasBreakdown ? "available" as const : "breakdown" as const } : e),
+    }));
+    setBreakdownEvents(prev => [...prev, {
+      id: `EV-${Date.now()}`,
+      type: wasBreakdown ? "exca_recover" : "exca_breakdown",
+      unit: code,
+      timestamp: new Date().toLocaleString("id-ID"),
+    }]);
+  }
+
+  function recoverDT(code: string) {
+    const dt = population.dumpTrucks.find(d => d.code === code);
+    if (!dt || dt.status !== "breakdown") return;
+    setPopulation(prev => ({
+      ...prev,
+      dumpTrucks: prev.dumpTrucks.map(d => d.code === code ? { ...d, status: "available" as const, transferTo: undefined } : d),
+    }));
+    setBreakdownEvents(prev => [...prev, {
+      id: `EV-${Date.now()}`,
+      type: "dt_recovery",
+      unit: `${dt.code} (${dt.plate})`,
+      timestamp: new Date().toLocaleString("id-ID"),
+    }]);
+  }
+
+  function computeBreakdownTonnage(fromCode: string, toCode: string) {
+    const density = generalInfo.materialDensity || 1.2;
+    const fromDT = population.dumpTrucks.find(d => d.code === fromCode);
+    const toDT = population.dumpTrucks.find(d => d.code === toCode);
+    if (!fromDT || !toDT) return null;
+    const fromCap = fromDT.capacity;
+    const toCap = toDT.capacity;
+    if (fromDT.route === "unscheduled" || !fromDT.payload) {
+      const effectiveCap = Math.min(fromCap, toCap);
+      const tonnage = Math.round(effectiveCap * density * 10) / 10;
+      const note = fromCap > toCap
+        ? `min(${fromCap}, ${toCap})m³ × ${density} = ${tonnage} MT (dibatasi kapasitas unit penerima)`
+        : `min(${fromCap}, ${toCap})m³ × ${density} = ${tonnage} MT`;
+      return { tonnage, bucketCount: "-" as const, note };
+    }
+    const recordTonnage = fromDT.payload.tonnage || 0;
+    const maxByToCap = Math.round(toCap * density * 10) / 10;
+    const tonnage = Math.min(recordTonnage, maxByToCap);
+    const note = recordTonnage > maxByToCap
+      ? `Dipotong dari ${recordTonnage} MT ke ${tonnage} MT (kapasitas unit penerima lebih kecil)`
+      : `Dari loading record: ${tonnage} MT`;
+    return { tonnage, bucketCount: fromDT.payload.bucketCount, note };
+  }
+
+  const breakdownPreview = breakdownFrom && breakdownTo && breakdownFrom !== breakdownTo
+    ? computeBreakdownTonnage(breakdownFrom, breakdownTo)
+    : null;
+
+  function confirmBreakdownTransfer() {
+    if (!breakdownFrom || !breakdownTo || breakdownFrom === breakdownTo) return;
+    const result = computeBreakdownTonnage(breakdownFrom, breakdownTo);
+    const fromDT = population.dumpTrucks.find(d => d.code === breakdownFrom);
+    const toDT = population.dumpTrucks.find(d => d.code === breakdownTo);
+    if (!result || !fromDT || !toDT) return;
+    const ts = new Date().toLocaleString("id-ID");
+
+    setPopulation(prev => ({
+      ...prev,
+      dumpTrucks: prev.dumpTrucks.map(d => {
+        if (d.code === breakdownFrom) return { ...d, status: "breakdown" as const, transferTo: `${toDT.code} (${toDT.plate})` };
+        if (d.code === breakdownTo) return { ...d, status: "transfer" as const, payload: { bucketCount: result.bucketCount, tonnage: result.tonnage, fromTruck: `${fromDT.code} (${fromDT.plate})` } };
+        return d;
+      }),
+    }));
+    setBreakdownEvents(prev => [...prev, {
+      id: `EV-${Date.now()}`,
+      type: "dt_breakdown",
+      fromTruck: `${fromDT.code} (${fromDT.plate})`,
+      toTruck: `${toDT.code} (${toDT.plate})`,
+      bucketCount: result.bucketCount,
+      tonnage: result.tonnage,
+      timestamp: ts,
+      note: result.note,
+    }]);
+    setBreakdownModal(false);
+  }
 
   const [addUnitModal, setAddUnitModal] = useState<null | "exca" | "dt">(null);
   const [addUnitSelection, setAddUnitSelection] = useState("");
@@ -146,13 +274,13 @@ export default function PlanningDetail() {
     if (addUnitModal === "exca") {
       const master = ALL_EXCAS.find((e) => e.code === addUnitSelection);
       if (!master) return;
-      setPopulation((prev) => ({ ...prev, excavators: [...prev.excavators, { ...master, assignedArea: addUnitArea }] }));
+      setPopulation((prev) => ({ ...prev, excavators: [...prev.excavators, { ...master, assignedArea: addUnitArea, status: "available" as const }] }));
     } else if (addUnitModal === "dt") {
       const master = ALL_DT.find((d) => d.code === addUnitSelection);
       if (!master) return;
       setPopulation((prev) => ({
         ...prev,
-        dumpTrucks: [...prev.dumpTrucks, { code: master.code, plate: master.plate, capacity: master.capacity, route: addUnitRoute, assignedArea: addUnitArea }],
+        dumpTrucks: [...prev.dumpTrucks, { code: master.code, plate: master.plate, capacity: master.capacity, route: addUnitRoute, assignedArea: addUnitArea, status: "available" as const }],
       }));
     }
     setAddUnitModal(null);
@@ -219,15 +347,15 @@ export default function PlanningDetail() {
       excavators: prev.excavators.length
         ? prev.excavators
         : [
-            { code: "EX-001", model: "Hitachi PC200", bucket: 1.6, assignedArea: "EFO A" },
-            { code: "EX-003", model: "Caterpillar 320", bucket: 1.2, assignedArea: "EFO B" },
+            { code: "EX-001", model: "Hitachi PC200", bucket: 1.6, assignedArea: "EFO A", status: "available" as const },
+            { code: "EX-003", model: "Caterpillar 320", bucket: 1.2, assignedArea: "EFO B", status: "available" as const },
           ],
       dumpTrucks: prev.dumpTrucks.length
         ? prev.dumpTrucks
         : [
-            { code: "DT-01", plate: "B 1234 ABC", capacity: 10, route: "scheduled" as const, assignedArea: generalInfo.area },
-            { code: "DT-02", plate: "B 5678 DEF", capacity: 12, route: "scheduled" as const, assignedArea: generalInfo.area },
-            { code: "DT-03", plate: "B 9012 GHI", capacity: 15, route: "unscheduled" as const, assignedArea: generalInfo.area },
+            { code: "DT-01", plate: "B 1234 ABC", capacity: 10, route: "scheduled" as const, assignedArea: generalInfo.area, status: "available" as const },
+            { code: "DT-02", plate: "B 5678 DEF", capacity: 12, route: "scheduled" as const, assignedArea: generalInfo.area, status: "available" as const },
+            { code: "DT-03", plate: "B 9012 GHI", capacity: 15, route: "unscheduled" as const, assignedArea: generalInfo.area, status: "available" as const },
           ],
     }));
   };
@@ -542,9 +670,23 @@ export default function PlanningDetail() {
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {population.excavators.map(ex => (
-                          <span key={ex.code} className="pl-3 pr-2 py-1.5 bg-gray-100 border border-gray-200 text-gray-800 text-sm font-semibold rounded-lg shadow-sm flex items-center gap-2">
+                          <span key={ex.code} className={`pl-3 pr-2 py-1.5 border text-sm font-semibold rounded-lg shadow-sm flex items-center gap-2 ${
+                            ex.status === 'breakdown' ? 'bg-rose-50 border-rose-200 text-rose-800' : 'bg-gray-100 border-gray-200 text-gray-800'
+                          }`}>
                             {ex.code}
                             <span className="text-gray-400 font-normal text-xs">{ex.assignedArea}</span>
+                            {ex.status === 'breakdown' && (
+                              <span className="text-[10px] font-bold uppercase text-rose-600">Breakdown</span>
+                            )}
+                            {status === 'On Progress' && (
+                              <button
+                                onClick={() => toggleExcaBreakdown(ex.code)}
+                                title={ex.status === 'breakdown' ? 'Recovery' : 'Tandai Breakdown'}
+                                className={ex.status === 'breakdown' ? 'text-emerald-500 hover:text-emerald-700 transition-colors' : 'text-gray-400 hover:text-amber-600 transition-colors'}
+                              >
+                                {ex.status === 'breakdown' ? <RotateCcw className="w-3.5 h-3.5" /> : <Wrench className="w-3.5 h-3.5" />}
+                              </button>
+                            )}
                             {status === 'On Progress' && (
                               <button onClick={() => removeExca(ex.code)} className="text-gray-400 hover:text-rose-600 transition-colors">
                                 <X className="w-3.5 h-3.5" />
@@ -562,6 +704,14 @@ export default function PlanningDetail() {
                         <h4 className="text-sm font-bold text-gray-700">Dump Trucks</h4>
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-medium text-gray-500">{population.dumpTrucks.length} Units</span>
+                          {status === 'On Progress' && loadedTrucks.length > 0 && (
+                            <button
+                              onClick={() => openBreakdownModal()}
+                              className="text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 px-2.5 py-1 rounded-lg flex items-center gap-1 transition-colors"
+                            >
+                              <AlertTriangle className="w-3 h-3" /> Tandai Breakdown
+                            </button>
+                          )}
                           {status === 'On Progress' && (
                             <button
                               onClick={() => openAddUnitModal('dt')}
@@ -572,20 +722,87 @@ export default function PlanningDetail() {
                           )}
                         </div>
                       </div>
-                      <div className="flex flex-wrap gap-2">
+                      <div className="space-y-2">
                         {population.dumpTrucks.map(dt => (
-                          <span key={dt.code} className="pl-3 pr-2 py-1.5 bg-gray-100 border border-gray-200 text-gray-800 text-sm font-semibold rounded-lg shadow-sm flex items-center gap-2">
-                            {dt.code}
-                            <span className={`font-normal text-xs ${dt.route === 'unscheduled' ? 'text-rose-500' : 'text-emerald-600'}`}>
-                              {dt.route === 'unscheduled' ? 'Unscheduled' : 'Scheduled'}
-                            </span>
-                            <span className="text-gray-400 font-normal text-xs">{dt.assignedArea}</span>
-                            {status === 'On Progress' && (
-                              <button onClick={() => removeDt(dt.code)} className="text-gray-400 hover:text-rose-600 transition-colors">
-                                <X className="w-3.5 h-3.5" />
+                          <div key={dt.code} className={`rounded-xl border p-3 shadow-sm ${
+                            dt.status === 'breakdown' ? 'bg-rose-50 border-rose-200' :
+                            dt.status === 'transfer' ? 'bg-amber-50 border-amber-200' :
+                            dt.status === 'loaded' ? 'bg-violet-50 border-violet-200' :
+                            'bg-white border-gray-200'
+                          }`}>
+                            <div className="flex items-start justify-between gap-2">
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-bold text-gray-900">{dt.code}</span>
+                                  <span className={`text-[10px] font-bold uppercase ${dt.route === 'unscheduled' ? 'text-rose-500' : 'text-emerald-600'}`}>
+                                    {dt.route === 'unscheduled' ? 'Unscheduled' : 'Scheduled'}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-gray-500 mt-0.5">{dt.plate} · {dt.capacity}m³ · {dt.assignedArea}</p>
+                              </div>
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md ${
+                                  dt.status === 'breakdown' ? 'bg-rose-100 text-rose-700' :
+                                  dt.status === 'transfer' ? 'bg-amber-100 text-amber-700' :
+                                  dt.status === 'loaded' ? 'bg-violet-100 text-violet-700' :
+                                  'bg-emerald-100 text-emerald-700'
+                                }`}>
+                                  {dt.status === 'breakdown' ? 'Breakdown' : dt.status === 'transfer' ? 'Transfer' : dt.status === 'loaded' ? 'Loaded' : 'Available'}
+                                </span>
+                                {status === 'On Progress' && dt.status === 'available' && (
+                                  <button onClick={() => removeDt(dt.code)} className="text-gray-400 hover:text-rose-600 transition-colors">
+                                    <X className="w-3.5 h-3.5" />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
+                            {status === 'On Progress' && dt.status === 'available' && (
+                              <button
+                                onClick={() => simulateLoaded(dt.code)}
+                                className="mt-2.5 w-full text-xs font-bold text-violet-700 bg-violet-50 hover:bg-violet-100 border border-violet-200 px-3 py-1.5 rounded-lg transition-colors"
+                              >
+                                {dt.route === 'unscheduled' ? '+ Simulasi Unscheduled Load' : '+ Simulasi Loading'}
                               </button>
                             )}
-                          </span>
+
+                            {dt.status === 'loaded' && dt.payload && (
+                              <div className="mt-2 flex items-center justify-between gap-2">
+                                <span className="text-[11px] font-semibold text-violet-700">
+                                  {dt.payload.bucketCount !== '-' ? `${dt.payload.bucketCount} bucket · ` : ''}{dt.payload.tonnage} MT
+                                </span>
+                                {status === 'On Progress' && (
+                                  <button
+                                    onClick={() => openBreakdownModal(dt.code)}
+                                    className="text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2.5 py-1 rounded-lg transition-colors"
+                                  >
+                                    Tandai Breakdown
+                                  </button>
+                                )}
+                              </div>
+                            )}
+
+                            {dt.status === 'breakdown' && (
+                              <div className="mt-2 flex items-center justify-between gap-2">
+                                <span className="text-[11px] font-semibold text-rose-600">Muatan → {dt.transferTo || '-'}</span>
+                                {status === 'On Progress' && (
+                                  <button
+                                    onClick={() => recoverDT(dt.code)}
+                                    className="text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1 rounded-lg flex items-center gap-1 transition-colors"
+                                  >
+                                    <RotateCcw className="w-3 h-3" /> Recovery
+                                  </button>
+                                )}
+                              </div>
+                            )}
+
+                            {dt.status === 'transfer' && dt.payload && (
+                              <div className="mt-2 text-[11px] font-semibold text-amber-700 flex items-center gap-1.5">
+                                <ArrowRightLeft className="w-3 h-3" />
+                                {dt.payload.bucketCount !== '-' ? `${dt.payload.bucketCount} bucket · ` : ''}{dt.payload.tonnage} MT dari {dt.payload.fromTruck}
+                              </div>
+                            )}
+                          </div>
                         ))}
                         {population.dumpTrucks.length === 0 && (
                           <span className="text-xs text-gray-400 italic">Belum ada dump truck.</span>
@@ -600,6 +817,52 @@ export default function PlanningDetail() {
                       <p className="text-sm font-bold text-gray-900">{population.spv}</p>
                     </div>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* Event History (Riwayat) — DT breakdown/recovery & excavator breakdown/recovery log */}
+            {!isCreate && !isInvalid && ['On Progress', 'Closed', 'Departed'].includes(status) && (
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center gap-3">
+                  <div className="p-2 bg-gray-100 text-gray-600 rounded-lg">
+                    <History className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900">Event History</h3>
+                    <p className="text-xs text-gray-500 font-medium mt-0.5">Log breakdown & recovery unit selama operasional</p>
+                  </div>
+                </div>
+                <div className="p-6">
+                  {breakdownEvents.length === 0 ? (
+                    <p className="text-sm text-gray-400 italic text-center py-4">Belum ada event breakdown/recovery.</p>
+                  ) : (
+                    <div className="space-y-2.5">
+                      {[...breakdownEvents].reverse().map(ev => (
+                        <div key={ev.id} className="flex items-start gap-3 p-3 rounded-xl border border-gray-100 bg-gray-50/60">
+                          <div className={`p-1.5 rounded-lg shrink-0 mt-0.5 ${
+                            ev.type === 'dt_breakdown' || ev.type === 'exca_breakdown' ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'
+                          }`}>
+                            {ev.type === 'dt_breakdown' || ev.type === 'exca_breakdown' ? <AlertTriangle className="w-3.5 h-3.5" /> : <RotateCcw className="w-3.5 h-3.5" />}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-semibold text-gray-900">
+                              {ev.type === 'dt_breakdown' && `DT Breakdown: ${ev.fromTruck} → ${ev.toTruck}`}
+                              {ev.type === 'exca_breakdown' && `Excavator Breakdown: ${ev.unit}`}
+                              {ev.type === 'exca_recover' && `Excavator Recovery: ${ev.unit}`}
+                              {ev.type === 'dt_recovery' && `DT Recovery: ${ev.unit}`}
+                            </p>
+                            {ev.type === 'dt_breakdown' && (
+                              <p className="text-xs text-gray-500 mt-0.5">
+                                {ev.bucketCount !== '-' ? `${ev.bucketCount} bucket · ` : ''}{ev.tonnage} MT{ev.note ? ` — ${ev.note}` : ''}
+                              </p>
+                            )}
+                            <p className="text-[11px] text-gray-400 mt-1">{ev.timestamp}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -1195,6 +1458,81 @@ export default function PlanningDetail() {
                   className="bg-[#5B5FC7] hover:bg-indigo-700 disabled:bg-indigo-200 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition-all shadow-md shadow-indigo-500/20"
                 >
                   Add
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {breakdownModal && (
+        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all">
+            <div className="px-6 py-4 bg-amber-50 border-b border-amber-100 flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
+                  <AlertTriangle className="w-4 h-4 text-amber-600" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-900">Tandai Breakdown</h3>
+              </div>
+              <button onClick={() => setBreakdownModal(false)} className="text-gray-400 hover:text-gray-600 bg-white hover:bg-gray-100 p-1.5 rounded-lg transition-colors border border-gray-200">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              {loadedTrucks.length === 0 ? (
+                <p className="text-sm text-gray-500">Tidak ada unit yang sedang loaded. Klik "Simulasi Loading" pada unit yang ingin disimulasi lebih dulu.</p>
+              ) : (
+                <>
+                  <p className="text-sm text-gray-500">Pilih unit yang breakdown dan unit penerima muatan hibah.</p>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Unit Breakdown (From) <span className="text-red-500">*</span></label>
+                    <select
+                      value={breakdownFrom}
+                      onChange={e => setBreakdownFrom(e.target.value)}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 shadow-sm bg-white font-medium text-gray-900"
+                    >
+                      {loadedTrucks.map(dt => (
+                        <option key={dt.code} value={dt.code}>{dt.code} — {dt.plate} | {dt.capacity}m³ [{dt.route === 'unscheduled' ? 'Unscheduled' : 'Scheduled'}]</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Unit Penerima (To) <span className="text-red-500">*</span></label>
+                    <select
+                      value={breakdownTo}
+                      onChange={e => setBreakdownTo(e.target.value)}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 shadow-sm bg-white font-medium text-gray-900"
+                    >
+                      <option value="">Pilih unit penerima...</option>
+                      {availableTrucksForTransfer.filter(dt => dt.code !== breakdownFrom).map(dt => (
+                        <option key={dt.code} value={dt.code}>{dt.code} — {dt.plate} | {dt.capacity}m³</option>
+                      ))}
+                    </select>
+                  </div>
+                  {breakdownPreview && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800">
+                      Tonnage yang ditransfer (trip pertama {breakdownTo}): <strong>{breakdownPreview.tonnage} MT</strong>
+                      <br /><span className="opacity-80">{breakdownPreview.note}</span>
+                    </div>
+                  )}
+                </>
+              )}
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setBreakdownModal(false)}
+                  className="px-5 py-2.5 border border-gray-300 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-100 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmBreakdownTransfer}
+                  disabled={!breakdownFrom || !breakdownTo || breakdownFrom === breakdownTo}
+                  className="bg-amber-600 hover:bg-amber-700 disabled:bg-amber-200 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition-all shadow-md shadow-amber-500/20"
+                >
+                  Confirm Breakdown
                 </button>
               </div>
             </div>
