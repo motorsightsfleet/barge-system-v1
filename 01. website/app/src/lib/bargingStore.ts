@@ -44,13 +44,17 @@ export interface BreakdownEvent {
   note?: string;
 }
 
-export interface AchievementEntry {
-  id: number;
-  date: string;
-  shift: string;
+export interface ExcaSummaryEntry {
+  code: string;
   ritase: number;
-  tonase: number;
-  remark: string;
+}
+
+export interface ShiftRecord {
+  shift: string;
+  date: string;
+  ritase: number;
+  tonnage: number;
+  excaSummary: ExcaSummaryEntry[];
 }
 
 export interface BargingDocument {
@@ -72,7 +76,11 @@ export interface BargingDocument {
   finalTonnage: number | null;
   excavators: ExcaEntry[];
   dumpTrucks: DtEntry[];
-  achievements: AchievementEntry[];
+  // Ritase/tonnage synced from the Operator App — populated only via the "Refresh"
+  // action (simulateRitase() in index.html), never entered manually.
+  simulatedRitase: number;
+  simulatedTonnage: number;
+  shiftHistory: ShiftRecord[];
   breakdownEvents: BreakdownEvent[];
 }
 
@@ -88,6 +96,18 @@ export const CREATE_BARGES = [
   { name: "OCEAN BLUE", label: "OCEAN BLUE (4.000 MT)" },
 ];
 export const MATERIAL_DENSITY: Record<string, number> = { Coal: 1.2, Nickel: 1.6 };
+
+// Excavators assigned to these areas count toward the live shift's ritase breakdown —
+// matches AREAS_LOADING in index.html.
+export const AREAS_LOADING = ["EFO A", "EFO B", "Stockpile A"];
+
+export function getRitaseCount(doc: BargingDocument): number {
+  return doc.simulatedRitase || 0;
+}
+
+export function getAccumulatedTonnage(doc: BargingDocument): number {
+  return doc.simulatedTonnage || 0;
+}
 
 const STORAGE_KEY = "bargingSystem_react_v1";
 
@@ -106,9 +126,11 @@ function seedDocuments(): BargingDocument[] {
       { code: "DT-03", plate: "B 9012 GHI", capacity: 15, route: "unscheduled" as const, assignedArea: area, status: "available" as const },
     ],
   });
-  const sampleAchievements = (tonaseScale: number): AchievementEntry[] => [
-    { id: 1, date: "2026-05-28", shift: "DS", ritase: Math.round(35 * tonaseScale), tonase: Math.round(1050 * tonaseScale), remark: "Morning operation went smoothly" },
-    { id: 2, date: "2026-05-28", shift: "NS", ritase: Math.round(28 * tonaseScale), tonase: Math.round(840 * tonaseScale), remark: "Slight delay due to rain" },
+  const sampleShiftHistory = (date: string, ritaseScale: number): ShiftRecord[] => [
+    { shift: "Pagi", date, ritase: Math.round(28 * ritaseScale), tonnage: Math.round(526.4 * ritaseScale * 10) / 10,
+      excaSummary: [{ code: "EX-001", ritase: Math.round(16 * ritaseScale) }, { code: "EX-003", ritase: Math.round(12 * ritaseScale) }] },
+    { shift: "Malam", date, ritase: Math.round(22 * ritaseScale), tonnage: Math.round(413.6 * ritaseScale * 10) / 10,
+      excaSummary: [{ code: "EX-001", ritase: Math.round(13 * ritaseScale) }, { code: "EX-003", ritase: Math.round(9 * ritaseScale) }] },
   ];
 
   return [
@@ -118,7 +140,8 @@ function seedDocuments(): BargingDocument[] {
       surveyor: "PT. Sucofindo", spv: "Budi Santoso", status: "Planned",
       eta: "", ata: "", invalidReason: "",
       openChecklist: { notify: false, ramp: false, excaEnter: false }, closeChecklist: emptyCloseChecklist,
-      finalTonnage: null, excavators: [], dumpTrucks: [], achievements: [], breakdownEvents: [],
+      finalTonnage: null, excavators: [], dumpTrucks: [],
+      simulatedRitase: 0, simulatedTonnage: 0, shiftHistory: [], breakdownEvents: [],
     },
     {
       id: "BRG-002", createdDate: "2026-05-28", area: "Jetty Barat", barge: "RIVER KING",
@@ -126,7 +149,8 @@ function seedDocuments(): BargingDocument[] {
       surveyor: "PT. Sucofindo", spv: "Budi Santoso", status: "Arrived",
       eta: "2026-05-28T08:00", ata: "2026-05-28T09:30", invalidReason: "",
       openChecklist: { notify: false, ramp: false, excaEnter: false }, closeChecklist: emptyCloseChecklist,
-      finalTonnage: null, excavators: [], dumpTrucks: [], achievements: [], breakdownEvents: [],
+      finalTonnage: null, excavators: [], dumpTrucks: [],
+      simulatedRitase: 0, simulatedTonnage: 0, shiftHistory: [], breakdownEvents: [],
     },
     {
       id: "BRG-003", createdDate: "2026-05-29", area: "Jetty Timur", barge: "OCEAN BLUE",
@@ -134,7 +158,8 @@ function seedDocuments(): BargingDocument[] {
       surveyor: "PT. Sucofindo", spv: "Budi Santoso", status: "Open",
       eta: "2026-05-29T08:00", ata: "2026-05-29T09:15", invalidReason: "",
       openChecklist: closedOpenChecklist, closeChecklist: emptyCloseChecklist,
-      finalTonnage: null, excavators: [], dumpTrucks: [], achievements: [], breakdownEvents: [],
+      finalTonnage: null, excavators: [], dumpTrucks: [],
+      simulatedRitase: 0, simulatedTonnage: 0, shiftHistory: [], breakdownEvents: [],
     },
     {
       id: "BRG-004", createdDate: "2026-05-30", area: "Jetty Timur", barge: "PACIFIC STAR",
@@ -142,7 +167,8 @@ function seedDocuments(): BargingDocument[] {
       surveyor: "PT. Sucofindo", spv: "Budi Santoso", status: "On Progress",
       eta: "2026-05-30T08:00", ata: "2026-05-30T09:20", invalidReason: "",
       openChecklist: closedOpenChecklist, closeChecklist: emptyCloseChecklist,
-      finalTonnage: null, ...samplePopulation("Jetty Timur"), achievements: sampleAchievements(1),
+      finalTonnage: null, ...samplePopulation("Jetty Timur"),
+      simulatedRitase: 0, simulatedTonnage: 0, shiftHistory: sampleShiftHistory("29/05/2026", 1),
       breakdownEvents: [],
     },
     {
@@ -151,7 +177,8 @@ function seedDocuments(): BargingDocument[] {
       surveyor: "PT. Sucofindo", spv: "Budi Santoso", status: "Closed",
       eta: "2026-05-24T08:00", ata: "2026-05-24T09:10", invalidReason: "",
       openChecklist: closedOpenChecklist, closeChecklist: doneCloseChecklist,
-      finalTonnage: null, ...samplePopulation("Jetty Barat"), achievements: sampleAchievements(0.85),
+      finalTonnage: null, ...samplePopulation("Jetty Barat"),
+      simulatedRitase: 6, simulatedTonnage: 112.5, shiftHistory: sampleShiftHistory("23/05/2026", 0.85),
       breakdownEvents: [],
     },
     {
@@ -160,7 +187,8 @@ function seedDocuments(): BargingDocument[] {
       surveyor: "PT. Sucofindo", spv: "Budi Santoso", status: "Departed",
       eta: "2026-05-20T08:00", ata: "2026-05-20T09:05", invalidReason: "",
       openChecklist: closedOpenChecklist, closeChecklist: doneCloseChecklist,
-      finalTonnage: 1890, ...samplePopulation("Jetty Timur"), achievements: sampleAchievements(1.05),
+      finalTonnage: 1890, ...samplePopulation("Jetty Timur"),
+      simulatedRitase: 8, simulatedTonnage: 148.0, shiftHistory: sampleShiftHistory("19/05/2026", 1.05),
       breakdownEvents: [],
     },
   ];

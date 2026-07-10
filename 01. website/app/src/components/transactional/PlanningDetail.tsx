@@ -1,12 +1,15 @@
-import { ArrowLeft, Save, FileText, Check, Plus, X, Clock, Anchor, MapPin, Target, Layers, Truck, UserCircle, Briefcase, Activity, Calendar, ShieldCheck, ChevronRight, TrendingUp, Play, Upload, CheckCircle2, AlertTriangle, Flag, Wrench, RotateCcw, History, ArrowRightLeft } from "lucide-react";
+import { ArrowLeft, Save, FileText, Check, Plus, X, Clock, Anchor, MapPin, Target, Layers, Truck, UserCircle, Briefcase, Activity, Calendar, ShieldCheck, ChevronRight, ChevronDown, TrendingUp, Play, Upload, CheckCircle2, AlertTriangle, Flag, Wrench, RotateCcw, History, ArrowRightLeft, RefreshCw } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router";
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import ActionModal from "../common/ActionModal";
 import {
   ACTIVE_STATUSES,
+  AREAS_LOADING,
   CREATE_AREAS,
   CREATE_BARGES,
   MATERIAL_DENSITY,
+  getAccumulatedTonnage,
+  getRitaseCount,
   nextDocId,
   useBargingDocuments,
   type BargingDocument,
@@ -173,7 +176,9 @@ export default function PlanningDetail() {
       finalTonnage: null,
       excavators: [],
       dumpTrucks: [],
-      achievements: [],
+      simulatedRitase: 0,
+      simulatedTonnage: 0,
+      shiftHistory: [],
       breakdownEvents: [],
     };
     addDocument(newDoc);
@@ -201,7 +206,7 @@ export default function PlanningDetail() {
     spv: doc?.spv ?? "",
   };
   const breakdownEvents = doc?.breakdownEvents ?? [];
-  const achievements = doc?.achievements ?? [];
+  const shiftHistory = doc?.shiftHistory ?? [];
   const openChecks = doc?.openChecklist ?? { notify: false, ramp: false, excaEnter: false };
   const closingChecks = doc?.closeChecklist ?? { bargeInfo: false, closeBarge: false, finalDraft: false };
 
@@ -368,14 +373,15 @@ export default function PlanningDetail() {
     updateDocument(id, d => ({ dumpTrucks: d.dumpTrucks.filter((dt) => dt.code !== code) }));
   }
 
-  const [showAchievementModal, setShowAchievementModal] = useState(false);
-  const [achievementForm, setAchievementForm] = useState({
-    date: new Date().toISOString().split('T')[0],
-    shift: "DS",
-    ritase: "",
-    tonase: "",
-    remark: ""
-  });
+  const [achFilter, setAchFilter] = useState<"shift" | "exca">("shift");
+  const [expandedShiftRows, setExpandedShiftRows] = useState<Set<number>>(new Set());
+  function toggleShiftDetail(idx: number) {
+    setExpandedShiftRows(prev => {
+      const next = new Set(prev);
+      if (next.has(idx)) next.delete(idx); else next.add(idx);
+      return next;
+    });
+  }
 
   const [loadingDuration, setLoadingDuration] = useState("");
 
@@ -414,7 +420,7 @@ export default function PlanningDetail() {
     }));
   };
   const handleCloseBarge = () => {
-    if (id && isClosingAllChecked && achievements.length > 0) {
+    if (id && isClosingAllChecked && ritaseCount >= 1) {
       updateDocument(id, { status: "Closed" });
     }
   };
@@ -432,28 +438,73 @@ export default function PlanningDetail() {
     setInvalidJustification("");
   };
 
-  const handleAddAchievement = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!id || !achievementForm.date || !achievementForm.ritase || !achievementForm.tonase) return;
+  // "Refresh" — simulates the Operator App syncing new ritase/tonnage, matching
+  // simulateRitase() in index.html exactly: 60% chance of 1-2 new ritase at
+  // 15-25 MT each, plus a 25% chance of an unrelated mobile-reported breakdown
+  // log entry (decorative — it does not touch actual DT card status).
+  function simulateRitase() {
+    if (!id) return;
+    if (Math.random() < 0.4) return;
+    const newRitase = Math.random() < 0.6 ? 1 : 2;
+    const perRitase = 15 + Math.random() * 10;
+    const addedTonnage = Math.round(newRitase * perRitase * 10) / 10;
+    updateDocument(id, d => {
+      const patch: Partial<BargingDocument> = {
+        simulatedRitase: (d.simulatedRitase || 0) + newRitase,
+        simulatedTonnage: Math.round(((d.simulatedTonnage || 0) + addedTonnage) * 10) / 10,
+      };
+      if (Math.random() < 0.25 && d.breakdownEvents.length < 4) {
+        const pairs: [string, string][] = [["DT-03", "DT-01"], ["DT-02", "DT-04"], ["DT-01", "DT-02"]];
+        const [fromTruck, toTruck] = pairs[Math.floor(Math.random() * pairs.length)];
+        const bkt = Math.floor(Math.random() * 3) + 1;
+        patch.breakdownEvents = [...d.breakdownEvents, {
+          id: `BD-${Date.now()}`,
+          type: "dt_breakdown" as const,
+          fromTruck, toTruck,
+          bucketCount: bkt,
+          tonnage: Math.round(bkt * (18 + Math.random() * 6) * 10) / 10,
+          timestamp: new Date().toLocaleString("id-ID"),
+          note: "Transfer via operator app (mobile)",
+        }];
+      }
+      return patch;
+    });
+  }
 
-    updateDocument(id, d => ({
-      achievements: [...d.achievements, {
-        id: Date.now(),
-        date: achievementForm.date,
-        shift: achievementForm.shift,
-        ritase: Number(achievementForm.ritase),
-        tonase: Number(achievementForm.tonase),
-        remark: achievementForm.remark
-      }],
-    }));
-    setShowAchievementModal(false);
-    setAchievementForm({ date: new Date().toISOString().split('T')[0], shift: "DS", ritase: "", tonase: "", remark: "" });
-  };
-
-  const accumulatedRitase = achievements.reduce((acc, curr) => acc + curr.ritase, 0);
-  const accumulatedTonase = achievements.reduce((acc, curr) => acc + curr.tonase, 0);
+  // Top-of-panel overview mirrors renderTabProgress(): target/accumulated/ritase come
+  // ONLY from today's simulated sync (matches getAccumulatedTonnage()/getRitaseCount()),
+  // not the historical shiftHistory below it.
+  const ritaseCount = doc ? getRitaseCount(doc) : 0;
+  const accumulatedTonase = doc ? getAccumulatedTonnage(doc) : 0;
   const progress = generalInfo.targetTonase > 0 ? Math.min(100, Math.round((accumulatedTonase / generalInfo.targetTonase) * 100)) : 0;
   const remainingTonase = Math.max(0, generalInfo.targetTonase - accumulatedTonase);
+
+  // Shift Log (Achievement Tonnage) — mirrors renderShiftLogHtml(): history rows plus
+  // a synthetic "current" row built from today's simulated ritase, split across the
+  // excavators assigned to loading areas.
+  const loadingExcas = population.excavators.filter(e => AREAS_LOADING.includes(e.assignedArea));
+  const curRitase = doc?.simulatedRitase ?? 0;
+  const curTonnage = Math.round((doc?.simulatedTonnage ?? 0) * 10) / 10;
+  const curExcaSummary = loadingExcas.length > 0
+    ? loadingExcas.map((e, i) => {
+        const base = Math.floor(curRitase / loadingExcas.length);
+        const extra = i < curRitase % loadingExcas.length ? 1 : 0;
+        return { code: e.code, ritase: base + extra };
+      })
+    : [];
+  const shiftRows = [
+    ...shiftHistory,
+    { shift: "Siang", date: doc?.createdDate ?? "-", ritase: curRitase, tonnage: curTonnage, excaSummary: curExcaSummary, isCurrent: true },
+  ];
+  const shiftTotalRitase = shiftRows.reduce((s, r) => s + r.ritase, 0);
+  const shiftTotalTonnage = shiftRows.reduce((s, r) => s + r.tonnage, 0);
+  const shiftOverallAch = generalInfo.targetTonase > 0 ? Math.min(100, Math.round(shiftTotalTonnage / generalInfo.targetTonase * 100)) : 0;
+  const excaAggregate = new Map<string, number>();
+  shiftRows.forEach(r => r.excaSummary.forEach(e => excaAggregate.set(e.code, (excaAggregate.get(e.code) ?? 0) + e.ritase)));
+  const excaAggregateRows = Array.from(excaAggregate.entries()).map(([code, ritase]) => ({
+    code, ritase,
+    tonnage: shiftTotalRitase > 0 ? Math.round((ritase / shiftTotalRitase) * shiftTotalTonnage * 10) / 10 : 0,
+  }));
 
   const statusOrder = ["Planned", "Arrived", "Open", "On Progress", "Closed", "Departed"];
   const currentIdx = statusOrder.indexOf(status);
@@ -1011,25 +1062,18 @@ export default function PlanningDetail() {
               </div>
             )}
 
-            {/* Production Progress & Daily Achievements */}
+            {/* Production Progress — mirrors renderTabProgress(): stats come only from
+                today's Operator App sync (simulatedRitase/simulatedTonnage). */}
             {!isCreate && ['On Progress', 'Closed', 'Departed'].includes(status) && (
               <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-emerald-100 text-emerald-600 rounded-lg">
-                      <Activity className="w-5 h-5" />
-                    </div>
-                    <h3 className="text-lg font-bold text-gray-900">Production Progress</h3>
+                <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center gap-3">
+                  <div className="p-2 bg-emerald-100 text-emerald-600 rounded-lg">
+                    <Activity className="w-5 h-5" />
                   </div>
-                  {status === 'On Progress' && (
-                    <button
-                      onClick={() => setShowAchievementModal(true)}
-                      className="bg-[#5B5FC7] hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-all shadow-sm"
-                    >
-                      <Plus className="w-4 h-4 stroke-[3]" />
-                      Add Achievement
-                    </button>
-                  )}
+                  <div>
+                    <h3 className="text-lg font-bold text-gray-900">Production Progress</h3>
+                    <p className="text-xs text-gray-500 font-medium mt-0.5">Auto-update dari Operator App</p>
+                  </div>
                 </div>
 
                 <div className="p-6 space-y-8">
@@ -1041,15 +1085,15 @@ export default function PlanningDetail() {
                     </div>
                     <div className="bg-indigo-50 p-5 rounded-2xl border border-indigo-100 shadow-inner shadow-indigo-100/50">
                       <div className="text-xs font-bold text-[#5B5FC7] uppercase tracking-wider mb-2 flex items-center gap-1.5"><TrendingUp className="w-3.5 h-3.5"/> Acc. Tonase</div>
-                      <div className="text-2xl font-black text-[#5B5FC7]">{accumulatedTonase} <span className="text-sm font-medium text-indigo-400">MT</span></div>
+                      <div className="text-2xl font-black text-[#5B5FC7]">{accumulatedTonase.toFixed(1)} <span className="text-sm font-medium text-indigo-400">MT</span></div>
                     </div>
                     <div className="bg-blue-50 p-5 rounded-2xl border border-blue-100">
-                      <div className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-2 flex items-center gap-1.5"><Truck className="w-3.5 h-3.5"/> Acc. Ritase</div>
-                      <div className="text-2xl font-black text-blue-900">{accumulatedRitase} <span className="text-sm font-medium text-blue-500">Rit</span></div>
+                      <div className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-2 flex items-center gap-1.5"><Truck className="w-3.5 h-3.5"/> Total Ritase</div>
+                      <div className="text-2xl font-black text-blue-900">{ritaseCount} <span className="text-sm font-medium text-blue-500">Rit</span></div>
                     </div>
                     <div className="bg-amber-50 p-5 rounded-2xl border border-amber-100">
                       <div className="text-xs font-bold text-amber-600 uppercase tracking-wider mb-2 flex items-center gap-1.5"><Layers className="w-3.5 h-3.5"/> Remaining</div>
-                      <div className="text-2xl font-black text-amber-900">{remainingTonase} <span className="text-sm font-medium text-amber-500">MT</span></div>
+                      <div className="text-2xl font-black text-amber-900">{remainingTonase.toFixed(1)} <span className="text-sm font-medium text-amber-500">MT</span></div>
                     </div>
                   </div>
 
@@ -1058,7 +1102,7 @@ export default function PlanningDetail() {
                     <div className="flex justify-between items-end mb-3">
                       <div>
                         <span className="text-sm font-bold text-gray-900">Barging Completion</span>
-                        <p className="text-xs text-gray-500 mt-0.5">Based on accumulated tonase vs target</p>
+                        <p className="text-xs text-gray-500 mt-0.5">{progress}% tercapai</p>
                       </div>
                       <span className="text-2xl font-black text-[#5B5FC7]">{progress}%</span>
                     </div>
@@ -1069,47 +1113,22 @@ export default function PlanningDetail() {
                     </div>
                   </div>
 
-                  {/* Achievements Table */}
-                  <div>
-                    <h4 className="text-sm font-bold text-gray-900 mb-4">Achievement History</h4>
-                    <div className="overflow-hidden border border-gray-200 rounded-xl shadow-sm">
-                      <table className="w-full text-left border-collapse">
-                        <thead>
-                          <tr className="bg-gray-50 border-b border-gray-200">
-                            <th className="px-5 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Date</th>
-                            <th className="px-5 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Shift</th>
-                            <th className="px-5 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Ritase</th>
-                            <th className="px-5 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Tonase</th>
-                            <th className="px-5 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Remark</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100 bg-white">
-                          {achievements.map((ach) => (
-                            <tr key={ach.id} className="hover:bg-gray-50/50 transition-colors">
-                              <td className="px-5 py-3.5 text-sm font-semibold text-gray-900">{ach.date}</td>
-                              <td className="px-5 py-3.5 text-sm">
-                                <span className={`inline-flex items-center px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wide ${
-                                  ach.shift === 'DS' ? 'bg-amber-100 text-amber-800' : 'bg-[#5B5FC7]/10 text-[#5B5FC7]'
-                                }`}>
-                                  {ach.shift === 'DS' ? 'Day Shift' : 'Night Shift'}
-                                </span>
-                              </td>
-                              <td className="px-5 py-3.5 text-sm font-bold text-gray-900 text-right">{ach.ritase}</td>
-                              <td className="px-5 py-3.5 text-sm font-bold text-[#5B5FC7] text-right">{ach.tonase} MT</td>
-                              <td className="px-5 py-3.5 text-sm text-gray-500">{ach.remark || '-'}</td>
-                            </tr>
-                          ))}
-                          {achievements.length === 0 && (
-                            <tr>
-                              <td colSpan={5} className="px-5 py-8 text-center text-sm font-medium text-gray-500 bg-gray-50/50">
-                                No achievements recorded yet. Add one to start tracking.
-                              </td>
-                            </tr>
-                          )}
-                        </tbody>
-                      </table>
+                  {/* Integrasi Mobile / Refresh */}
+                  {status === 'On Progress' ? (
+                    <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex items-center justify-between gap-4">
+                      <p className="text-xs text-blue-800"><strong>Integrasi Mobile:</strong> Data ritase & tonnage di-sync otomatis dari Operator App setiap kali operator submit dumping di Jetty.</p>
+                      <button
+                        onClick={simulateRitase}
+                        className="shrink-0 bg-[#5B5FC7] hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm whitespace-nowrap"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5" /> Refresh
+                      </button>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-xs text-blue-800">
+                      <strong>Integrasi Mobile:</strong> Data ritase & tonnage di-sync otomatis dari Operator App.
+                    </div>
+                  )}
 
                   {/* Completion Duration Notice */}
                   {status === 'Departed' && (
@@ -1128,12 +1147,123 @@ export default function PlanningDetail() {
                       </div>
                       <div className="text-right pl-6 border-l border-emerald-200/60 hidden sm:block">
                         <div className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider mb-1">Accumulated Tonase</div>
-                        <div className="text-2xl font-black text-emerald-900">{accumulatedTonase} <span className="text-sm font-semibold text-emerald-700">MT</span></div>
+                        <div className="text-2xl font-black text-emerald-900">{accumulatedTonase.toFixed(1)} <span className="text-sm font-semibold text-emerald-700">MT</span></div>
                       </div>
                     </div>
                   )}
-
                 </div>
+              </div>
+            )}
+
+            {/* Achievement Tonnage (Shift Log) — mirrors renderShiftLogHtml(): full history
+                including yesterday's shifts, with a By Shift / By Exca toggle view. */}
+            {!isCreate && ['On Progress', 'Closed', 'Departed'].includes(status) && (
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between flex-wrap gap-3">
+                  <h3 className="text-lg font-bold text-gray-900">Achievement Tonnage</h3>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-gray-500 font-medium">{shiftTotalRitase} rit | {shiftTotalTonnage.toFixed(1)} MT | <strong className="text-gray-700">{shiftOverallAch}%</strong></span>
+                    <div className="flex gap-1.5 bg-gray-100 p-1 rounded-lg">
+                      <button
+                        onClick={() => setAchFilter('shift')}
+                        className={`text-xs font-bold px-3 py-1.5 rounded-md transition-colors ${achFilter === 'shift' ? 'bg-[#5B5FC7] text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
+                      >
+                        By Shift
+                      </button>
+                      <button
+                        onClick={() => setAchFilter('exca')}
+                        className={`text-xs font-bold px-3 py-1.5 rounded-md transition-colors ${achFilter === 'exca' ? 'bg-[#5B5FC7] text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
+                      >
+                        By Exca
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {achFilter === 'shift' ? (
+                  <div className="overflow-hidden">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-gray-50 border-b border-gray-200">
+                          <th className="px-5 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Shift</th>
+                          <th className="px-5 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Tanggal</th>
+                          <th className="px-5 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Ritase</th>
+                          <th className="px-5 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Tonnage (MT)</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100 bg-white">
+                        {shiftRows.map((r, idx) => {
+                          const hasDetail = r.excaSummary.length > 0;
+                          const isOpen = expandedShiftRows.has(idx);
+                          return (
+                            <Fragment key={idx}>
+                              <tr className="hover:bg-gray-50/50 transition-colors">
+                                <td className="px-5 py-3.5 text-sm font-semibold text-gray-900">
+                                  <div className="flex items-center gap-1.5">
+                                    {hasDetail ? (
+                                      <button onClick={() => toggleShiftDetail(idx)} className="text-gray-400 hover:text-[#5B5FC7] transition-colors">
+                                        {isOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+                                      </button>
+                                    ) : <span className="w-3.5" />}
+                                    {r.shift}
+                                    {'isCurrent' in r && r.isCurrent && (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase bg-emerald-100 text-emerald-700">Berjalan</span>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="px-5 py-3.5 text-sm text-gray-500">{r.date}</td>
+                                <td className="px-5 py-3.5 text-sm font-bold text-gray-900 text-right">{r.ritase}</td>
+                                <td className="px-5 py-3.5 text-sm font-bold text-[#5B5FC7] text-right">{r.tonnage.toFixed(1)}</td>
+                              </tr>
+                              {hasDetail && isOpen && (
+                                <tr className="bg-gray-50/60">
+                                  <td colSpan={4} className="px-5 py-3 pl-12">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <span className="text-xs text-gray-500 mr-1">Exca:</span>
+                                      {r.excaSummary.map(e => (
+                                        <span key={e.code} className="inline-flex items-center gap-1.5 bg-white border border-gray-200 rounded-lg px-2.5 py-1 text-xs">
+                                          <strong className="text-gray-900">{e.code}</strong>
+                                          <span className="text-gray-500">{e.ritase} rit</span>
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </td>
+                                </tr>
+                              )}
+                            </Fragment>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <div className="overflow-hidden">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-gray-50 border-b border-gray-200">
+                          <th className="px-5 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Excavator</th>
+                          <th className="px-5 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Ritase</th>
+                          <th className="px-5 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Tonnage (MT)</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-100 bg-white">
+                        {excaAggregateRows.length === 0 ? (
+                          <tr>
+                            <td colSpan={3} className="px-5 py-8 text-center text-sm font-medium text-gray-400">Belum ada data exca.</td>
+                          </tr>
+                        ) : excaAggregateRows.map(e => (
+                          <tr key={e.code} className="hover:bg-gray-50/50 transition-colors">
+                            <td className="px-5 py-3.5 text-sm">
+                              <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-indigo-100 text-[#5B5FC7]">{e.code}</span>
+                            </td>
+                            <td className="px-5 py-3.5 text-sm font-bold text-gray-900 text-right">{e.ritase}</td>
+                            <td className="px-5 py-3.5 text-sm font-bold text-[#5B5FC7] text-right">{e.tonnage.toFixed(1)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -1339,13 +1469,13 @@ export default function PlanningDetail() {
                         />
 
                         <div className="pt-2">
-                          {(!isClosingAllChecked || achievements.length === 0) && (
+                          {(!isClosingAllChecked || ritaseCount < 1) && (
                             <div className="text-[13px] font-medium text-amber-700 mb-3 bg-amber-50 p-3 rounded-xl border border-amber-200/60 flex gap-2 items-start">
                               <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5 text-amber-500" />
-                              <span>Complete all checklist items & ensure at least 1 achievement to finish.</span>
+                              <span>Complete all checklist items & ensure minimal 1 ritase (via Refresh) to finish.</span>
                             </div>
                           )}
-                          <button onClick={handleCloseBarge} disabled={!isClosingAllChecked || achievements.length === 0} className="w-full bg-gradient-to-r from-gray-800 to-gray-900 hover:from-black hover:to-black disabled:from-gray-300 disabled:to-gray-300 disabled:text-gray-500 disabled:shadow-none text-white text-[14px] font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-gray-900/20 flex justify-center items-center gap-2">
+                          <button onClick={handleCloseBarge} disabled={!isClosingAllChecked || ritaseCount < 1} className="w-full bg-gradient-to-r from-gray-800 to-gray-900 hover:from-black hover:to-black disabled:from-gray-300 disabled:to-gray-300 disabled:text-gray-500 disabled:shadow-none text-white text-[14px] font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-gray-900/20 flex justify-center items-center gap-2">
                             <Check className="w-5 h-5 stroke-[3]" /> Close Tongkang
                           </button>
                         </div>
@@ -1377,107 +1507,6 @@ export default function PlanningDetail() {
           )}
         </div>
       </div>
-
-      {showAchievementModal && (
-        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all">
-            <div className="px-6 py-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center">
-                  <Target className="w-4 h-4 text-[#5B5FC7]" />
-                </div>
-                <h3 className="text-lg font-bold text-gray-900">Add Achievement</h3>
-              </div>
-              <button onClick={() => setShowAchievementModal(false)} className="text-gray-400 hover:text-gray-600 bg-white hover:bg-gray-100 p-1.5 rounded-lg transition-colors border border-gray-200">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <form onSubmit={handleAddAchievement} className="p-6 space-y-5">
-              <div className="grid grid-cols-2 gap-5">
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Date <span className="text-red-500">*</span></label>
-                  <input
-                    type="date"
-                    required
-                    value={achievementForm.date}
-                    onChange={e => setAchievementForm({...achievementForm, date: e.target.value})}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5B5FC7] focus:border-[#5B5FC7] shadow-sm font-medium text-gray-900"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Shift <span className="text-red-500">*</span></label>
-                  <select
-                    required
-                    value={achievementForm.shift}
-                    onChange={e => setAchievementForm({...achievementForm, shift: e.target.value})}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5B5FC7] focus:border-[#5B5FC7] shadow-sm bg-white font-medium text-gray-900"
-                  >
-                    <option value="DS">Day Shift (DS)</option>
-                    <option value="NS">Night Shift (NS)</option>
-                  </select>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-5 bg-gray-50 p-4 rounded-xl border border-gray-100">
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Ritase <span className="text-red-500">*</span></label>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      required
-                      min="1"
-                      value={achievementForm.ritase}
-                      onChange={e => setAchievementForm({...achievementForm, ritase: e.target.value})}
-                      className="w-full px-4 py-2.5 pl-10 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5B5FC7] focus:border-[#5B5FC7] bg-white font-bold text-gray-900 shadow-sm"
-                      placeholder="0"
-                    />
-                    <Truck className="w-4 h-4 text-gray-400 absolute left-3.5 top-3" />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Tonase (MT) <span className="text-red-500">*</span></label>
-                  <div className="relative">
-                    <input
-                      type="number"
-                      required
-                      min="1"
-                      value={achievementForm.tonase}
-                      onChange={e => setAchievementForm({...achievementForm, tonase: e.target.value})}
-                      className="w-full px-4 py-2.5 pl-10 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5B5FC7] focus:border-[#5B5FC7] bg-white font-bold text-[#5B5FC7] shadow-sm"
-                      placeholder="0"
-                    />
-                    <Layers className="w-4 h-4 text-[#5B5FC7] absolute left-3.5 top-3" />
-                  </div>
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Remark</label>
-                <textarea
-                  rows={2}
-                  value={achievementForm.remark}
-                  onChange={e => setAchievementForm({...achievementForm, remark: e.target.value})}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5B5FC7] focus:border-[#5B5FC7] shadow-sm font-medium text-gray-900 resize-none"
-                  placeholder="Add notes, constraints, or issues (optional)..."
-                ></textarea>
-              </div>
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAchievementModal(false)}
-                  className="px-5 py-2.5 border border-gray-300 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-100 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="bg-[#5B5FC7] hover:bg-indigo-700 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition-all shadow-md shadow-indigo-500/20"
-                >
-                  Save Achievement
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
 
       {showInvalidModal && (
         <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
