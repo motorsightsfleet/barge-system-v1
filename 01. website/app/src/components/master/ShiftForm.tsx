@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ArrowLeft } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router";
 import { shiftApi } from "../../lib/shiftApi";
 import { ApiError } from "../../lib/api";
@@ -95,11 +96,11 @@ export default function ShiftForm() {
 
   return (
     <div className="p-8 max-w-[1600px] mx-auto space-y-6">
-      <div className="text-sm text-gray-500">
-        Master Data <span className="mx-1">&gt;</span>{" "}
-        <Link to="/master/shift" className="hover:text-[#5B5FC7]">Shift</Link>{" "}
-        <span className="mx-1">&gt;</span>{" "}
-        <span className="text-[#5B5FC7] font-semibold">{isEdit ? "Update Shift" : "Create Shift"}</span>
+      <div className="flex items-center gap-3">
+        <Link to="/master/shift" className="flex items-center gap-1.5 text-xs font-bold text-gray-600 border border-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-100">
+          <ArrowLeft className="w-3.5 h-3.5" /> Kembali
+        </Link>
+        <span className="text-xs text-gray-500">Master Data → Shift → {isEdit ? "Update Shift" : "Create Shift"}</span>
       </div>
 
       <form onSubmit={handleSubmitClick} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">

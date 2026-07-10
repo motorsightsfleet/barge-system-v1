@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ArrowLeft } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router";
 import type { SimpleMasterEntity } from "../../lib/simpleMasterTypes";
 import { ApiError } from "../../lib/api";
@@ -97,17 +98,11 @@ export default function SimpleMasterFormPage({ entityLabel, breadcrumb, basePath
 
   return (
     <div className="p-8 max-w-[1600px] mx-auto space-y-6">
-      <div className="text-sm text-gray-500">
-        {crumbs.map((item, idx) => (
-          <span key={item.label}>
-            {idx > 0 && <span className="mx-1">&gt;</span>}
-            {item.path ? (
-              <Link to={item.path} className="hover:text-[#5B5FC7]">{item.label}</Link>
-            ) : (
-              <span className="text-[#5B5FC7] font-semibold">{item.label}</span>
-            )}
-          </span>
-        ))}
+      <div className="flex items-center gap-3">
+        <Link to={basePath} className="flex items-center gap-1.5 text-xs font-bold text-gray-600 border border-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-100">
+          <ArrowLeft className="w-3.5 h-3.5" /> Kembali
+        </Link>
+        <span className="text-xs text-gray-500">{crumbs.map((item) => item.label).join(" → ")}</span>
       </div>
 
       <form onSubmit={handleSubmitClick} className="bg-white rounded-2xl border border-gray-200 shadow-sm p-8">
