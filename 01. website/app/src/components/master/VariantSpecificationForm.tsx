@@ -7,12 +7,7 @@ import { unitModelVariantApi, UnitModelVariant } from "../../lib/unitModelVarian
 import { engineApi, Engine } from "../../lib/engineApi";
 import { ApiError } from "../../lib/api";
 import ActionModal, { ActionModalVariant } from "../common/ActionModal";
-import CreatableSelect from "../common/CreatableSelect";
-
-interface RefOption {
-  id: string;
-  name: string;
-}
+import CreatableSelect, { Option as RefOption } from "../common/CreatableSelect";
 
 interface FormState {
   unitTypeId: string;

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { X } from "lucide-react";
 
-interface Option {
+export interface Option {
   id: string;
   name: string;
 }

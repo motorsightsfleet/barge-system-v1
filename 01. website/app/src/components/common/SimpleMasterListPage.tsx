@@ -19,7 +19,6 @@ interface BreadcrumbItem {
 
 interface SimpleMasterListPageProps {
   title: string;
-  subtitle: string;
   breadcrumb: BreadcrumbItem[];
   basePath: string;
   api: SimpleMasterApi;
@@ -38,7 +37,7 @@ function StatusBadge({ isActive }: { isActive: boolean }) {
   );
 }
 
-export default function SimpleMasterListPage({ title, subtitle, breadcrumb, basePath, api, searchPlaceholder }: SimpleMasterListPageProps) {
+export default function SimpleMasterListPage({ title, breadcrumb, basePath, api, searchPlaceholder }: SimpleMasterListPageProps) {
   const [items, setItems] = useState<SimpleMasterEntity[]>([]);
   const [pagination, setPagination] = useState<Pagination>({ page: 1, pageSize: 10, total: 0, totalPages: 1 });
   const [loading, setLoading] = useState(true);

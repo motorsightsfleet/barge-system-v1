@@ -13,8 +13,6 @@ export const REFERENCE_DATA_TABS = [
   { type: "unit-model", label: "Unit Model", searchPlaceholder: "Search by Unit Model Name", api: unitModelApi },
 ] as const;
 
-export type ReferenceDataTabType = (typeof REFERENCE_DATA_TABS)[number]["type"];
-
 export default function MasterReferenceData() {
   const { type } = useParams();
   const tab = REFERENCE_DATA_TABS.find((t) => t.type === type);
@@ -30,7 +28,6 @@ export default function MasterReferenceData() {
       <SimpleMasterListPage
         key={tab.type}
         title={tab.label}
-        subtitle={`Manage ${tab.label.toLowerCase()} data in a centralized system`}
         breadcrumb={[{ label: "Master Data" }, { label: "Population" }, { label: "Konfigurasi Unit", path: "/master/population/reference-data" }, { label: tab.label }]}
         basePath={`/master/population/reference-data/${tab.type}`}
         api={tab.api}

@@ -19,18 +19,12 @@ import {
   Search
 } from 'lucide-react';
 import { useState } from 'react';
+import { POPULATION_CONFIG_PATHS } from './master/PopulationConfigTabs';
 
 // Reference Data, Engine, Variant Specification, and Unit Model Variant used to be four
 // separate sidebar entries. They're all "configuration" data feeding the Unit registry
 // and now share one tab bar (see PopulationConfigTabs), so the sidebar only needs one
 // "Konfigurasi Unit" entry that matches any of their routes.
-const POPULATION_CONFIG_PATHS = [
-  '/master/population/reference-data',
-  '/master/population/engine',
-  '/master/population/unit-model-variant',
-  '/master/population/variant-specification',
-];
-
 const POPULATION_SUBMENU = [
   { label: 'Unit', path: '/master/population/unit', matchPaths: undefined as string[] | undefined },
   { label: 'Konfigurasi Unit', path: '/master/population/reference-data', matchPaths: POPULATION_CONFIG_PATHS },
