@@ -1,4 +1,8 @@
-import { ArrowLeft, Save, FileText, Check, X, Clock, Anchor, MapPin, Target, Layers, Truck, UserCircle, Briefcase, Activity, Calendar, ShieldCheck, ChevronRight, ChevronDown, TrendingUp, Play, Upload, CheckCircle2, AlertTriangle, Flag, Wrench, RotateCcw, History, ArrowRightLeft, RefreshCw, Bookmark, Undo2 } from "lucide-react";
+import {
+  ArrowLeft, Save, Check, X, MapPin, Target, Truck, ChevronRight,
+  ChevronDown, ChevronUp, TrendingUp, Play, AlertTriangle, Flag,
+  History, RefreshCw, Search, MoreHorizontal, BarChart3, Settings,
+} from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router";
 import { Fragment, useEffect, useRef, useState } from "react";
 import ActionModal from "../common/ActionModal";
@@ -15,95 +19,88 @@ import {
   type BargingDocument,
 } from "../../lib/bargingStore";
 
-const TimelineItem = ({ title, status, date, icon: Icon, isLast = false, onViewSnapshot, active = false, children }: any) => {
-  const clickable = status === 'completed' && !!onViewSnapshot;
+const STATUS_ORDER = ["Planned", "Arrived", "Open", "On Progress", "Closed", "Departed"];
+
+function StatusBadge({ status }: { status: string }) {
   return (
-    <div className="relative pl-12 pb-10 last:pb-0">
-      {/* Vertical connector line */}
-      {!isLast && (
-        <div className={`absolute left-[19px] top-8 bottom-[-10px] w-[2px] transition-colors duration-500 ${
-          status === 'completed' ? 'bg-[#5B5FC7]' : 'bg-gray-200'
-        }`} />
-      )}
+    <span className={`px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${
+      status === 'Departed' ? 'bg-emerald-100 text-emerald-800' :
+      status === 'Closed' ? 'bg-sky-100 text-sky-800' :
+      status === 'On Progress' ? 'bg-indigo-100 text-indigo-800' :
+      status === 'Invalid' ? 'bg-rose-100 text-rose-800' :
+      'bg-amber-100 text-amber-800'
+    }`}>
+      {status}
+    </span>
+  );
+}
 
-      {/* Node Icon */}
-      <div className="absolute left-0 top-1">
-        {status === 'completed' && (
-          <div className="w-10 h-10 rounded-full bg-[#5B5FC7] flex items-center justify-center z-10 relative shadow-md shadow-indigo-500/20 ring-4 ring-white">
-            <Check className="w-5 h-5 text-white stroke-[2.5]" />
-          </div>
-        )}
-        {status === 'current' && (
-          <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center z-10 relative shadow-sm ring-4 ring-white border-2 border-[#5B5FC7]">
-            <div className="absolute inset-0 rounded-full animate-ping border-2 border-[#5B5FC7] opacity-20"></div>
-            {Icon ? <Icon className="w-4 h-4 text-[#5B5FC7]" /> : <div className="w-3 h-3 rounded-full bg-[#5B5FC7]" />}
-          </div>
-        )}
-        {status === 'upcoming' && (
-          <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center z-10 relative ring-4 ring-white border-2 border-gray-200">
-            {Icon ? <Icon className="w-4 h-4 text-gray-400" /> : <div className="w-3 h-3 rounded-full bg-gray-300" />}
-          </div>
-        )}
-      </div>
-
-      {/* Content */}
-      <div className="pt-2">
-        <div
-          onClick={clickable ? onViewSnapshot : undefined}
-          className={`flex justify-between items-center mb-3 -mx-2 px-2 py-1 rounded-lg transition-colors ${
-            clickable ? `cursor-pointer hover:bg-indigo-50/60 ${active ? 'bg-indigo-50/80' : ''}` : ''
-          }`}
-          title={clickable ? `Lihat snapshot status ${title}` : undefined}
-        >
-          <h4 className={`text-[16px] font-bold flex items-center gap-1.5 ${
-            active ? 'text-[#5B5FC7]' :
-            status === 'current' ? 'text-[#5B5FC7]' :
-            status === 'completed' ? 'text-gray-900' :
-            'text-gray-400'
-          }`}>
-            {title}
-            {clickable && <Bookmark className="w-3.5 h-3.5 text-gray-300" />}
-          </h4>
-          {date && (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-gray-50 text-[12px] font-medium text-gray-500 border border-gray-100">
-              <Calendar className="w-3.5 h-3.5" />
-              {date}
-            </span>
-          )}
-        </div>
-        {children && (
-          <div className="mt-4 flex flex-col gap-3">
-            {children}
-          </div>
-        )}
-      </div>
+// Horizontal lifecycle stepper — mirrors index.html's #detail-status-flow: numbered dots,
+// checkmark once past, current step highlighted, past steps clickable for a snapshot.
+function StatusStepper({ statusOrder, currentIdx, onStepClick }: { statusOrder: string[]; currentIdx: number; onStepClick: (s: string) => void }) {
+  return (
+    <div className="flex items-center overflow-x-auto pb-1">
+      {statusOrder.map((s, i) => {
+        const done = i < currentIdx;
+        const current = i === currentIdx;
+        const clickable = done;
+        return (
+          <Fragment key={s}>
+            <button
+              type="button"
+              disabled={!clickable}
+              onClick={() => clickable && onStepClick(s)}
+              className={`flex flex-col items-center gap-1.5 shrink-0 px-1 ${clickable ? 'cursor-pointer group' : 'cursor-default'}`}
+              title={clickable ? `Lihat snapshot status ${s}` : undefined}
+            >
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold border-2 transition-colors ${
+                done ? 'bg-[#5B5FC7] border-[#5B5FC7] text-white group-hover:bg-indigo-700' :
+                current ? 'bg-white border-[#5B5FC7] text-[#5B5FC7]' :
+                'bg-white border-gray-200 text-gray-400'
+              }`}>
+                {done ? <Check className="w-4 h-4" /> : i + 1}
+              </div>
+              <span className={`text-[11px] font-semibold whitespace-nowrap ${current ? 'text-[#5B5FC7]' : done ? 'text-gray-700' : 'text-gray-400'}`}>{s}</span>
+            </button>
+            {i < statusOrder.length - 1 && (
+              <div className={`flex-1 h-0.5 min-w-[20px] mx-1 mb-5 ${i < currentIdx ? 'bg-[#5B5FC7]' : 'bg-gray-200'}`} />
+            )}
+          </Fragment>
+        );
+      })}
     </div>
   );
-};
+}
 
-const TaskCard = ({ label, checked, onChange, disabled = false }: any) => (
-  <div
-    onClick={() => !disabled && onChange(!checked)}
-    className={`group flex items-center justify-between p-4 rounded-xl border transition-all duration-300 cursor-pointer ${
-      disabled ? 'opacity-50 cursor-not-allowed bg-gray-50 border-gray-100' :
-      checked ? 'bg-gradient-to-r from-[#5B5FC7]/10 to-indigo-50/30 border-[#5B5FC7]/40 shadow-[0_2px_12px_rgba(91,95,199,0.06)]' :
-      'bg-white border-gray-200 hover:border-[#5B5FC7]/60 hover:shadow-md hover:-translate-y-[2px] hover:bg-gray-50/30'
-    }`}
-  >
-    <div className="flex items-center gap-4">
-      <div className={`w-6 h-6 rounded-lg flex items-center justify-center border-2 transition-all duration-300 ${
-        checked ? 'bg-[#5B5FC7] border-[#5B5FC7] scale-110 shadow-sm shadow-indigo-500/30' : 'bg-white border-gray-300 group-hover:border-[#5B5FC7]/70'
-      }`}>
-        {checked && <Check className="w-4 h-4 text-white stroke-[3]" />}
+function SectionCard({ title, badge, children }: { title: string; badge?: React.ReactNode; children: React.ReactNode }) {
+  return (
+    <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+      <div className="px-5 py-3.5 bg-gray-50/70 border-b border-gray-100 flex items-center justify-between">
+        <h3 className="text-sm font-bold text-gray-900">{title}</h3>
+        {badge}
       </div>
-      <span className={`text-[14px] font-semibold transition-colors ${
-        checked ? 'text-[#5B5FC7]' : 'text-gray-700 group-hover:text-gray-900'
-      }`}>
-        {label}
-      </span>
+      <div className="p-5">{children}</div>
     </div>
-  </div>
-);
+  );
+}
+
+function FormField({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">{label}</label>
+      {children}
+    </div>
+  );
+}
+
+function InfoBox({ tone, children }: { tone: "blue" | "green" | "orange"; children: React.ReactNode }) {
+  const cls = tone === "green" ? "bg-emerald-50 border-emerald-200 text-emerald-800" :
+    tone === "orange" ? "bg-amber-50 border-amber-200 text-amber-800" :
+    "bg-blue-50 border-blue-200 text-blue-800";
+  return <div className={`rounded-xl border px-4 py-3 text-sm ${cls}`}>{children}</div>;
+}
+
+const inputCls = "w-full px-3 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5B5FC7] focus:border-[#5B5FC7] disabled:bg-gray-50 disabled:text-gray-400";
 
 export default function PlanningDetail() {
   const { id } = useParams();
@@ -112,8 +109,6 @@ export default function PlanningDetail() {
   const { documents, addDocument, updateDocument } = useBargingDocuments();
   const doc = !isCreate ? documents.find(d => d.id === id) : undefined;
 
-  // Document not found (e.g. deleted, or bad URL) — bounce back to the list, matching
-  // index.html's renderDetail(): if (!doc) { goPage('planning'); return; }
   useEffect(() => {
     if (!isCreate && documents.length > 0 && !doc) {
       navigate("/transactional/operation", { replace: true });
@@ -183,17 +178,31 @@ export default function PlanningDetail() {
   // ─── DETAIL MODE ────────────────────────────────────────────────────────
   const [showInvalidModal, setShowInvalidModal] = useState(false);
   const [invalidJustification, setInvalidJustification] = useState("");
+  const [infoExpanded, setInfoExpanded] = useState(false);
+  const [activeTab, setActiveTab] = useState<"progress" | "operasional" | "riwayat">("operasional");
+  const [viewingHistoricalStatus, setViewingHistoricalStatus] = useState<string | null>(null);
+
+  useEffect(() => {
+    setActiveTab("operasional");
+    setInfoExpanded(false);
+    setViewingHistoricalStatus(null);
+  }, [id]);
 
   const status = doc?.status ?? "Planned";
   const invalidReason = doc?.invalidReason ?? "";
-  const generalInfo = {
-    area: doc?.area ?? "",
-    barge: doc?.barge ?? "",
-    material: doc?.material ?? "",
-    surveyor: doc?.surveyor ?? "",
-    targetTonase: doc?.targetTonase ?? 0,
-    materialDensity: doc?.materialDensity ?? 1.2,
-  };
+  const isInvalid = status === "Invalid";
+  const currentIdx = STATUS_ORDER.indexOf(status);
+
+  const isHistoricalView = viewingHistoricalStatus !== null;
+  const readonly = isHistoricalView;
+  const effectiveStatus = viewingHistoricalStatus ?? status;
+  const effectiveIdx = STATUS_ORDER.indexOf(effectiveStatus);
+  const showAllTabs = effectiveIdx >= 3;
+
+  useEffect(() => {
+    if (!showAllTabs && activeTab !== "operasional") setActiveTab("operasional");
+  }, [showAllTabs]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const population = {
     excavators: doc?.excavators ?? [],
     dumpTrucks: doc?.dumpTrucks ?? [],
@@ -204,29 +213,65 @@ export default function PlanningDetail() {
   const openChecks = doc?.openChecklist ?? { notify: false, ramp: false, excaEnter: false };
   const closingChecks = doc?.closeChecklist ?? { bargeInfo: false, closeBarge: false, finalDraft: false };
 
-  // Arrival form — local draft until "Confirm Arrival" commits it to the document.
   const [eta, setEta] = useState("");
   const [ata, setAta] = useState("");
   useEffect(() => {
     if (doc) { setEta(doc.eta); setAta(doc.ata); }
   }, [doc?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const [breakdownModal, setBreakdownModal] = useState(false);
-  const [breakdownFrom, setBreakdownFrom] = useState("");
-  const [breakdownTo, setBreakdownTo] = useState("");
+  const [finalActualTonnage, setFinalActualTonnage] = useState("");
+  useEffect(() => {
+    if (doc) setFinalActualTonnage(doc.finalTonnage != null ? String(doc.finalTonnage) : "");
+  }, [doc?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [finalDraftFile, setFinalDraftFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const loadedTrucks = population.dumpTrucks.filter(d => d.status === "loaded");
-  const availableTrucksForTransfer = population.dumpTrucks.filter(d => d.status === "available");
+  const isOpenAllChecked = Object.values(openChecks).every(Boolean);
+  const isClosingAllChecked = Object.values(closingChecks).every(Boolean);
+  const ritaseCount = doc ? getRitaseCount(doc) : 0;
 
-  function openBreakdownModal(preselect?: string) {
-    setBreakdownFrom(preselect || loadedTrucks[0]?.code || "");
-    setBreakdownTo("");
-    setBreakdownModal(true);
-  }
+  const handleConfirmArrival = () => { if (id && eta && ata) updateDocument(id, { status: "Arrived", eta, ata }); };
+  const handleSetOpen = () => { if (id && isOpenAllChecked) updateDocument(id, { status: "Open" }); };
+  const handleStartOperation = () => {
+    if (!id) return;
+    updateDocument(id, d => ({
+      status: "On Progress",
+      excavators: d.excavators.length ? d.excavators : [
+        { code: "EX-001", model: "Hitachi PC200", bucket: 1.6, assignedArea: "EFO A", status: "available" as const },
+        { code: "EX-003", model: "Caterpillar 320", bucket: 1.2, assignedArea: "EFO B", status: "available" as const },
+      ],
+      dumpTrucks: d.dumpTrucks.length ? d.dumpTrucks : [
+        { code: "DT-01", plate: "B 1234 ABC", capacity: 10, route: "scheduled" as const, assignedArea: d.area, status: "available" as const },
+        { code: "DT-02", plate: "B 5678 DEF", capacity: 12, route: "scheduled" as const, assignedArea: d.area, status: "available" as const },
+        { code: "DT-03", plate: "B 9012 GHI", capacity: 15, route: "unscheduled" as const, assignedArea: d.area, status: "available" as const },
+      ],
+    }));
+  };
+  const handleCloseBarge = () => {
+    if (id && isClosingAllChecked && ritaseCount >= 1) updateDocument(id, { status: "Closed" });
+  };
+  const handleConfirmDeparture = () => {
+    if (id && finalActualTonnage) updateDocument(id, { status: "Departed", finalTonnage: Number(finalActualTonnage) });
+  };
+  const handleMarkInvalid = () => {
+    const trimmed = invalidJustification.trim();
+    if (!id || !trimmed) return;
+    updateDocument(id, { status: "Invalid", invalidReason: trimmed });
+    setShowInvalidModal(false);
+    setInvalidJustification("");
+  };
+
+  // ─── Population table actions — Sim + Remove only, matching renderPopManagementHtml()'s
+  // "..." menu (openAddUnitModal()/markExcaBreakdown()/recoverDT()/openBreakdownModal() are
+  // all dead code in index.html, never wired to a button). ───────────────────────────────
+  const [dtSearch, setDtSearch] = useState("");
+  const [excaSearch, setExcaSearch] = useState("");
+  const [openMenuKey, setOpenMenuKey] = useState<string | null>(null);
+  const [removeTarget, setRemoveTarget] = useState<{ type: "dt" | "exca"; code: string } | null>(null);
 
   function simulateLoaded(code: string) {
     if (!id) return;
-    const density = generalInfo.materialDensity || 1.2;
+    const density = doc?.materialDensity || 1.2;
     updateDocument(id, d => ({
       dumpTrucks: d.dumpTrucks.map(dt => {
         if (dt.code !== code || dt.status !== "available") return dt;
@@ -234,117 +279,26 @@ export default function PlanningDetail() {
           const tonnage = Math.round(dt.capacity * density * 10) / 10;
           return { ...dt, status: "loaded" as const, payload: { bucketCount: "-" as const, tonnage } };
         }
-        const exca = d.excavators.find(e => e.status !== "breakdown") || d.excavators[0];
+        const exca = d.excavators[0];
         const bucketSize = exca?.bucket || 1.6;
-        const bucketCount = Math.floor(Math.random() * 5) + 3; // 3-7
+        const bucketCount = Math.floor(Math.random() * 5) + 3;
         const tonnage = Math.round(bucketCount * bucketSize * density * 10) / 10;
         return { ...dt, status: "loaded" as const, payload: { bucketCount, tonnage } };
       }),
     }));
   }
 
-  function toggleExcaBreakdown(code: string) {
-    if (!id) return;
-    const exca = population.excavators.find(e => e.code === code);
-    if (!exca) return;
-    const wasBreakdown = exca.status === "breakdown";
-    updateDocument(id, d => ({
-      excavators: d.excavators.map(e => e.code === code ? { ...e, status: wasBreakdown ? "available" as const : "breakdown" as const } : e),
-      breakdownEvents: [...d.breakdownEvents, {
-        id: `EV-${Date.now()}`,
-        type: wasBreakdown ? "exca_recover" as const : "exca_breakdown" as const,
-        unit: code,
-        timestamp: new Date().toLocaleString("id-ID"),
-      }],
-    }));
-  }
-
-  function recoverDT(code: string) {
-    if (!id) return;
-    const dt = population.dumpTrucks.find(d2 => d2.code === code);
-    if (!dt || dt.status !== "breakdown") return;
-    updateDocument(id, d => ({
-      dumpTrucks: d.dumpTrucks.map(x => x.code === code ? { ...x, status: "available" as const, transferTo: undefined } : x),
-      breakdownEvents: [...d.breakdownEvents, {
-        id: `EV-${Date.now()}`,
-        type: "dt_recovery" as const,
-        unit: `${dt.code} (${dt.plate})`,
-        timestamp: new Date().toLocaleString("id-ID"),
-      }],
-    }));
-  }
-
-  function computeBreakdownTonnage(fromCode: string, toCode: string) {
-    const density = generalInfo.materialDensity || 1.2;
-    const fromDT = population.dumpTrucks.find(d => d.code === fromCode);
-    const toDT = population.dumpTrucks.find(d => d.code === toCode);
-    if (!fromDT || !toDT) return null;
-    const fromCap = fromDT.capacity;
-    const toCap = toDT.capacity;
-    if (fromDT.route === "unscheduled" || !fromDT.payload) {
-      const effectiveCap = Math.min(fromCap, toCap);
-      const tonnage = Math.round(effectiveCap * density * 10) / 10;
-      const note = fromCap > toCap
-        ? `min(${fromCap}, ${toCap})m³ × ${density} = ${tonnage} MT (dibatasi kapasitas unit penerima)`
-        : `min(${fromCap}, ${toCap})m³ × ${density} = ${tonnage} MT`;
-      return { tonnage, bucketCount: "-" as const, note };
+  function confirmRemoveUnit() {
+    if (!id || !removeTarget) return;
+    if (removeTarget.type === "dt") {
+      updateDocument(id, d => ({ dumpTrucks: d.dumpTrucks.filter(dt => dt.code !== removeTarget.code) }));
+    } else {
+      updateDocument(id, d => ({ excavators: d.excavators.filter(e => e.code !== removeTarget.code) }));
     }
-    const recordTonnage = fromDT.payload.tonnage || 0;
-    const maxByToCap = Math.round(toCap * density * 10) / 10;
-    const tonnage = Math.min(recordTonnage, maxByToCap);
-    const note = recordTonnage > maxByToCap
-      ? `Dipotong dari ${recordTonnage} MT ke ${tonnage} MT (kapasitas unit penerima lebih kecil)`
-      : `Dari loading record: ${tonnage} MT`;
-    return { tonnage, bucketCount: fromDT.payload.bucketCount, note };
+    setRemoveTarget(null);
   }
 
-  const breakdownPreview = breakdownFrom && breakdownTo && breakdownFrom !== breakdownTo
-    ? computeBreakdownTonnage(breakdownFrom, breakdownTo)
-    : null;
-
-  function confirmBreakdownTransfer() {
-    if (!id || !breakdownFrom || !breakdownTo || breakdownFrom === breakdownTo) return;
-    const result = computeBreakdownTonnage(breakdownFrom, breakdownTo);
-    const fromDT = population.dumpTrucks.find(d2 => d2.code === breakdownFrom);
-    const toDT = population.dumpTrucks.find(d2 => d2.code === breakdownTo);
-    if (!result || !fromDT || !toDT) return;
-    const ts = new Date().toLocaleString("id-ID");
-
-    updateDocument(id, d => ({
-      dumpTrucks: d.dumpTrucks.map(x => {
-        if (x.code === breakdownFrom) return { ...x, status: "breakdown" as const, transferTo: `${toDT.code} (${toDT.plate})` };
-        if (x.code === breakdownTo) return { ...x, status: "transfer" as const, payload: { bucketCount: result.bucketCount, tonnage: result.tonnage, fromTruck: `${fromDT.code} (${fromDT.plate})` } };
-        return x;
-      }),
-      breakdownEvents: [...d.breakdownEvents, {
-        id: `EV-${Date.now()}`,
-        type: "dt_breakdown" as const,
-        fromTruck: `${fromDT.code} (${fromDT.plate})`,
-        toTruck: `${toDT.code} (${toDT.plate})`,
-        bucketCount: result.bucketCount,
-        tonnage: result.tonnage,
-        timestamp: ts,
-        note: result.note,
-      }],
-    }));
-    setBreakdownModal(false);
-  }
-
-  // No manual "assign unit" action exists in index.html — openAddUnitModal()/confirmAddUnit()
-  // are defined there but never wired to any button, so the population table only ever
-  // supports Remove (openRemoveUnitModal) and Sim (simulateLoaded) via its "⋯" action menu.
-  // Units only ever enter the document through the Operator App auto-populate on first
-  // On Progress (handleStartOperation below).
-
-  function removeExca(code: string) {
-    if (!id) return;
-    updateDocument(id, d => ({ excavators: d.excavators.filter((e) => e.code !== code) }));
-  }
-  function removeDt(code: string) {
-    if (!id) return;
-    updateDocument(id, d => ({ dumpTrucks: d.dumpTrucks.filter((dt) => dt.code !== code) }));
-  }
-
+  // ─── Shift Log (Achievement Tonnage) — mirrors renderShiftLogHtml(). ──────────────────
   const [achFilter, setAchFilter] = useState<"shift" | "exca">("shift");
   const [expandedShiftRows, setExpandedShiftRows] = useState<Set<number>>(new Set());
   function toggleShiftDetail(idx: number) {
@@ -355,65 +309,6 @@ export default function PlanningDetail() {
     });
   }
 
-  const [loadingDuration, setLoadingDuration] = useState("");
-
-  // Final closing data
-  const [finalActualTonnage, setFinalActualTonnage] = useState("");
-  useEffect(() => {
-    if (doc) setFinalActualTonnage(doc.finalTonnage != null ? String(doc.finalTonnage) : "");
-  }, [doc?.id]); // eslint-disable-line react-hooks/exhaustive-deps
-  const [finalDraftFile, setFinalDraftFile] = useState<File | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const isOpenAllChecked = Object.values(openChecks).every(Boolean);
-  const isClosingAllChecked = Object.values(closingChecks).every(Boolean);
-
-  const handleConfirmArrival = () => { if (id && eta && ata) updateDocument(id, { status: "Arrived", eta, ata }); };
-  const handleSetOpen = () => { if (id && isOpenAllChecked) updateDocument(id, { status: "Open" }); };
-  const handleStartOperation = () => {
-    if (!id) return;
-    // Auto-populate from "Operator App" the first time operation starts, matching the SPV POC's
-    // simulateRitase() behavior — population is never assigned manually at Create.
-    updateDocument(id, d => ({
-      status: "On Progress",
-      excavators: d.excavators.length
-        ? d.excavators
-        : [
-            { code: "EX-001", model: "Hitachi PC200", bucket: 1.6, assignedArea: "EFO A", status: "available" as const },
-            { code: "EX-003", model: "Caterpillar 320", bucket: 1.2, assignedArea: "EFO B", status: "available" as const },
-          ],
-      dumpTrucks: d.dumpTrucks.length
-        ? d.dumpTrucks
-        : [
-            { code: "DT-01", plate: "B 1234 ABC", capacity: 10, route: "scheduled" as const, assignedArea: d.area, status: "available" as const },
-            { code: "DT-02", plate: "B 5678 DEF", capacity: 12, route: "scheduled" as const, assignedArea: d.area, status: "available" as const },
-            { code: "DT-03", plate: "B 9012 GHI", capacity: 15, route: "unscheduled" as const, assignedArea: d.area, status: "available" as const },
-          ],
-    }));
-  };
-  const handleCloseBarge = () => {
-    if (id && isClosingAllChecked && ritaseCount >= 1) {
-      updateDocument(id, { status: "Closed" });
-    }
-  };
-  const handleConfirmDeparture = () => {
-    if (id && finalActualTonnage) {
-      updateDocument(id, { status: "Departed", finalTonnage: Number(finalActualTonnage) });
-      setLoadingDuration("1 Day 14 Hours 30 Mins");
-    }
-  };
-  const handleMarkInvalid = () => {
-    const trimmed = invalidJustification.trim();
-    if (!id || !trimmed) return;
-    updateDocument(id, { status: "Invalid", invalidReason: trimmed });
-    setShowInvalidModal(false);
-    setInvalidJustification("");
-  };
-
-  // "Refresh" — simulates the Operator App syncing new ritase/tonnage, matching
-  // simulateRitase() in index.html exactly: 60% chance of 1-2 new ritase at
-  // 15-25 MT each, plus a 25% chance of an unrelated mobile-reported breakdown
-  // log entry (decorative — it does not touch actual DT card status).
   function simulateRitase() {
     if (!id) return;
     if (Math.random() < 0.4) return;
@@ -443,17 +338,11 @@ export default function PlanningDetail() {
     });
   }
 
-  // Top-of-panel overview mirrors renderTabProgress(): target/accumulated/ritase come
-  // ONLY from today's simulated sync (matches getAccumulatedTonnage()/getRitaseCount()),
-  // not the historical shiftHistory below it.
-  const ritaseCount = doc ? getRitaseCount(doc) : 0;
   const accumulatedTonase = doc ? getAccumulatedTonnage(doc) : 0;
-  const progress = generalInfo.targetTonase > 0 ? Math.min(100, Math.round((accumulatedTonase / generalInfo.targetTonase) * 100)) : 0;
-  const remainingTonase = Math.max(0, generalInfo.targetTonase - accumulatedTonase);
+  const progressTarget = doc?.targetTonase ?? 0;
+  const progress = progressTarget > 0 ? Math.min(100, Math.round((accumulatedTonase / progressTarget) * 100)) : 0;
+  const remainingTonase = Math.max(0, progressTarget - accumulatedTonase);
 
-  // Shift Log (Achievement Tonnage) — mirrors renderShiftLogHtml(): history rows plus
-  // a synthetic "current" row built from today's simulated ritase, split across the
-  // excavators assigned to loading areas.
   const loadingExcas = population.excavators.filter(e => AREAS_LOADING.includes(e.assignedArea));
   const curRitase = doc?.simulatedRitase ?? 0;
   const curTonnage = Math.round((doc?.simulatedTonnage ?? 0) * 10) / 10;
@@ -470,7 +359,7 @@ export default function PlanningDetail() {
   ];
   const shiftTotalRitase = shiftRows.reduce((s, r) => s + r.ritase, 0);
   const shiftTotalTonnage = shiftRows.reduce((s, r) => s + r.tonnage, 0);
-  const shiftOverallAch = generalInfo.targetTonase > 0 ? Math.min(100, Math.round(shiftTotalTonnage / generalInfo.targetTonase * 100)) : 0;
+  const shiftOverallAch = progressTarget > 0 ? Math.min(100, Math.round(shiftTotalTonnage / progressTarget * 100)) : 0;
   const excaAggregate = new Map<string, number>();
   shiftRows.forEach(r => r.excaSummary.forEach(e => excaAggregate.set(e.code, (excaAggregate.get(e.code) ?? 0) + e.ritase)));
   const excaAggregateRows = Array.from(excaAggregate.entries()).map(([code, ritase]) => ({
@@ -478,1024 +367,663 @@ export default function PlanningDetail() {
     tonnage: shiftTotalRitase > 0 ? Math.round((ritase / shiftTotalRitase) * shiftTotalTonnage * 10) / 10 : 0,
   }));
 
-  const statusOrder = ["Planned", "Arrived", "Open", "On Progress", "Closed", "Departed"];
-  const currentIdx = statusOrder.indexOf(status);
-  const isInvalid = status === "Invalid";
+  if (!isCreate && !doc) return null;
 
-  const isPast = (st: string) => !isInvalid && statusOrder.indexOf(st) < currentIdx;
-  const isCurrent = (st: string) => !isInvalid && statusOrder.indexOf(st) === currentIdx;
-
-  // Historical snapshot view — matches showStepSnapshot()/viewingHistoricalStatus in
-  // index.html: clicking a completed lifecycle step shows the main content panels as
-  // they'd appear at that status, read-only, without touching the document's real data
-  // or the lifecycle stepper (which always reflects the actual current status).
-  const [viewingHistoricalStatus, setViewingHistoricalStatus] = useState<string | null>(null);
-  useEffect(() => { setViewingHistoricalStatus(null); }, [id]);
-  const isHistoricalView = viewingHistoricalStatus !== null;
-  const effectiveStatus = viewingHistoricalStatus ?? status;
-
-  if (!isCreate && !doc) {
-    return null;
-  }
+  const filteredDt = population.dumpTrucks.filter(dt => dt.code.toLowerCase().includes(dtSearch.trim().toLowerCase()));
+  const filteredExca = population.excavators.filter(e => e.code.toLowerCase().includes(excaSearch.trim().toLowerCase()));
 
   return (
     <div className="min-h-screen bg-gray-50/50 pb-20">
-      {/* Header Banner */}
-      <div className="bg-white border-b border-gray-200 px-8 py-6 sticky top-0 z-30 shadow-sm">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-5">
-            <Link to="/transactional/operation" className="p-2.5 text-gray-500 hover:text-[#5B5FC7] bg-gray-50 hover:bg-indigo-50 rounded-xl transition-colors border border-gray-100">
-              <ArrowLeft className="w-5 h-5" />
-            </Link>
-            <div>
-              <div className="flex items-center gap-3">
-                <h1 className="text-2xl font-bold text-gray-900 tracking-tight">
-                  {isCreate ? "Create Barging Process" : `Barging ID: ${id || 'BRG-90210'}`}
-                </h1>
-                {!isCreate && (
-                  <span className={`px-3 py-1 rounded-lg text-xs font-bold tracking-wide uppercase ${
-                    status === 'Departed' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
-                    status === 'Closed' ? 'bg-sky-100 text-sky-800 border border-sky-200' :
-                    status === 'On Progress' ? 'bg-indigo-100 text-indigo-800 border border-indigo-200' :
-                    status === 'Invalid' ? 'bg-rose-100 text-rose-800 border border-rose-200' :
-                    'bg-amber-100 text-amber-800 border border-amber-200'
-                  }`}>
-                    {status}
-                  </span>
-                )}
-              </div>
-              <p className="text-sm text-gray-500 mt-1.5 font-medium flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-emerald-500" />
-                SOP Compliant Workflow
-              </p>
-            </div>
-          </div>
-          <div className="flex gap-3">
-            {!isCreate && status === "Open" && (
-              <button
-                onClick={() => setShowInvalidModal(true)}
-                className="px-5 py-2.5 border border-rose-200 bg-rose-50 rounded-xl text-sm font-semibold text-rose-700 hover:bg-rose-100 flex items-center gap-2 shadow-sm transition-all"
-              >
-                <AlertTriangle className="w-4 h-4" />
-                Mark as Invalid
-              </button>
-            )}
-            {!isCreate && (
-              <button className="px-5 py-2.5 border border-gray-200 bg-white rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 flex items-center gap-2 shadow-sm transition-all">
-                <FileText className="w-4 h-4" />
-                Audit Trail
-              </button>
-            )}
-            {isCreate && (
-              <button onClick={handleCreateDocument} className="bg-gradient-to-r from-[#5B5FC7] to-indigo-600 hover:to-indigo-700 text-white px-6 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 transition-all shadow-md shadow-indigo-500/20">
-                <Save className="w-4 h-4" />
-                Save Document
-              </button>
-            )}
-          </div>
+      <div className="max-w-5xl mx-auto px-8 pt-8 space-y-4">
+
+        {/* Breadcrumb */}
+        <div className="flex items-center gap-3">
+          <Link to="/transactional/operation" className="flex items-center gap-1.5 text-xs font-bold text-gray-600 border border-gray-300 px-3 py-1.5 rounded-lg hover:bg-gray-100 shrink-0">
+            <ArrowLeft className="w-3.5 h-3.5" /> Kembali
+          </Link>
+          <span className="text-xs text-gray-500 truncate">
+            {isCreate ? "Transactional → Barging Process → Create Barge Document" : doc ? `${doc.id} — ${doc.barge} — ${doc.area}` : ""}
+          </span>
         </div>
-      </div>
 
-      <div className="max-w-7xl mx-auto px-8 pt-8">
-        <div className={`grid grid-cols-1 ${isCreate ? '' : 'xl:grid-cols-12'} gap-8`}>
-
-          {/* Main Content Area */}
-          <div className={`${isCreate ? '' : 'xl:col-span-8'} space-y-8`}>
-
-            {!isCreate && isHistoricalView && (
-              <div className="bg-amber-50 border border-amber-300 rounded-2xl px-5 py-3.5 flex items-center justify-between gap-3 shadow-sm">
-                <div className="flex items-center gap-2.5 text-sm text-amber-900">
-                  <Bookmark className="w-4 h-4 text-amber-600 shrink-0" />
-                  <span><strong>Read-Only</strong> — Tampilan status <strong>{viewingHistoricalStatus}</strong></span>
-                </div>
-                <button
-                  onClick={() => setViewingHistoricalStatus(null)}
-                  className="shrink-0 flex items-center gap-1.5 text-xs font-bold text-amber-800 border border-amber-400 bg-white hover:bg-amber-100 px-3 py-1.5 rounded-lg transition-colors"
-                >
-                  <Undo2 className="w-3.5 h-3.5" /> Kembali ke status saat ini
-                </button>
+        {isCreate ? (
+          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
+            <div className="grid grid-cols-2 gap-4">
+              <FormField label="Area / Lokasi (Jetty)">
+                <select value={createForm.area} onChange={e => setCreateForm(f => ({ ...f, area: e.target.value }))} className={inputCls}>
+                  {CREATE_AREAS.map(a => <option key={a} value={a}>{a}</option>)}
+                </select>
+              </FormField>
+              <FormField label="Barge (Tongkang)">
+                <select value={createForm.barge} onChange={e => setCreateForm(f => ({ ...f, barge: e.target.value }))} className={inputCls}>
+                  {CREATE_BARGES.map(b => <option key={b.name} value={b.name}>{b.label}</option>)}
+                </select>
+              </FormField>
+              <FormField label="Material">
+                <select value={createForm.material} onChange={e => handleMaterialChange(e.target.value)} className={inputCls}>
+                  {Object.keys(MATERIAL_DENSITY).map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
+              </FormField>
+              <div>
+                <FormField label="Densitas Material (MT/m³)">
+                  <input type="number" step="0.1" min="0.5" max="3.0" value={createForm.materialDensity} onChange={e => setCreateForm(f => ({ ...f, materialDensity: e.target.value }))} className={inputCls} />
+                </FormField>
+                <p className="text-[10px] text-gray-400 mt-1.5">Auto-fill dari jenis material. Bisa diubah.</p>
               </div>
-            )}
-
-            {!isCreate && isInvalid && (
-              <div className="bg-rose-50 border border-rose-200 rounded-2xl p-6 flex items-start gap-4 shadow-sm">
-                <div className="w-11 h-11 rounded-xl bg-rose-100 flex items-center justify-center shrink-0">
-                  <AlertTriangle className="w-6 h-6 text-rose-600" />
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-rose-900">Dokumen ini telah ditandai sebagai Invalid</h3>
-                  {invalidReason && (
-                    <p className="text-sm text-rose-700 mt-1.5">
-                      <span className="font-semibold">Alasan:</span> {invalidReason}
-                    </p>
-                  )}
-                  <p className="text-xs text-rose-500 mt-2 font-medium">Tidak ada aksi operasional yang tersedia untuk dokumen ini.</p>
-                </div>
-              </div>
-            )}
-
-            {/* General Information Panel */}
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-              <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center gap-3">
-                <div className="p-2 bg-indigo-100 text-[#5B5FC7] rounded-lg">
-                  <Anchor className="w-5 h-5" />
-                </div>
-                <h3 className="text-lg font-bold text-gray-900">General Information</h3>
-              </div>
-              <div className="p-6">
-                {isCreate ? (
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                    <div>
-                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Area / Lokasi (Jetty)</label>
-                      <select
-                        value={createForm.area}
-                        onChange={e => setCreateForm(f => ({ ...f, area: e.target.value }))}
-                        className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#5B5FC7] focus:border-[#5B5FC7] bg-white shadow-sm"
-                      >
-                        {CREATE_AREAS.map(a => <option key={a} value={a}>{a}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Barge (Tongkang)</label>
-                      <select
-                        value={createForm.barge}
-                        onChange={e => setCreateForm(f => ({ ...f, barge: e.target.value }))}
-                        className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-indigo-900 focus:outline-none focus:ring-2 focus:ring-[#5B5FC7] focus:border-[#5B5FC7] bg-indigo-50 shadow-sm"
-                      >
-                        {CREATE_BARGES.map(b => <option key={b.name} value={b.name}>{b.label}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Target Tonase (MT)</label>
-                      <input
-                        type="number"
-                        min="100"
-                        value={createForm.targetTonase}
-                        onChange={e => setCreateForm(f => ({ ...f, targetTonase: e.target.value }))}
-                        className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#5B5FC7] focus:border-[#5B5FC7] bg-white shadow-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Material</label>
-                      <select
-                        value={createForm.material}
-                        onChange={e => handleMaterialChange(e.target.value)}
-                        className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#5B5FC7] focus:border-[#5B5FC7] bg-white shadow-sm"
-                      >
-                        {Object.keys(MATERIAL_DENSITY).map(m => <option key={m} value={m}>{m}</option>)}
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Densitas Material (MT/m³)</label>
-                      <input
-                        type="number"
-                        step="0.1"
-                        min="0.5"
-                        max="3.0"
-                        value={createForm.materialDensity}
-                        onChange={e => setCreateForm(f => ({ ...f, materialDensity: e.target.value }))}
-                        className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#5B5FC7] focus:border-[#5B5FC7] bg-white shadow-sm"
-                      />
-                      <p className="text-[10px] text-gray-400 mt-1.5">Auto-fill dari jenis material. Bisa diubah.</p>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">ETA</label>
-                      <input
-                        type="datetime-local"
-                        value={createForm.eta}
-                        onChange={e => setCreateForm(f => ({ ...f, eta: e.target.value }))}
-                        className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#5B5FC7] focus:border-[#5B5FC7] bg-white shadow-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Surveyor</label>
-                      <input
-                        type="text"
-                        value={createForm.surveyor}
-                        onChange={e => setCreateForm(f => ({ ...f, surveyor: e.target.value }))}
-                        className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#5B5FC7] focus:border-[#5B5FC7] bg-white shadow-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">SPV / Checker</label>
-                      <input
-                        type="text"
-                        value={createForm.spv}
-                        onChange={e => setCreateForm(f => ({ ...f, spv: e.target.value }))}
-                        className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#5B5FC7] focus:border-[#5B5FC7] bg-white shadow-sm"
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                    <div>
-                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Area / Jetty</label>
-                      <div className="flex items-center gap-2 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl">
-                        <MapPin className="w-4 h-4 text-gray-400" />
-                        <span className="text-sm font-semibold text-gray-900">{generalInfo.area}</span>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Barge Name</label>
-                      <div className="flex items-center gap-2 px-3 py-2.5 bg-indigo-50 border border-indigo-100 rounded-xl">
-                        <Anchor className="w-4 h-4 text-[#5B5FC7]" />
-                        <span className="text-sm font-semibold text-indigo-900">{generalInfo.barge}</span>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Target Tonase</label>
-                      <div className="flex items-center gap-2 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl">
-                        <Target className="w-4 h-4 text-gray-400" />
-                        <span className="text-sm font-semibold text-gray-900">{generalInfo.targetTonase} <span className="text-gray-500 font-normal">MT</span></span>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Material Type</label>
-                      <div className="flex items-center gap-2 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl">
-                        <Layers className="w-4 h-4 text-gray-400" />
-                        <span className="text-sm font-semibold text-gray-900">{generalInfo.material}</span>
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Surveyor</label>
-                      <div className="flex items-center gap-2 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl">
-                        <Briefcase className="w-4 h-4 text-gray-400" />
-                        <span className="text-sm font-semibold text-gray-900">{generalInfo.surveyor}</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
+              <FormField label="Target Tonase (MT)">
+                <input type="number" min="100" value={createForm.targetTonase} onChange={e => setCreateForm(f => ({ ...f, targetTonase: e.target.value }))} className={inputCls} />
+              </FormField>
+              <FormField label="ETA">
+                <input type="datetime-local" value={createForm.eta} onChange={e => setCreateForm(f => ({ ...f, eta: e.target.value }))} className={inputCls} />
+              </FormField>
+              <FormField label="Surveyor">
+                <input type="text" value={createForm.surveyor} onChange={e => setCreateForm(f => ({ ...f, surveyor: e.target.value }))} className={inputCls} />
+              </FormField>
+              <FormField label="SPV / Checker">
+                <input type="text" value={createForm.spv} onChange={e => setCreateForm(f => ({ ...f, spv: e.target.value }))} className={inputCls} />
+              </FormField>
             </div>
-
-            {/* Final Tonnage & Document Panel — muncul setelah Closed, sebelum Departed */}
-            {!isCreate && (effectiveStatus === 'Closed' || effectiveStatus === 'Departed') && (
-              <div className="bg-white rounded-2xl border border-[#5B5FC7]/20 shadow-sm overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-100 bg-indigo-50/40 flex items-center gap-3">
-                  <div className="p-2 bg-[#5B5FC7]/10 text-[#5B5FC7] rounded-lg">
-                    <FileText className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-gray-900">Final Data — Actual Tonnage & Document</h3>
-                    <p className="text-xs text-gray-500 font-medium mt-0.5">Input hasil akhir aktual setelah operasional selesai</p>
-                  </div>
+            <div className="flex justify-end gap-3 pt-6 mt-6 border-t border-gray-100">
+              <Link to="/transactional/operation" className="px-5 py-2.5 border border-gray-300 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-100 transition-colors">
+                Batal
+              </Link>
+              <button onClick={handleCreateDocument} className="bg-[#5B5FC7] hover:bg-indigo-700 text-white px-6 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2 transition-all shadow-md shadow-indigo-500/20">
+                <Save className="w-4 h-4" /> Create Document
+              </button>
+            </div>
+          </div>
+        ) : doc && (
+          <>
+            {/* Doc Info Strip */}
+            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-4">
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <span className="text-sm font-bold text-gray-900">{doc.id}</span>
+                  <span className="text-xs text-gray-500 flex items-center gap-1"><MapPin className="w-3 h-3" />{doc.area}</span>
+                  <StatusBadge status={status} />
                 </div>
-                <div className="p-6 space-y-5">
-                  {/* Actual Final Tonnage */}
-                  <div>
-                    <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                      <Target className="w-3.5 h-3.5 text-[#5B5FC7]" />
-                      Actual Final Tonnage (MT)
-                    </label>
-                    <div className="relative max-w-xs">
-                      <input
-                        type="number"
-                        min="1"
-                        value={finalActualTonnage}
-                        onChange={e => setFinalActualTonnage(e.target.value)}
-                        disabled={isHistoricalView}
-                        placeholder="e.g. 4980"
-                        className="w-full pl-10 pr-14 py-3 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5B5FC7] focus:border-[#5B5FC7] bg-white font-bold text-[#5B5FC7] shadow-sm placeholder:font-normal placeholder:text-gray-400 disabled:bg-gray-50 disabled:text-gray-400"
-                      />
-                      <Layers className="w-4 h-4 text-[#5B5FC7] absolute left-3.5 top-3.5 pointer-events-none" />
-                      <span className="absolute right-3.5 top-3.5 text-xs font-bold text-gray-400 pointer-events-none">MT</span>
-                    </div>
-                    {finalActualTonnage && (
-                      <p className="mt-2 text-xs text-gray-500 font-medium">
-                        Selisih vs accumulated: <span className={`font-bold ${Number(finalActualTonnage) >= accumulatedTonase ? 'text-emerald-600' : 'text-rose-500'}`}>
-                          {Number(finalActualTonnage) >= accumulatedTonase ? '+' : ''}{Number(finalActualTonnage) - accumulatedTonase} MT
-                        </span>
-                      </p>
-                    )}
-                  </div>
-
-                  {/* Upload Final Draft Survey */}
-                  <div>
-                    <label className="block text-xs font-bold text-gray-600 uppercase tracking-wider mb-2 flex items-center gap-1.5">
-                      <Upload className="w-3.5 h-3.5 text-gray-500" />
-                      Upload Final Draft Survey Document
-                    </label>
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                      className="hidden"
-                      onChange={e => setFinalDraftFile(e.target.files?.[0] || null)}
-                    />
-                    {finalDraftFile ? (
-                      <div className="flex items-center justify-between bg-emerald-50 border border-emerald-200 rounded-xl px-4 py-3 max-w-md">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-9 h-9 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
-                            <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                          </div>
-                          <div className="min-w-0">
-                            <p className="text-sm font-bold text-emerald-900 truncate">{finalDraftFile.name}</p>
-                            <p className="text-[11px] text-emerald-600 font-medium">{(finalDraftFile.size / 1024).toFixed(1)} KB · Uploaded</p>
-                          </div>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => { setFinalDraftFile(null); if (fileInputRef.current) fileInputRef.current.value = ""; }}
-                          className="ml-4 p-1.5 rounded-lg hover:bg-emerald-100 text-emerald-500 transition-colors shrink-0"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        type="button"
-                        disabled={isHistoricalView}
-                        onClick={() => fileInputRef.current?.click()}
-                        className="border-2 border-dashed border-gray-300 hover:border-[#5B5FC7] rounded-xl py-5 px-8 flex flex-col items-center gap-2 text-gray-500 hover:text-[#5B5FC7] transition-colors bg-white hover:bg-indigo-50/30 w-full max-w-md disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-gray-300 disabled:hover:text-gray-500 disabled:hover:bg-white"
-                      >
-                        <Upload className="w-6 h-6" />
-                        <span className="text-[13px] font-semibold">Click to upload PDF / Image</span>
-                        <span className="text-[11px] font-medium text-gray-400">PDF, JPG, PNG, DOC accepted</span>
-                      </button>
-                    )}
-                  </div>
-
-                  {effectiveStatus === 'Closed' && !isHistoricalView && (
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => setInfoExpanded(v => !v)}
+                    className="flex items-center gap-1 text-xs font-semibold text-gray-600 border border-gray-200 px-2.5 py-1 rounded-lg hover:bg-gray-50"
+                  >
+                    {infoExpanded ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />} Info
+                  </button>
+                  {!isInvalid && status === "Open" && (
                     <button
-                      onClick={handleConfirmDeparture}
-                      disabled={!finalActualTonnage}
-                      className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 disabled:from-gray-200 disabled:to-gray-200 disabled:text-gray-400 text-white text-[14px] font-bold py-3 rounded-xl transition-all shadow-md shadow-emerald-500/20 flex justify-center items-center gap-2"
+                      onClick={() => setShowInvalidModal(true)}
+                      className="text-xs font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-lg hover:bg-rose-100"
                     >
-                      <Flag className="w-4 h-4" /> Konfirmasi Keberangkatan →
+                      Mark as Invalid
                     </button>
                   )}
                 </div>
               </div>
+
+              {infoExpanded && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t border-gray-100">
+                  {[
+                    ["Doc ID", doc.id],
+                    ["Area / Jetty", doc.area],
+                    ["Barge", doc.barge],
+                    ["Material", doc.material],
+                    ["Target Tonnage", doc.targetTonase ? `${doc.targetTonase.toLocaleString()} MT` : "—"],
+                    ["Densitas", doc.materialDensity ? `${doc.materialDensity} MT/m³` : "—"],
+                    ["ETA", doc.eta || "—"],
+                    ["ATA", doc.ata || "—"],
+                    ["Surveyor", doc.surveyor || "—"],
+                    ["SPV / Checker", doc.spv || "—"],
+                    ["Created Date", doc.createdDate],
+                    ["Final Tonnage", doc.finalTonnage ? `${doc.finalTonnage} MT` : "—"],
+                  ].map(([label, value]) => (
+                    <div key={label} className="flex flex-col gap-0.5">
+                      <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">{label}</span>
+                      <span className="text-xs text-gray-800 font-semibold">{value}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {isInvalid && invalidReason && (
+                <div className="mt-3 pt-3 border-t border-gray-100">
+                  <div className="bg-rose-50 border border-rose-200 rounded-xl px-3.5 py-2.5">
+                    <span className="text-[10px] font-bold text-rose-700 uppercase tracking-wide">Alasan Invalidasi</span>
+                    <p className="text-xs text-rose-900 font-semibold mt-0.5">{invalidReason}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Status Flow */}
+            {isInvalid ? (
+              <div className="text-sm font-semibold text-amber-800 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                ⚠️ Dokumen ini telah ditandai sebagai <strong>Invalid</strong> dan tidak dapat digunakan dalam proses operasional.
+              </div>
+            ) : (
+              <StatusStepper statusOrder={STATUS_ORDER} currentIdx={currentIdx} onStepClick={setViewingHistoricalStatus} />
             )}
 
-            {/* Assigned Population Panel — only from On Progress onward: population is never
-                assigned at Create, it's auto-populated (simulating mobile sync) once operation
-                starts, then manageable (add/remove) only while status is On Progress. */}
-            {!isCreate && !isInvalid && ['On Progress', 'Closed', 'Departed'].includes(effectiveStatus) && (
-              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 bg-orange-100 text-orange-600 rounded-lg">
-                      <Truck className="w-5 h-5" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-bold text-gray-900">Assigned Population</h3>
-                      <p className="text-xs text-gray-500 font-medium mt-0.5">Auto-populate dari Operator App{effectiveStatus === 'On Progress' && !isHistoricalView ? ' — remove/simulasi tersedia' : ' — view-only'}</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="p-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div>
-                      <div className="flex items-center justify-between mb-3">
-                        <h4 className="text-sm font-bold text-gray-700">Excavators</h4>
-                        <span className="text-xs font-medium text-gray-500">{population.excavators.length} Units</span>
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {population.excavators.map(ex => (
-                          <span key={ex.code} className={`pl-3 pr-2 py-1.5 border text-sm font-semibold rounded-lg shadow-sm flex items-center gap-2 ${
-                            ex.status === 'breakdown' ? 'bg-rose-50 border-rose-200 text-rose-800' : 'bg-gray-100 border-gray-200 text-gray-800'
-                          }`}>
-                            {ex.code}
-                            <span className="text-gray-400 font-normal text-xs">{ex.assignedArea}</span>
-                            {ex.status === 'breakdown' && (
-                              <span className="text-[10px] font-bold uppercase text-rose-600">Breakdown</span>
-                            )}
-                            {effectiveStatus === 'On Progress' && !isHistoricalView && (
-                              <button
-                                onClick={() => toggleExcaBreakdown(ex.code)}
-                                title={ex.status === 'breakdown' ? 'Recovery' : 'Tandai Breakdown'}
-                                className={ex.status === 'breakdown' ? 'text-emerald-500 hover:text-emerald-700 transition-colors' : 'text-gray-400 hover:text-amber-600 transition-colors'}
-                              >
-                                {ex.status === 'breakdown' ? <RotateCcw className="w-3.5 h-3.5" /> : <Wrench className="w-3.5 h-3.5" />}
-                              </button>
-                            )}
-                            {effectiveStatus === 'On Progress' && !isHistoricalView && (
-                              <button onClick={() => removeExca(ex.code)} className="text-gray-400 hover:text-rose-600 transition-colors">
-                                <X className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-                          </span>
-                        ))}
-                        {population.excavators.length === 0 && (
-                          <span className="text-xs text-gray-400 italic">Belum ada excavator.</span>
-                        )}
-                      </div>
-                    </div>
-                    <div>
-                      <div className="flex items-center justify-between mb-3">
-                        <h4 className="text-sm font-bold text-gray-700">Dump Trucks</h4>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-medium text-gray-500">{population.dumpTrucks.length} Units</span>
-                          {effectiveStatus === 'On Progress' && !isHistoricalView && loadedTrucks.length > 0 && (
-                            <button
-                              onClick={() => openBreakdownModal()}
-                              className="text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 px-2.5 py-1 rounded-lg flex items-center gap-1 transition-colors"
-                            >
-                              <AlertTriangle className="w-3 h-3" /> Tandai Breakdown
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        {population.dumpTrucks.map(dt => (
-                          <div key={dt.code} className={`rounded-xl border p-3 shadow-sm ${
-                            dt.status === 'breakdown' ? 'bg-rose-50 border-rose-200' :
-                            dt.status === 'transfer' ? 'bg-amber-50 border-amber-200' :
-                            dt.status === 'loaded' ? 'bg-violet-50 border-violet-200' :
-                            'bg-white border-gray-200'
-                          }`}>
-                            <div className="flex items-start justify-between gap-2">
-                              <div>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-sm font-bold text-gray-900">{dt.code}</span>
-                                  <span className={`text-[10px] font-bold uppercase ${dt.route === 'unscheduled' ? 'text-rose-500' : 'text-emerald-600'}`}>
-                                    {dt.route === 'unscheduled' ? 'Unscheduled' : 'Scheduled'}
-                                  </span>
-                                </div>
-                                <p className="text-xs text-gray-500 mt-0.5">{dt.plate} · {dt.capacity}m³ · {dt.assignedArea}</p>
-                              </div>
-                              <div className="flex items-center gap-1.5 shrink-0">
-                                <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md ${
-                                  dt.status === 'breakdown' ? 'bg-rose-100 text-rose-700' :
-                                  dt.status === 'transfer' ? 'bg-amber-100 text-amber-700' :
-                                  dt.status === 'loaded' ? 'bg-violet-100 text-violet-700' :
-                                  'bg-emerald-100 text-emerald-700'
-                                }`}>
-                                  {dt.status === 'breakdown' ? 'Breakdown' : dt.status === 'transfer' ? 'Transfer' : dt.status === 'loaded' ? 'Loaded' : 'Available'}
-                                </span>
-                                {effectiveStatus === 'On Progress' && !isHistoricalView && dt.status === 'available' && (
-                                  <button onClick={() => removeDt(dt.code)} className="text-gray-400 hover:text-rose-600 transition-colors">
-                                    <X className="w-3.5 h-3.5" />
-                                  </button>
-                                )}
-                              </div>
-                            </div>
-
-                            {effectiveStatus === 'On Progress' && !isHistoricalView && dt.status === 'available' && (
-                              <button
-                                onClick={() => simulateLoaded(dt.code)}
-                                className="mt-2.5 w-full text-xs font-bold text-violet-700 bg-violet-50 hover:bg-violet-100 border border-violet-200 px-3 py-1.5 rounded-lg transition-colors"
-                              >
-                                {dt.route === 'unscheduled' ? '+ Simulasi Unscheduled Load' : '+ Simulasi Loading'}
-                              </button>
-                            )}
-
-                            {dt.status === 'loaded' && dt.payload && (
-                              <div className="mt-2 flex items-center justify-between gap-2">
-                                <span className="text-[11px] font-semibold text-violet-700">
-                                  {dt.payload.bucketCount !== '-' ? `${dt.payload.bucketCount} bucket · ` : ''}{dt.payload.tonnage} MT
-                                </span>
-                                {effectiveStatus === 'On Progress' && !isHistoricalView && (
-                                  <button
-                                    onClick={() => openBreakdownModal(dt.code)}
-                                    className="text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2.5 py-1 rounded-lg transition-colors"
-                                  >
-                                    Tandai Breakdown
-                                  </button>
-                                )}
-                              </div>
-                            )}
-
-                            {dt.status === 'breakdown' && (
-                              <div className="mt-2 flex items-center justify-between gap-2">
-                                <span className="text-[11px] font-semibold text-rose-600">Muatan → {dt.transferTo || '-'}</span>
-                                {effectiveStatus === 'On Progress' && !isHistoricalView && (
-                                  <button
-                                    onClick={() => recoverDT(dt.code)}
-                                    className="text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1 rounded-lg flex items-center gap-1 transition-colors"
-                                  >
-                                    <RotateCcw className="w-3 h-3" /> Recovery
-                                  </button>
-                                )}
-                              </div>
-                            )}
-
-                            {dt.status === 'transfer' && dt.payload && (
-                              <div className="mt-2 text-[11px] font-semibold text-amber-700 flex items-center gap-1.5">
-                                <ArrowRightLeft className="w-3 h-3" />
-                                {dt.payload.bucketCount !== '-' ? `${dt.payload.bucketCount} bucket · ` : ''}{dt.payload.tonnage} MT dari {dt.payload.fromTruck}
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                        {population.dumpTrucks.length === 0 && (
-                          <span className="text-xs text-gray-400 italic">Belum ada dump truck.</span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-6 pt-5 border-t border-gray-100 flex items-center gap-3">
-                    <UserCircle className="w-8 h-8 text-gray-400" />
-                    <div>
-                      <p className="text-xs text-gray-500 font-medium">Supervisor / Checker</p>
-                      <p className="text-sm font-bold text-gray-900">{population.spv}</p>
-                    </div>
-                  </div>
-                </div>
+            {/* Historical snapshot banner */}
+            {isHistoricalView && (
+              <div className="bg-amber-50 border border-amber-300 rounded-xl px-4 py-2.5 flex items-center justify-between gap-3">
+                <span className="text-xs text-amber-900">📌 <strong>Read-Only</strong> — Tampilan status <strong>{viewingHistoricalStatus}</strong></span>
+                <button
+                  onClick={() => setViewingHistoricalStatus(null)}
+                  className="shrink-0 text-[11px] font-bold text-amber-800 border border-amber-400 bg-white hover:bg-amber-100 px-2.5 py-1 rounded-lg"
+                >
+                  ← Kembali ke status saat ini
+                </button>
               </div>
             )}
 
-            {/* Event History (Riwayat) — DT breakdown/recovery & excavator breakdown/recovery log */}
-            {!isCreate && !isInvalid && ['On Progress', 'Closed', 'Departed'].includes(effectiveStatus) && (
-              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center gap-3">
-                  <div className="p-2 bg-gray-100 text-gray-600 rounded-lg">
-                    <History className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-gray-900">Event History</h3>
-                    <p className="text-xs text-gray-500 font-medium mt-0.5">Log breakdown & recovery unit selama operasional</p>
-                  </div>
-                </div>
-                <div className="p-6">
-                  {breakdownEvents.length === 0 ? (
-                    <p className="text-sm text-gray-400 italic text-center py-4">Belum ada event breakdown/recovery.</p>
-                  ) : (
-                    <div className="space-y-2.5">
-                      {[...breakdownEvents].reverse().map(ev => (
-                        <div key={ev.id} className="flex items-start gap-3 p-3 rounded-xl border border-gray-100 bg-gray-50/60">
-                          <div className={`p-1.5 rounded-lg shrink-0 mt-0.5 ${
-                            ev.type === 'dt_breakdown' || ev.type === 'exca_breakdown' ? 'bg-rose-100 text-rose-600' : 'bg-emerald-100 text-emerald-600'
-                          }`}>
-                            {ev.type === 'dt_breakdown' || ev.type === 'exca_breakdown' ? <AlertTriangle className="w-3.5 h-3.5" /> : <RotateCcw className="w-3.5 h-3.5" />}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm font-semibold text-gray-900">
-                              {ev.type === 'dt_breakdown' && `DT Breakdown: ${ev.fromTruck} → ${ev.toTruck}`}
-                              {ev.type === 'exca_breakdown' && `Excavator Breakdown: ${ev.unit}`}
-                              {ev.type === 'exca_recover' && `Excavator Recovery: ${ev.unit}`}
-                              {ev.type === 'dt_recovery' && `DT Recovery: ${ev.unit}`}
-                            </p>
-                            {ev.type === 'dt_breakdown' && (
-                              <p className="text-xs text-gray-500 mt-0.5">
-                                {ev.bucketCount !== '-' ? `${ev.bucketCount} bucket · ` : ''}{ev.tonnage} MT{ev.note ? ` — ${ev.note}` : ''}
-                              </p>
-                            )}
-                            <p className="text-[11px] text-gray-400 mt-1">{ev.timestamp}</p>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Production Progress — mirrors renderTabProgress(): stats come only from
-                today's Operator App sync (simulatedRitase/simulatedTonnage). */}
-            {!isCreate && ['On Progress', 'Closed', 'Departed'].includes(effectiveStatus) && (
-              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center gap-3">
-                  <div className="p-2 bg-emerald-100 text-emerald-600 rounded-lg">
-                    <Activity className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-gray-900">Production Progress</h3>
-                    <p className="text-xs text-gray-500 font-medium mt-0.5">Auto-update dari Operator App</p>
-                  </div>
-                </div>
-
-                <div className="p-6 space-y-8">
-                  {/* Stats Grid */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <div className="bg-gray-50 p-5 rounded-2xl border border-gray-100">
-                      <div className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 flex items-center gap-1.5"><Target className="w-3.5 h-3.5"/> Target</div>
-                      <div className="text-2xl font-black text-gray-900">{generalInfo.targetTonase} <span className="text-sm font-medium text-gray-500">MT</span></div>
-                    </div>
-                    <div className="bg-indigo-50 p-5 rounded-2xl border border-indigo-100 shadow-inner shadow-indigo-100/50">
-                      <div className="text-xs font-bold text-[#5B5FC7] uppercase tracking-wider mb-2 flex items-center gap-1.5"><TrendingUp className="w-3.5 h-3.5"/> Acc. Tonase</div>
-                      <div className="text-2xl font-black text-[#5B5FC7]">{accumulatedTonase.toFixed(1)} <span className="text-sm font-medium text-indigo-400">MT</span></div>
-                    </div>
-                    <div className="bg-blue-50 p-5 rounded-2xl border border-blue-100">
-                      <div className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-2 flex items-center gap-1.5"><Truck className="w-3.5 h-3.5"/> Total Ritase</div>
-                      <div className="text-2xl font-black text-blue-900">{ritaseCount} <span className="text-sm font-medium text-blue-500">Rit</span></div>
-                    </div>
-                    <div className="bg-amber-50 p-5 rounded-2xl border border-amber-100">
-                      <div className="text-xs font-bold text-amber-600 uppercase tracking-wider mb-2 flex items-center gap-1.5"><Layers className="w-3.5 h-3.5"/> Remaining</div>
-                      <div className="text-2xl font-black text-amber-900">{remainingTonase.toFixed(1)} <span className="text-sm font-medium text-amber-500">MT</span></div>
-                    </div>
-                  </div>
-
-                  {/* Progress Bar */}
-                  <div className="bg-gray-50 rounded-2xl p-5 border border-gray-100">
-                    <div className="flex justify-between items-end mb-3">
-                      <div>
-                        <span className="text-sm font-bold text-gray-900">Barging Completion</span>
-                        <p className="text-xs text-gray-500 mt-0.5">{progress}% tercapai</p>
-                      </div>
-                      <span className="text-2xl font-black text-[#5B5FC7]">{progress}%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden p-0.5">
-                      <div className="bg-gradient-to-r from-indigo-500 to-[#5B5FC7] h-full rounded-full transition-all duration-1000 ease-out relative" style={{ width: `${progress}%` }}>
-                        <div className="absolute inset-0 bg-white/20 w-full h-full animate-pulse"></div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Integrasi Mobile / Refresh */}
-                  {effectiveStatus === 'On Progress' && !isHistoricalView ? (
-                    <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex items-center justify-between gap-4">
-                      <p className="text-xs text-blue-800"><strong>Integrasi Mobile:</strong> Data ritase & tonnage di-sync otomatis dari Operator App setiap kali operator submit dumping di Jetty.</p>
-                      <button
-                        onClick={simulateRitase}
-                        className="shrink-0 bg-[#5B5FC7] hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm whitespace-nowrap"
-                      >
-                        <RefreshCw className="w-3.5 h-3.5" /> Refresh
-                      </button>
-                    </div>
-                  ) : (
-                    <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 text-xs text-blue-800">
-                      <strong>Integrasi Mobile:</strong> Data ritase & tonnage di-sync otomatis dari Operator App.
-                    </div>
-                  )}
-
-                  {/* Completion Duration Notice */}
-                  {effectiveStatus === 'Departed' && (
-                    <div className="mt-2 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/60 rounded-2xl p-6 flex items-center justify-between shadow-sm">
-                      <div className="flex items-center gap-5">
-                        <div className="w-12 h-12 rounded-xl bg-white shadow-sm border border-emerald-100 flex items-center justify-center">
-                          <Clock className="w-6 h-6 text-emerald-600" />
-                        </div>
-                        <div>
-                          <h4 className="text-emerald-950 font-bold text-lg tracking-tight">Operation Departed</h4>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-emerald-700 text-sm font-medium">Total Loading Duration:</span>
-                            <span className="text-emerald-900 text-sm font-bold bg-emerald-100/50 px-2.5 py-0.5 rounded-md border border-emerald-200/50">{loadingDuration || "1 Day 14 Hours 30 Mins"}</span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="text-right pl-6 border-l border-emerald-200/60 hidden sm:block">
-                        <div className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider mb-1">Accumulated Tonase</div>
-                        <div className="text-2xl font-black text-emerald-900">{accumulatedTonase.toFixed(1)} <span className="text-sm font-semibold text-emerald-700">MT</span></div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Achievement Tonnage (Shift Log) — mirrors renderShiftLogHtml(): full history
-                including yesterday's shifts, with a By Shift / By Exca toggle view. */}
-            {!isCreate && ['On Progress', 'Closed', 'Departed'].includes(effectiveStatus) && (
-              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-                <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between flex-wrap gap-3">
-                  <h3 className="text-lg font-bold text-gray-900">Achievement Tonnage</h3>
-                  <div className="flex items-center gap-3">
-                    <span className="text-xs text-gray-500 font-medium">{shiftTotalRitase} rit | {shiftTotalTonnage.toFixed(1)} MT | <strong className="text-gray-700">{shiftOverallAch}%</strong></span>
-                    <div className="flex gap-1.5 bg-gray-100 p-1 rounded-lg">
-                      <button
-                        onClick={() => setAchFilter('shift')}
-                        className={`text-xs font-bold px-3 py-1.5 rounded-md transition-colors ${achFilter === 'shift' ? 'bg-[#5B5FC7] text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
-                      >
-                        By Shift
-                      </button>
-                      <button
-                        onClick={() => setAchFilter('exca')}
-                        className={`text-xs font-bold px-3 py-1.5 rounded-md transition-colors ${achFilter === 'exca' ? 'bg-[#5B5FC7] text-white shadow-sm' : 'text-gray-600 hover:text-gray-900'}`}
-                      >
-                        By Exca
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {achFilter === 'shift' ? (
-                  <div className="overflow-hidden">
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="bg-gray-50 border-b border-gray-200">
-                          <th className="px-5 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Shift</th>
-                          <th className="px-5 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Tanggal</th>
-                          <th className="px-5 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Ritase</th>
-                          <th className="px-5 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Tonnage (MT)</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100 bg-white">
-                        {shiftRows.map((r, idx) => {
-                          const hasDetail = r.excaSummary.length > 0;
-                          const isOpen = expandedShiftRows.has(idx);
-                          return (
-                            <Fragment key={idx}>
-                              <tr className="hover:bg-gray-50/50 transition-colors">
-                                <td className="px-5 py-3.5 text-sm font-semibold text-gray-900">
-                                  <div className="flex items-center gap-1.5">
-                                    {hasDetail ? (
-                                      <button onClick={() => toggleShiftDetail(idx)} className="text-gray-400 hover:text-[#5B5FC7] transition-colors">
-                                        {isOpen ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-                                      </button>
-                                    ) : <span className="w-3.5" />}
-                                    {r.shift}
-                                    {'isCurrent' in r && r.isCurrent && (
-                                      <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold uppercase bg-emerald-100 text-emerald-700">Berjalan</span>
-                                    )}
-                                  </div>
-                                </td>
-                                <td className="px-5 py-3.5 text-sm text-gray-500">{r.date}</td>
-                                <td className="px-5 py-3.5 text-sm font-bold text-gray-900 text-right">{r.ritase}</td>
-                                <td className="px-5 py-3.5 text-sm font-bold text-[#5B5FC7] text-right">{r.tonnage.toFixed(1)}</td>
-                              </tr>
-                              {hasDetail && isOpen && (
-                                <tr className="bg-gray-50/60">
-                                  <td colSpan={4} className="px-5 py-3 pl-12">
-                                    <div className="flex flex-wrap items-center gap-2">
-                                      <span className="text-xs text-gray-500 mr-1">Exca:</span>
-                                      {r.excaSummary.map(e => (
-                                        <span key={e.code} className="inline-flex items-center gap-1.5 bg-white border border-gray-200 rounded-lg px-2.5 py-1 text-xs">
-                                          <strong className="text-gray-900">{e.code}</strong>
-                                          <span className="text-gray-500">{e.ritase} rit</span>
-                                        </span>
-                                      ))}
-                                    </div>
-                                  </td>
-                                </tr>
-                              )}
-                            </Fragment>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <div className="overflow-hidden">
-                    <table className="w-full text-left border-collapse">
-                      <thead>
-                        <tr className="bg-gray-50 border-b border-gray-200">
-                          <th className="px-5 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider">Excavator</th>
-                          <th className="px-5 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Ritase</th>
-                          <th className="px-5 py-3 text-xs font-bold text-gray-500 uppercase tracking-wider text-right">Tonnage (MT)</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-100 bg-white">
-                        {excaAggregateRows.length === 0 ? (
-                          <tr>
-                            <td colSpan={3} className="px-5 py-8 text-center text-sm font-medium text-gray-400">Belum ada data exca.</td>
-                          </tr>
-                        ) : excaAggregateRows.map(e => (
-                          <tr key={e.code} className="hover:bg-gray-50/50 transition-colors">
-                            <td className="px-5 py-3.5 text-sm">
-                              <span className="inline-flex items-center px-2.5 py-1 rounded-md text-xs font-bold bg-indigo-100 text-[#5B5FC7]">{e.code}</span>
-                            </td>
-                            <td className="px-5 py-3.5 text-sm font-bold text-gray-900 text-right">{e.ritase}</td>
-                            <td className="px-5 py-3.5 text-sm font-bold text-[#5B5FC7] text-right">{e.tonnage.toFixed(1)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+            {/* Tabs */}
+            <div>
+              <div className="flex gap-1 border-b border-gray-200">
+                {showAllTabs && (
+                  <button
+                    onClick={() => setActiveTab("progress")}
+                    className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-bold border-b-2 -mb-px transition-colors ${activeTab === "progress" ? "border-[#5B5FC7] text-[#5B5FC7]" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+                  >
+                    <BarChart3 className="w-4 h-4" /> Progress
+                  </button>
+                )}
+                <button
+                  onClick={() => setActiveTab("operasional")}
+                  className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-bold border-b-2 -mb-px transition-colors ${activeTab === "operasional" ? "border-[#5B5FC7] text-[#5B5FC7]" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+                >
+                  <Settings className="w-4 h-4" /> Operasional
+                </button>
+                {showAllTabs && (
+                  <button
+                    onClick={() => setActiveTab("riwayat")}
+                    className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-bold border-b-2 -mb-px transition-colors ${activeTab === "riwayat" ? "border-[#5B5FC7] text-[#5B5FC7]" : "border-transparent text-gray-500 hover:text-gray-700"}`}
+                  >
+                    <History className="w-4 h-4" /> History
+                  </button>
                 )}
               </div>
-            )}
-          </div>
 
-          {/* Sidebar / Timeline Area */}
-          {!isCreate && (
-            <div className="xl:col-span-4 space-y-6">
-              <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm sticky top-28">
-                <div className="flex items-center gap-3 mb-8 border-b border-gray-100 pb-4">
-                  <div className="p-2 bg-gray-100 text-gray-600 rounded-lg">
-                    <Clock className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-bold text-gray-900">Barging Lifecycle</h3>
-                    <p className="text-xs font-medium text-gray-500">Track standard operating procedures</p>
-                  </div>
-                </div>
+              <div className="pt-4 space-y-4">
+                {activeTab === "operasional" && (
+                  <>
+                    {isInvalid ? (
+                      <InfoBox tone="orange">
+                        <div className="font-bold mb-1.5">Dokumen telah ditandai sebagai Invalid</div>
+                        {invalidReason && <div className="text-xs mt-1"><span className="opacity-70">Alasan:</span> <strong>{invalidReason}</strong></div>}
+                        <div className="text-[11px] mt-1.5 opacity-70">Tidak ada aksi operasional yang tersedia.</div>
+                      </InfoBox>
+                    ) : (
+                      <>
+                        {effectiveIdx <= 1 && (
+                          <SectionCard title="Kedatangan Tongkang">
+                            <div className="grid grid-cols-2 gap-3 mb-4">
+                              <FormField label="ETA (Estimasi Kedatangan)">
+                                <input type="datetime-local" value={eta} onChange={e => setEta(e.target.value)} disabled={readonly || effectiveStatus !== "Planned"} className={inputCls} />
+                              </FormField>
+                              <FormField label="ATA (Aktual Kedatangan)">
+                                <input type="datetime-local" value={ata} onChange={e => setAta(e.target.value)} disabled={readonly || effectiveStatus !== "Planned"} className={inputCls} />
+                              </FormField>
+                            </div>
+                            {!readonly && effectiveStatus === "Planned" ? (
+                              <button onClick={handleConfirmArrival} disabled={!eta || !ata} className="bg-[#5B5FC7] hover:bg-indigo-700 disabled:bg-gray-200 disabled:text-gray-400 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-colors">
+                                Konfirmasi Kedatangan →
+                              </button>
+                            ) : ata ? (
+                              <InfoBox tone="green">Kedatangan dikonfirmasi. ETA: {eta || "-"} | ATA: {ata || "-"}</InfoBox>
+                            ) : null}
+                          </SectionCard>
+                        )}
 
-                {isInvalid ? (
-                  <div className="text-sm font-medium text-rose-700 bg-rose-50 border border-rose-200 rounded-xl p-4 flex gap-2 items-start">
-                    <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-rose-500" />
-                    <span>Dokumen ini telah ditandai Invalid dan tidak lagi mengikuti alur SOP normal.</span>
-                  </div>
-                ) : (
-                <div className="mt-4">
-                  {/* Planned */}
-                  <TimelineItem
-                    title="Planned"
-                    date={doc?.createdDate}
-                    status={!isCreate ? 'completed' : 'current'}
-                    icon={FileText}
-                    onViewSnapshot={!isCreate && isPast('Planned') ? () => setViewingHistoricalStatus('Planned') : undefined}
-                    active={viewingHistoricalStatus === 'Planned'}
-                  >
-                    {isCreate && (
-                      <div className="text-[13px] font-medium text-gray-500">Create Barging Document & Allocate Population</div>
-                    )}
-                  </TimelineItem>
-
-                  {/* Arrived */}
-                  <TimelineItem
-                    title="Barge Arrived"
-                    date={isPast('Arrived') && doc ? doc.ata.slice(0, 10) : undefined}
-                    status={isPast('Arrived') ? 'completed' : isCurrent('Arrived') || isCurrent('Planned') ? 'current' : 'upcoming'}
-                    icon={Anchor}
-                    onViewSnapshot={isPast('Arrived') ? () => setViewingHistoricalStatus('Arrived') : undefined}
-                    active={viewingHistoricalStatus === 'Arrived'}
-                  >
-                    {isCurrent('Planned') && (
-                      <div className="mt-3 bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
-                        <div className="px-4 py-3 bg-gray-50/80 border-b border-gray-100 font-bold text-gray-800 text-sm">
-                          Arrival Update
-                        </div>
-
-                        <div className="relative">
-                          <label className="block group hover:bg-indigo-50/50 transition-colors border-b border-gray-100 cursor-pointer">
-                            <div className="px-4 py-3.5 flex items-center justify-between relative">
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-[#5B5FC7] shadow-sm border border-indigo-200/50 shrink-0">
-                                  <Calendar className="w-5 h-5" />
-                                </div>
-                                <div>
-                                  <h4 className="text-[13px] font-bold text-gray-500">Estimation Time Arrival (ETA)</h4>
-                                  <div className="text-sm font-bold text-gray-900 mt-0.5">
-                                    {eta ? new Date(eta).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : "Set Date & Time"}
+                        {effectiveStatus === "Arrived" && (
+                          <SectionCard title="Pre-Operasi Checklist" badge={isOpenAllChecked ? <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-1 rounded-md">Semua ✓</span> : undefined}>
+                            <div className="space-y-2.5">
+                              {[
+                                { key: "notify" as const, label: "Notifikasi SPV Production" },
+                                { key: "ramp" as const, label: "Set Ramp Door" },
+                                { key: "excaEnter" as const, label: "Excavator masuk barge" },
+                              ].map(item => (
+                                <div
+                                  key={item.key}
+                                  onClick={() => !readonly && id && updateDocument(id, { openChecklist: { ...openChecks, [item.key]: !openChecks[item.key] } })}
+                                  className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${readonly ? "opacity-60" : "cursor-pointer hover:border-[#5B5FC7]/50"} ${openChecks[item.key] ? "bg-indigo-50/60 border-[#5B5FC7]/40" : "bg-white border-gray-200"}`}
+                                >
+                                  <div className={`w-5 h-5 rounded-md flex items-center justify-center border-2 shrink-0 ${openChecks[item.key] ? "bg-[#5B5FC7] border-[#5B5FC7]" : "bg-white border-gray-300"}`}>
+                                    {openChecks[item.key] && <Check className="w-3.5 h-3.5 text-white stroke-[3]" />}
                                   </div>
+                                  <span className="text-sm font-semibold text-gray-700">{item.label}</span>
                                 </div>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <input
-                                  type="datetime-local"
-                                  value={eta}
-                                  onChange={e => setEta(e.target.value)}
-                                  className="w-[30px] opacity-0 cursor-pointer absolute right-4 top-1/2 -translate-y-1/2 h-full z-20"
-                                  onClick={(e) => {
-                                    // Make sure modern browsers open the picker when clicked anywhere near it
-                                    try {
-                                      if ('showPicker' in HTMLInputElement.prototype) {
-                                        (e.target as HTMLInputElement).showPicker();
-                                      }
-                                    } catch (err) {}
-                                  }}
-                                />
-                                <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-[#5B5FC7] transition-colors relative z-10 pointer-events-none" />
-                              </div>
+                              ))}
                             </div>
-                          </label>
-                        </div>
+                            {!readonly && (
+                              <button onClick={handleSetOpen} disabled={!isOpenAllChecked} className="mt-4 bg-[#5B5FC7] hover:bg-indigo-700 disabled:bg-gray-200 disabled:text-gray-400 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-colors">
+                                Set Status Open →
+                              </button>
+                            )}
+                          </SectionCard>
+                        )}
 
-                        <div className="relative">
-                          <label className="block group hover:bg-indigo-50/50 transition-colors cursor-pointer">
-                            <div className="px-4 py-3.5 flex items-center justify-between relative">
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-600 shadow-sm border border-emerald-200/50 shrink-0">
-                                  <Clock className="w-5 h-5" />
-                                </div>
-                                <div>
-                                  <h4 className="text-[13px] font-bold text-gray-500">Actual Time Arrival (ATA)</h4>
-                                  <div className="text-sm font-bold text-gray-900 mt-0.5">
-                                    {ata ? new Date(ata).toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : "Set Date & Time"}
+                        {effectiveStatus === "Open" && (
+                          <SectionCard title="Mulai Operasi Loading">
+                            <InfoBox tone="blue">Semua persiapan selesai. Klik tombol di bawah untuk memulai proses barging.</InfoBox>
+                            {!readonly && (
+                              <button onClick={handleStartOperation} className="mt-4 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-all flex items-center gap-2">
+                                <Play className="w-4 h-4 fill-white" /> Mulai Operasi →
+                              </button>
+                            )}
+                          </SectionCard>
+                        )}
+
+                        {effectiveStatus === "On Progress" && (
+                          <SectionCard title="Penutupan Tongkang">
+                            <div className="space-y-2.5">
+                              {[
+                                { key: "bargeInfo" as const, label: "Terima informasi barge penuh" },
+                                { key: "closeBarge" as const, label: "Close Barge" },
+                                { key: "finalDraft" as const, label: "Konfirmasi Final Draft Survey" },
+                              ].map(item => (
+                                <div
+                                  key={item.key}
+                                  onClick={() => !readonly && id && updateDocument(id, { closeChecklist: { ...closingChecks, [item.key]: !closingChecks[item.key] } })}
+                                  className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${readonly ? "opacity-60" : "cursor-pointer hover:border-[#5B5FC7]/50"} ${closingChecks[item.key] ? "bg-indigo-50/60 border-[#5B5FC7]/40" : "bg-white border-gray-200"}`}
+                                >
+                                  <div className={`w-5 h-5 rounded-md flex items-center justify-center border-2 shrink-0 ${closingChecks[item.key] ? "bg-[#5B5FC7] border-[#5B5FC7]" : "bg-white border-gray-300"}`}>
+                                    {closingChecks[item.key] && <Check className="w-3.5 h-3.5 text-white stroke-[3]" />}
                                   </div>
+                                  <span className="text-sm font-semibold text-gray-700">{item.label}</span>
                                 </div>
-                              </div>
-                              <div className="flex items-center gap-2">
+                              ))}
+                            </div>
+                            {!readonly && (
+                              <>
+                                <button onClick={handleCloseBarge} disabled={!isClosingAllChecked || ritaseCount < 1} className="mt-4 bg-gray-900 hover:bg-black disabled:bg-gray-200 disabled:text-gray-400 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-colors">
+                                  Close Tongkang
+                                </button>
+                                {ritaseCount < 1 && <p className="text-[11px] text-rose-600 mt-1.5">Minimal 1 ritase diperlukan sebelum bisa close.</p>}
+                              </>
+                            )}
+                          </SectionCard>
+                        )}
+
+                        {effectiveStatus === "Closed" && (
+                          <SectionCard title="Data Final & Keberangkatan">
+                            <div className="grid grid-cols-2 gap-3 mb-4">
+                              <FormField label="Final Tonnage Aktual (MT)">
                                 <input
-                                  type="datetime-local"
-                                  value={ata}
-                                  onChange={e => setAta(e.target.value)}
-                                  className="w-[30px] opacity-0 cursor-pointer absolute right-4 top-1/2 -translate-y-1/2 h-full z-20"
-                                  onClick={(e) => {
-                                    // Make sure modern browsers open the picker when clicked anywhere near it
-                                    try {
-                                      if ('showPicker' in HTMLInputElement.prototype) {
-                                        (e.target as HTMLInputElement).showPicker();
-                                      }
-                                    } catch (err) {}
-                                  }}
+                                  type="number"
+                                  placeholder="Masukkan tonase final"
+                                  value={finalActualTonnage}
+                                  onChange={e => setFinalActualTonnage(e.target.value)}
+                                  disabled={readonly}
+                                  className={inputCls}
                                 />
-                                <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-emerald-600 transition-colors relative z-10 pointer-events-none" />
+                              </FormField>
+                              <FormField label="Upload Dokumen Draft Survey">
+                                <input
+                                  ref={fileInputRef}
+                                  type="file"
+                                  accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                                  onChange={e => setFinalDraftFile(e.target.files?.[0] || null)}
+                                  disabled={readonly}
+                                  className="w-full text-xs text-gray-600 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border file:border-gray-300 file:text-xs file:font-bold file:bg-gray-50 file:text-gray-700 hover:file:bg-gray-100 disabled:opacity-50"
+                                />
+                                {finalDraftFile && <p className="text-[11px] text-emerald-600 font-medium mt-1">{finalDraftFile.name}</p>}
+                              </FormField>
+                            </div>
+                            {!readonly && (
+                              <button onClick={handleConfirmDeparture} disabled={!finalActualTonnage} className="bg-[#5B5FC7] hover:bg-indigo-700 disabled:bg-gray-200 disabled:text-gray-400 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-colors flex items-center gap-2">
+                                <Flag className="w-4 h-4" /> Konfirmasi Keberangkatan →
+                              </button>
+                            )}
+                          </SectionCard>
+                        )}
+
+                        {effectiveStatus === "Departed" && (
+                          <SectionCard title="Operasi Selesai" badge={<span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-1 rounded-md">Departed ✓</span>}>
+                            <InfoBox tone="green">
+                              Tongkang <strong>{doc.barge}</strong> telah berangkat. Final Tonnage: <strong>{doc.finalTonnage || "-"} MT</strong>. Total Ritase: <strong>{ritaseCount}</strong>. Operasi berhasil diselesaikan.
+                            </InfoBox>
+                          </SectionCard>
+                        )}
+
+                        {/* Populasi & Assignment — auto-populate dari Operator App, view-only aside from Sim + Remove */}
+                        {effectiveIdx >= 3 && (
+                          <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                            <div className="px-5 py-3.5 bg-gray-50/70 border-b border-gray-100 flex items-center justify-between">
+                              <h3 className="text-sm font-bold text-gray-900">Populasi & Assignment</h3>
+                              <span className="text-[11px] text-gray-400">Auto-populate dari Operator App</span>
+                            </div>
+
+                            <div className="px-5 py-2.5 bg-gray-50/50 border-b border-gray-100 flex items-center justify-between">
+                              <span className="text-xs font-bold text-gray-700">Dump Truck ({population.dumpTrucks.length})</span>
+                            </div>
+                            <div className="px-5 py-2 border-b border-gray-100">
+                              <div className="relative max-w-xs">
+                                <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                                <input value={dtSearch} onChange={e => setDtSearch(e.target.value)} placeholder="Search by No Unit..." className="w-full pl-8 pr-3 py-1.5 border border-gray-200 rounded-lg text-xs" />
                               </div>
                             </div>
-                          </label>
-                        </div>
-
-                        <div className="p-3 bg-gray-50 border-t border-gray-100">
-                          <button onClick={handleConfirmArrival} disabled={!eta || !ata} className="w-full bg-[#5B5FC7] hover:bg-indigo-700 disabled:bg-gray-200 disabled:text-gray-400 text-white text-[14px] font-bold py-2.5 rounded-lg transition-colors shadow-sm flex justify-center items-center gap-2">
-                            Confirm Arrival
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </TimelineItem>
-
-                  {/* Open (Pre-Operation Checklist) */}
-                  <TimelineItem
-                    title="Pre-Operation Checklist"
-                    status={isPast('Open') ? 'completed' : isCurrent('Arrived') || isCurrent('Open') ? 'current' : 'upcoming'}
-                    icon={ShieldCheck}
-                    onViewSnapshot={isPast('Open') ? () => setViewingHistoricalStatus('Open') : undefined}
-                    active={viewingHistoricalStatus === 'Open'}
-                  >
-                    {isCurrent('Arrived') && (
-                      <div className="space-y-3 mt-2">
-                        <TaskCard
-                          label="Notify SPV Production"
-                          checked={openChecks.notify}
-                          onChange={(val: any) => id && updateDocument(id, { openChecklist: { ...openChecks, notify: val } })}
-                        />
-                        <TaskCard
-                          label="Set Ramp Door"
-                          checked={openChecks.ramp}
-                          onChange={(val: any) => id && updateDocument(id, { openChecklist: { ...openChecks, ramp: val } })}
-                        />
-                        <TaskCard
-                          label="Excavator enters barge"
-                          checked={openChecks.excaEnter}
-                          onChange={(val: any) => id && updateDocument(id, { openChecklist: { ...openChecks, excaEnter: val } })}
-                        />
-                        <div className="pt-3">
-                          <button onClick={handleSetOpen} disabled={!isOpenAllChecked} className="w-full bg-[#5B5FC7] hover:bg-indigo-700 disabled:bg-indigo-300 disabled:shadow-none text-white text-[14px] font-bold py-3 rounded-xl transition-all shadow-md shadow-indigo-500/20 flex justify-center items-center gap-2">
-                            Set Status Open
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </TimelineItem>
-
-                  {/* On Progress */}
-                  <TimelineItem
-                    title="On Progress"
-                    status={isPast('On Progress') ? 'completed' : isCurrent('Open') || isCurrent('On Progress') ? 'current' : 'upcoming'}
-                    icon={Activity}
-                    onViewSnapshot={isPast('On Progress') ? () => setViewingHistoricalStatus('On Progress') : undefined}
-                    active={viewingHistoricalStatus === 'On Progress'}
-                  >
-                    {isCurrent('Open') && (
-                      <button onClick={handleStartOperation} className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white text-[14px] font-bold py-3 rounded-xl transition-all shadow-md shadow-emerald-500/20 flex justify-center items-center gap-2 mt-2">
-                        <Play className="w-4 h-4 fill-white" /> Mulai Operasi
-                      </button>
-                    )}
-                    {isCurrent('On Progress') && (
-                       <div className="text-[13px] font-semibold text-[#5B5FC7] bg-indigo-50 px-4 py-3 rounded-xl border border-indigo-100 flex items-center gap-2">
-                          <div className="w-2 h-2 bg-[#5B5FC7] rounded-full animate-ping" />
-                          Operation is ongoing
-                       </div>
-                    )}
-                  </TimelineItem>
-
-                  {/* Closed */}
-                  <TimelineItem
-                    title="Closed"
-                    status={isPast('Closed') ? 'completed' : isCurrent('On Progress') || isCurrent('Closed') ? 'current' : 'upcoming'}
-                    icon={Anchor}
-                    onViewSnapshot={isPast('Closed') ? () => setViewingHistoricalStatus('Closed') : undefined}
-                    active={viewingHistoricalStatus === 'Closed'}
-                  >
-                    {isCurrent('On Progress') && (
-                      <div className="space-y-3 mt-2">
-                        <TaskCard
-                          label="Receive barge full info"
-                          checked={closingChecks.bargeInfo}
-                          onChange={(val: any) => id && updateDocument(id, { closeChecklist: { ...closingChecks, bargeInfo: val } })}
-                        />
-                        <TaskCard
-                          label="Close Barge"
-                          checked={closingChecks.closeBarge}
-                          onChange={(val: any) => id && updateDocument(id, { closeChecklist: { ...closingChecks, closeBarge: val } })}
-                        />
-                        <TaskCard
-                          label="Confirm Final Draft"
-                          checked={closingChecks.finalDraft}
-                          onChange={(val: any) => id && updateDocument(id, { closeChecklist: { ...closingChecks, finalDraft: val } })}
-                        />
-
-                        <div className="pt-2">
-                          {(!isClosingAllChecked || ritaseCount < 1) && (
-                            <div className="text-[13px] font-medium text-amber-700 mb-3 bg-amber-50 p-3 rounded-xl border border-amber-200/60 flex gap-2 items-start">
-                              <ShieldCheck className="w-4 h-4 shrink-0 mt-0.5 text-amber-500" />
-                              <span>Complete all checklist items & ensure minimal 1 ritase (via Refresh) to finish.</span>
+                            <div className="max-h-56 overflow-y-auto">
+                              <table className="w-full text-left border-collapse">
+                                <thead className="sticky top-0 bg-gray-50 z-10">
+                                  <tr>
+                                    <th className="px-4 py-2 text-[11px] font-bold text-gray-500">Code</th>
+                                    <th className="px-4 py-2 text-[11px] font-bold text-gray-500">Unit</th>
+                                    <th className="px-4 py-2 text-[11px] font-bold text-gray-500">Route</th>
+                                    <th className="px-4 py-2 text-[11px] font-bold text-gray-500">Area</th>
+                                    <th className="px-4 py-2 text-[11px] font-bold text-gray-500">Aksi</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                  {filteredDt.length === 0 ? (
+                                    <tr><td colSpan={5} className="px-4 py-4 text-xs text-gray-400 text-center">Belum ada Dump Truck (auto-populate dari Operator App).</td></tr>
+                                  ) : filteredDt.map(dt => {
+                                    const menuKey = `dt-${dt.code}`;
+                                    return (
+                                      <tr key={dt.code}>
+                                        <td className="px-4 py-2.5"><span className="text-xs font-bold bg-gray-100 px-1.5 py-0.5 rounded">{dt.code}</span></td>
+                                        <td className="px-4 py-2.5 text-xs text-gray-600">{dt.plate}<br /><span className="text-[10px] text-gray-400">{dt.capacity}m³</span></td>
+                                        <td className="px-4 py-2.5">
+                                          <span className={`text-[11px] font-bold ${dt.route === "unscheduled" ? "text-rose-600" : "text-emerald-600"}`}>
+                                            {dt.route === "unscheduled" ? "Unscheduled" : "Scheduled"}
+                                          </span>
+                                        </td>
+                                        <td className="px-4 py-2.5 text-xs text-gray-500">{dt.assignedArea || "—"}</td>
+                                        <td className="px-4 py-2.5 relative">
+                                          {readonly ? (
+                                            <span className="text-[11px] text-gray-300">—</span>
+                                          ) : (
+                                            <>
+                                              <button onClick={() => setOpenMenuKey(k => k === menuKey ? null : menuKey)} className="p-1 border border-gray-200 rounded-md text-gray-500 hover:bg-gray-50">
+                                                <MoreHorizontal className="w-3.5 h-3.5" />
+                                              </button>
+                                              {openMenuKey === menuKey && (
+                                                <>
+                                                  <div className="fixed inset-0 z-10" onClick={() => setOpenMenuKey(null)} />
+                                                  <div className="absolute right-4 top-full mt-1 z-20 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[130px] overflow-hidden">
+                                                    {dt.status === "available" && (
+                                                      <button onClick={() => { simulateLoaded(dt.code); setOpenMenuKey(null); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 border-b border-gray-100">▶ Sim</button>
+                                                    )}
+                                                    {dt.status === "available" && (
+                                                      <button onClick={() => { setRemoveTarget({ type: "dt", code: dt.code }); setOpenMenuKey(null); }} className="w-full text-left px-3 py-2 text-xs text-rose-600 hover:bg-rose-50">Remove</button>
+                                                    )}
+                                                  </div>
+                                                </>
+                                              )}
+                                            </>
+                                          )}
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
                             </div>
-                          )}
-                          <button onClick={handleCloseBarge} disabled={!isClosingAllChecked || ritaseCount < 1} className="w-full bg-gradient-to-r from-gray-800 to-gray-900 hover:from-black hover:to-black disabled:from-gray-300 disabled:to-gray-300 disabled:text-gray-500 disabled:shadow-none text-white text-[14px] font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-gray-900/20 flex justify-center items-center gap-2">
-                            <Check className="w-5 h-5 stroke-[3]" /> Close Tongkang
-                          </button>
-                        </div>
-                      </div>
-                    )}
-                  </TimelineItem>
 
-                  {/* Departed */}
-                  <TimelineItem
-                    title="Departed"
-                    status={status === 'Departed' ? 'completed' : isCurrent('Closed') ? 'current' : 'upcoming'}
-                    icon={Flag}
-                    isLast={true}
-                  >
-                    {isCurrent('Closed') && (
-                      <div className="text-[13px] font-medium text-gray-500">Lengkapi Final Tonnage & dokumen di panel "Final Data" sebelum konfirmasi keberangkatan.</div>
+                            <div className="px-5 py-2.5 bg-gray-50/50 border-y border-gray-100 flex items-center justify-between">
+                              <span className="text-xs font-bold text-gray-700">Excavator ({population.excavators.length})</span>
+                            </div>
+                            <div className="px-5 py-2 border-b border-gray-100">
+                              <div className="relative max-w-xs">
+                                <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                                <input value={excaSearch} onChange={e => setExcaSearch(e.target.value)} placeholder="Search by No Unit..." className="w-full pl-8 pr-3 py-1.5 border border-gray-200 rounded-lg text-xs" />
+                              </div>
+                            </div>
+                            <div className="max-h-56 overflow-y-auto">
+                              <table className="w-full text-left border-collapse">
+                                <thead className="sticky top-0 bg-gray-50 z-10">
+                                  <tr>
+                                    <th className="px-4 py-2 text-[11px] font-bold text-gray-500">Code</th>
+                                    <th className="px-4 py-2 text-[11px] font-bold text-gray-500">Model</th>
+                                    <th className="px-4 py-2 text-[11px] font-bold text-gray-500">Bucket</th>
+                                    <th className="px-4 py-2 text-[11px] font-bold text-gray-500">Area</th>
+                                    <th className="px-4 py-2 text-[11px] font-bold text-gray-500">Aksi</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-gray-100">
+                                  {filteredExca.length === 0 ? (
+                                    <tr><td colSpan={5} className="px-4 py-4 text-xs text-gray-400 text-center">Belum ada Excavator (auto-populate dari Operator App).</td></tr>
+                                  ) : filteredExca.map(ex => {
+                                    const menuKey = `exca-${ex.code}`;
+                                    return (
+                                      <tr key={ex.code}>
+                                        <td className="px-4 py-2.5"><span className="text-xs font-bold bg-indigo-100 text-[#5B5FC7] px-1.5 py-0.5 rounded">{ex.code}</span></td>
+                                        <td className="px-4 py-2.5 text-xs text-gray-600">{ex.model}</td>
+                                        <td className="px-4 py-2.5 text-xs text-gray-500">{ex.bucket}m³/bkt</td>
+                                        <td className="px-4 py-2.5 text-xs text-gray-500">{ex.assignedArea || "—"}</td>
+                                        <td className="px-4 py-2.5 relative">
+                                          {readonly ? (
+                                            <span className="text-[11px] text-gray-300">—</span>
+                                          ) : (
+                                            <>
+                                              <button onClick={() => setOpenMenuKey(k => k === menuKey ? null : menuKey)} className="p-1 border border-gray-200 rounded-md text-gray-500 hover:bg-gray-50">
+                                                <MoreHorizontal className="w-3.5 h-3.5" />
+                                              </button>
+                                              {openMenuKey === menuKey && (
+                                                <>
+                                                  <div className="fixed inset-0 z-10" onClick={() => setOpenMenuKey(null)} />
+                                                  <div className="absolute right-4 top-full mt-1 z-20 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[130px] overflow-hidden">
+                                                    <button onClick={() => { setRemoveTarget({ type: "exca", code: ex.code }); setOpenMenuKey(null); }} className="w-full text-left px-3 py-2 text-xs text-rose-600 hover:bg-rose-50">Remove</button>
+                                                  </div>
+                                                </>
+                                              )}
+                                            </>
+                                          )}
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        )}
+                      </>
                     )}
-                    {status === 'Departed' && (
-                      <div className="text-[13px] font-semibold text-emerald-700 bg-emerald-50 px-4 py-3 rounded-xl border border-emerald-100 flex items-center gap-2">
-                        <CheckCircle2 className="w-4 h-4" />
-                        Tongkang telah berangkat
+                  </>
+                )}
+
+                {activeTab === "progress" && (
+                  effectiveIdx < 3 ? (
+                    <div className="text-center py-16 text-gray-400">
+                      <div className="text-3xl mb-2">📊</div>
+                      <p className="text-sm font-medium">Data progress tersedia setelah operasi dimulai.</p>
+                    </div>
+                  ) : (
+                    <>
+                      <SectionCard title="Progress Produksi" badge={<span className="text-[11px] text-gray-400">Auto-update dari Operator App</span>}>
+                        <div className="grid grid-cols-3 gap-4 mb-5">
+                          <div className="bg-gray-50 p-4 rounded-xl border border-gray-100">
+                            <div className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-1.5 flex items-center gap-1"><Target className="w-3 h-3" /> Target</div>
+                            <div className="text-xl font-black text-gray-900">{progressTarget.toLocaleString()} <span className="text-xs font-medium text-gray-500">MT</span></div>
+                          </div>
+                          <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+                            <div className="text-[10px] font-bold text-[#5B5FC7] uppercase tracking-wider mb-1.5 flex items-center gap-1"><TrendingUp className="w-3 h-3" /> Akumulasi</div>
+                            <div className="text-xl font-black text-[#5B5FC7]">{accumulatedTonase.toFixed(1)} <span className="text-xs font-medium text-indigo-400">MT</span></div>
+                          </div>
+                          <div className="bg-blue-50 p-4 rounded-xl border border-blue-100">
+                            <div className="text-[10px] font-bold text-blue-600 uppercase tracking-wider mb-1.5 flex items-center gap-1"><Truck className="w-3 h-3" /> Total Ritase</div>
+                            <div className="text-xl font-black text-blue-900">{ritaseCount} <span className="text-xs font-medium text-blue-500">Rit</span></div>
+                          </div>
+                        </div>
+                        <div className="mb-5">
+                          <div className="flex justify-between text-xs font-medium text-gray-500 mb-1.5">
+                            <span>{progress}% tercapai</span>
+                            <span>Sisa: {remainingTonase.toFixed(1)} MT</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                            <div className="bg-[#5B5FC7] h-full rounded-full transition-all duration-700" style={{ width: `${progress}%` }} />
+                          </div>
+                        </div>
+                        {effectiveStatus === "On Progress" && !readonly && (
+                          <div className="bg-blue-50 border border-blue-100 rounded-xl p-3.5 flex items-center justify-between gap-4">
+                            <span className="text-xs text-blue-800"><strong>Integrasi Mobile:</strong> Data ritase & tonnage di-sync otomatis dari Operator App setiap kali operator submit dumping di Jetty.</span>
+                            <button onClick={simulateRitase} className="shrink-0 bg-[#5B5FC7] hover:bg-indigo-700 text-white px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1.5 whitespace-nowrap">
+                              <RefreshCw className="w-3.5 h-3.5" /> Refresh
+                            </button>
+                          </div>
+                        )}
+                        {effectiveStatus === "On Progress" && readonly && (
+                          <div className="bg-blue-50 border border-blue-100 rounded-xl p-3.5 text-xs text-blue-800">
+                            <strong>Integrasi Mobile:</strong> Data ritase & tonnage di-sync otomatis dari Operator App.
+                          </div>
+                        )}
+                      </SectionCard>
+
+                      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                        <div className="px-5 py-3.5 bg-gray-50/70 border-b border-gray-100 flex items-center justify-between flex-wrap gap-3">
+                          <h3 className="text-sm font-bold text-gray-900">Achievement Tonnage</h3>
+                          <div className="flex items-center gap-3">
+                            <span className="text-[11px] text-gray-500">{shiftTotalRitase} rit | {shiftTotalTonnage.toFixed(1)} MT | <strong className="text-gray-700">{shiftOverallAch}%</strong></span>
+                            <div className="flex gap-1 bg-gray-100 p-0.5 rounded-lg">
+                              <button onClick={() => setAchFilter("shift")} className={`text-[11px] font-bold px-2.5 py-1 rounded-md transition-colors ${achFilter === "shift" ? "bg-[#5B5FC7] text-white" : "text-gray-600"}`}>By Shift</button>
+                              <button onClick={() => setAchFilter("exca")} className={`text-[11px] font-bold px-2.5 py-1 rounded-md transition-colors ${achFilter === "exca" ? "bg-[#5B5FC7] text-white" : "text-gray-600"}`}>By Exca</button>
+                            </div>
+                          </div>
+                        </div>
+
+                        {achFilter === "shift" ? (
+                          <table className="w-full text-left border-collapse">
+                            <thead>
+                              <tr className="bg-gray-50 border-b border-gray-100">
+                                <th className="px-4 py-2 text-[11px] font-bold text-gray-500">Shift</th>
+                                <th className="px-4 py-2 text-[11px] font-bold text-gray-500">Tanggal</th>
+                                <th className="px-4 py-2 text-[11px] font-bold text-gray-500 text-right">Ritase</th>
+                                <th className="px-4 py-2 text-[11px] font-bold text-gray-500 text-right">Tonnage (MT)</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                              {shiftRows.map((r, idx) => {
+                                const hasDetail = r.excaSummary.length > 0;
+                                const isOpen = expandedShiftRows.has(idx);
+                                return (
+                                  <Fragment key={idx}>
+                                    <tr>
+                                      <td className="px-4 py-2.5 text-xs font-semibold text-gray-900">
+                                        <div className="flex items-center gap-1.5">
+                                          {hasDetail ? (
+                                            <button onClick={() => toggleShiftDetail(idx)} className="text-gray-400 hover:text-[#5B5FC7]">
+                                              {isOpen ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
+                                            </button>
+                                          ) : <span className="w-3" />}
+                                          {r.shift}
+                                          {"isCurrent" in r && r.isCurrent && <span className="text-[9px] font-bold uppercase bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">Berjalan</span>}
+                                        </div>
+                                      </td>
+                                      <td className="px-4 py-2.5 text-xs text-gray-500">{r.date}</td>
+                                      <td className="px-4 py-2.5 text-xs font-bold text-gray-900 text-right">{r.ritase}</td>
+                                      <td className="px-4 py-2.5 text-xs font-bold text-[#5B5FC7] text-right">{r.tonnage.toFixed(1)}</td>
+                                    </tr>
+                                    {hasDetail && isOpen && (
+                                      <tr className="bg-gray-50/60">
+                                        <td colSpan={4} className="px-4 py-2 pl-10">
+                                          <div className="flex flex-wrap items-center gap-1.5">
+                                            <span className="text-[11px] text-gray-500 mr-1">Exca:</span>
+                                            {r.excaSummary.map(e => (
+                                              <span key={e.code} className="inline-flex items-center gap-1 bg-white border border-gray-200 rounded-md px-2 py-0.5 text-[11px]">
+                                                <strong className="text-gray-900">{e.code}</strong><span className="text-gray-500">{e.ritase} rit</span>
+                                              </span>
+                                            ))}
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    )}
+                                  </Fragment>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        ) : (
+                          <table className="w-full text-left border-collapse">
+                            <thead>
+                              <tr className="bg-gray-50 border-b border-gray-100">
+                                <th className="px-4 py-2 text-[11px] font-bold text-gray-500">Excavator</th>
+                                <th className="px-4 py-2 text-[11px] font-bold text-gray-500 text-right">Ritase</th>
+                                <th className="px-4 py-2 text-[11px] font-bold text-gray-500 text-right">Tonnage (MT)</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-100">
+                              {excaAggregateRows.length === 0 ? (
+                                <tr><td colSpan={3} className="px-4 py-6 text-xs text-gray-400 text-center">Belum ada data exca.</td></tr>
+                              ) : excaAggregateRows.map(e => (
+                                <tr key={e.code}>
+                                  <td className="px-4 py-2.5"><span className="text-xs font-bold bg-indigo-100 text-[#5B5FC7] px-1.5 py-0.5 rounded">{e.code}</span></td>
+                                  <td className="px-4 py-2.5 text-xs font-bold text-gray-900 text-right">{e.ritase}</td>
+                                  <td className="px-4 py-2.5 text-xs font-bold text-[#5B5FC7] text-right">{e.tonnage.toFixed(1)}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        )}
+                      </div>
+                    </>
+                  )
+                )}
+
+                {activeTab === "riwayat" && (
+                  <SectionCard title="Riwayat Breakdown & Transfer" badge={<span className="text-[11px] text-gray-400">{breakdownEvents.length} kejadian</span>}>
+                    {breakdownEvents.length === 0 ? (
+                      <div className="text-center py-8 text-gray-400">
+                        <div className="text-2xl mb-1.5">✅</div>
+                        <p className="text-xs font-medium">Tidak ada kejadian breakdown.</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-2.5">
+                        {[...breakdownEvents].reverse().map(ev => {
+                          const tone = ev.type === "dt_breakdown" ? "rose" : ev.type === "exca_breakdown" ? "amber" : "emerald";
+                          const toneCls = tone === "rose" ? "border-rose-200" : tone === "amber" ? "border-amber-200" : "border-emerald-200";
+                          const badgeCls = tone === "rose" ? "bg-rose-100 text-rose-700" : tone === "amber" ? "bg-amber-100 text-amber-700" : "bg-emerald-100 text-emerald-700";
+                          return (
+                            <div key={ev.id} className={`bg-white border rounded-xl p-3.5 ${toneCls}`}>
+                              <div className="flex items-center justify-between mb-1.5">
+                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md ${badgeCls}`}>
+                                  {ev.type === "dt_breakdown" && "⚠️ DT Breakdown & Transfer"}
+                                  {ev.type === "dt_recovery" && "✅ DT Recovery"}
+                                  {ev.type === "exca_breakdown" && "⚠️ Exca Breakdown"}
+                                  {ev.type === "exca_recover" && "✅ Exca Recovery"}
+                                </span>
+                                <span className="text-[10px] text-gray-400">{ev.timestamp}</span>
+                              </div>
+                              {ev.type === "dt_breakdown" && (
+                                <>
+                                  <div className="text-xs font-bold text-rose-700">{ev.fromTruck} <span className="text-gray-400 font-normal mx-1">→</span> {ev.toTruck}</div>
+                                  <div className="text-[11px] text-gray-500 mt-1">{ev.bucketCount !== "-" ? `${ev.bucketCount} bucket | ` : ""}{ev.tonnage} MT ditransfer</div>
+                                  {ev.note && <div className="text-[10px] text-gray-400 mt-1">{ev.note}</div>}
+                                </>
+                              )}
+                              {ev.type === "dt_recovery" && (
+                                <>
+                                  <div className="text-xs font-bold text-emerald-700">{ev.unit}</div>
+                                  <div className="text-[11px] text-gray-500 mt-1">Unit kembali ke status Available</div>
+                                </>
+                              )}
+                              {ev.type === "exca_breakdown" && (
+                                <>
+                                  <div className="text-xs font-bold text-amber-700">{ev.unit}</div>
+                                  <div className="text-[11px] text-gray-500 mt-1">Excavator ditandai Breakdown oleh SPV</div>
+                                </>
+                              )}
+                              {ev.type === "exca_recover" && (
+                                <>
+                                  <div className="text-xs font-bold text-emerald-700">{ev.unit}</div>
+                                  <div className="text-[11px] text-gray-500 mt-1">Excavator kembali ke status Available</div>
+                                </>
+                              )}
+                            </div>
+                          );
+                        })}
                       </div>
                     )}
-                  </TimelineItem>
-                </div>
+                    <div className="mt-3">
+                      <InfoBox tone="blue">
+                        <span className="text-[11px]"><strong>Catatan:</strong> Recovery unit (DT/Exca) oleh SPV berdasarkan konfirmasi dari workshop via HT. Perubahan commissioning status unit (RFU / Not RFU) di Master Populasi belum terintegrasi — dependency ke modul Master Unit.</span>
+                      </InfoBox>
+                    </div>
+                  </SectionCard>
                 )}
               </div>
             </div>
-          )}
-        </div>
+          </>
+        )}
       </div>
 
       {showInvalidModal && (
@@ -1548,79 +1076,18 @@ export default function PlanningDetail() {
         </div>
       )}
 
-      {breakdownModal && (
-        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all">
-            <div className="px-6 py-4 bg-amber-50 border-b border-amber-100 flex justify-between items-center">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center">
-                  <AlertTriangle className="w-4 h-4 text-amber-600" />
-                </div>
-                <h3 className="text-lg font-bold text-gray-900">Tandai Breakdown</h3>
-              </div>
-              <button onClick={() => setBreakdownModal(false)} className="text-gray-400 hover:text-gray-600 bg-white hover:bg-gray-100 p-1.5 rounded-lg transition-colors border border-gray-200">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              {loadedTrucks.length === 0 ? (
-                <p className="text-sm text-gray-500">Tidak ada unit yang sedang loaded. Klik "Simulasi Loading" pada unit yang ingin disimulasi lebih dulu.</p>
-              ) : (
-                <>
-                  <p className="text-sm text-gray-500">Pilih unit yang breakdown dan unit penerima muatan hibah.</p>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Unit Breakdown (From) <span className="text-red-500">*</span></label>
-                    <select
-                      value={breakdownFrom}
-                      onChange={e => setBreakdownFrom(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 shadow-sm bg-white font-medium text-gray-900"
-                    >
-                      {loadedTrucks.map(dt => (
-                        <option key={dt.code} value={dt.code}>{dt.code} — {dt.plate} | {dt.capacity}m³ [{dt.route === 'unscheduled' ? 'Unscheduled' : 'Scheduled'}]</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Unit Penerima (To) <span className="text-red-500">*</span></label>
-                    <select
-                      value={breakdownTo}
-                      onChange={e => setBreakdownTo(e.target.value)}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500 shadow-sm bg-white font-medium text-gray-900"
-                    >
-                      <option value="">Pilih unit penerima...</option>
-                      {availableTrucksForTransfer.filter(dt => dt.code !== breakdownFrom).map(dt => (
-                        <option key={dt.code} value={dt.code}>{dt.code} — {dt.plate} | {dt.capacity}m³</option>
-                      ))}
-                    </select>
-                  </div>
-                  {breakdownPreview && (
-                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800">
-                      Tonnage yang ditransfer (trip pertama {breakdownTo}): <strong>{breakdownPreview.tonnage} MT</strong>
-                      <br /><span className="opacity-80">{breakdownPreview.note}</span>
-                    </div>
-                  )}
-                </>
-              )}
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setBreakdownModal(false)}
-                  className="px-5 py-2.5 border border-gray-300 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-100 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={confirmBreakdownTransfer}
-                  disabled={!breakdownFrom || !breakdownTo || breakdownFrom === breakdownTo}
-                  className="bg-amber-600 hover:bg-amber-700 disabled:bg-amber-200 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition-all shadow-md shadow-amber-500/20"
-                >
-                  Confirm Breakdown
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
+      {removeTarget && (
+        <ActionModal
+          variant="confirm"
+          title="Keluarkan Unit?"
+          message={
+            removeTarget.type === "dt"
+              ? `Dump Truck ${removeTarget.code} akan dikeluarkan dari operasi barging ini.`
+              : `Excavator ${removeTarget.code} akan dikeluarkan dari operasi barging ini.`
+          }
+          onConfirm={confirmRemoveUnit}
+          onCancel={() => setRemoveTarget(null)}
+        />
       )}
 
       {isCreate && showCreateConfirm && (

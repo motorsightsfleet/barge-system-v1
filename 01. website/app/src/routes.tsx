@@ -20,6 +20,7 @@ import MasterVariantSpecification from "./components/master/MasterVariantSpecifi
 import VariantSpecificationForm from "./components/master/VariantSpecificationForm";
 import Planning from "./components/transactional/Planning";
 import PlanningDetail from "./components/transactional/PlanningDetail";
+import PlanningEdit from "./components/transactional/PlanningEdit";
 
 export const routeConfig: RouteObject[] = [
   {
@@ -61,6 +62,7 @@ export const routeConfig: RouteObject[] = [
       { path: "master/population/unit-model-variant/:id/edit", Component: UnitModelVariantForm },
 
       { path: "transactional/operation", Component: Planning },
+      { path: "transactional/operation/:id/edit", Component: PlanningEdit },
       { path: "transactional/operation/:id", Component: PlanningDetail },
     ],
   },

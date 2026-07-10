@@ -12,13 +12,12 @@ export interface ExcaEntry {
   model: string;
   bucket: number;
   assignedArea: string;
-  status: "available" | "breakdown";
+  status: "available";
 }
 
 export interface DtPayload {
   bucketCount: number | "-";
   tonnage: number;
-  fromTruck?: string;
 }
 
 export interface DtEntry {
@@ -27,11 +26,17 @@ export interface DtEntry {
   capacity: number;
   route: "scheduled" | "unscheduled";
   assignedArea: string;
-  status: "available" | "loaded" | "breakdown" | "transfer";
+  // "breakdown"/"transfer" exist in index.html's schema but are only ever set by
+  // markExcaBreakdown()/recoverDT()/confirmBreakdown() — dead code never wired to any
+  // button. The only reachable transition is available -> loaded via simulateLoaded().
+  status: "available" | "loaded";
   payload?: DtPayload;
-  transferTo?: string;
 }
 
+// Only ever produced by simulateRitase()'s 25% chance mobile-reported transfer —
+// index.html's other event types (dt_recovery/exca_breakdown/exca_recover) come from
+// the same dead functions as breakdown/transfer above, so they're kept here only for
+// the Riwayat renderer's shape but are never actually generated.
 export interface BreakdownEvent {
   id: string;
   type: "dt_breakdown" | "exca_breakdown" | "exca_recover" | "dt_recovery";
