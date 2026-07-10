@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 // Client-only, localStorage-backed data layer for the Barging Process module —
 // mirrors index.html's getWebData()/saveWebData() pattern (no backend for this
@@ -199,10 +199,31 @@ function seedDocuments(): BargingDocument[] {
   ];
 }
 
+// Guards against a corrupted or old-schema blob (e.g. hand-edited localStorage, or a
+// leftover shape from before excavators/dumpTrucks existed) crashing the app with an
+// uncaught TypeError the first time a component reads doc.excavators.length etc.
+function isValidDocsArray(value: unknown): value is BargingDocument[] {
+  return (
+    Array.isArray(value) &&
+    value.every(
+      (d) =>
+        d &&
+        typeof d === "object" &&
+        typeof (d as BargingDocument).id === "string" &&
+        typeof (d as BargingDocument).status === "string" &&
+        Array.isArray((d as BargingDocument).excavators) &&
+        Array.isArray((d as BargingDocument).dumpTrucks)
+    )
+  );
+}
+
 function readStore(): BargingDocument[] {
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    if (raw) return JSON.parse(raw) as BargingDocument[];
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (isValidDocsArray(parsed)) return parsed;
+    }
   } catch {
     // corrupt storage — fall through to reseed
   }
@@ -225,6 +246,20 @@ export function nextDocId(docs: BargingDocument[]): string {
 
 export function useBargingDocuments() {
   const [documents, setDocuments] = useState<BargingDocument[]>(() => readStore());
+
+  // Each mounted instance of this hook (i.e. each open tab/window) otherwise holds its
+  // own in-memory snapshot and would silently overwrite another tab's more recent writes
+  // on its next save. Resyncing on the browser's `storage` event (fired in OTHER tabs
+  // when this key changes) closes most of that window — it doesn't make concurrent
+  // writes fully safe, but a tab that's just idly viewing a document will pick up
+  // another tab's changes instead of clobbering them later.
+  useEffect(() => {
+    function handleStorage(e: StorageEvent) {
+      if (e.key === STORAGE_KEY) setDocuments(readStore());
+    }
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
 
   const addDocument = useCallback((doc: BargingDocument) => {
     setDocuments(prev => {

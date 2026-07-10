@@ -110,10 +110,10 @@ export default function PlanningDetail() {
   const doc = !isCreate ? documents.find(d => d.id === id) : undefined;
 
   useEffect(() => {
-    if (!isCreate && documents.length > 0 && !doc) {
+    if (!isCreate && !doc) {
       navigate("/transactional/operation", { replace: true });
     }
-  }, [isCreate, doc, documents.length, navigate]);
+  }, [isCreate, doc, navigate]);
 
   // ─── CREATE MODE ────────────────────────────────────────────────────────
   const [createForm, setCreateForm] = useState({
@@ -135,6 +135,20 @@ export default function PlanningDetail() {
   }
 
   function handleCreateDocument() {
+    if (!createForm.eta) {
+      setCreateError("ETA wajib diisi.");
+      return;
+    }
+    const target = parseInt(createForm.targetTonase, 10);
+    if (!target || target <= 0) {
+      setCreateError("Target Tonase harus lebih dari 0.");
+      return;
+    }
+    const density = parseFloat(createForm.materialDensity);
+    if (!density || density <= 0) {
+      setCreateError("Densitas Material harus lebih dari 0.");
+      return;
+    }
     const dup = documents.find(d => d.barge === createForm.barge && ACTIVE_STATUSES.includes(d.status));
     if (dup) {
       setCreateError(`Barge "${createForm.barge}" masih memiliki dokumen aktif (${dup.id} — Status: ${dup.status}). Selesaikan atau hapus dokumen tersebut sebelum membuat yang baru.`);
@@ -148,7 +162,9 @@ export default function PlanningDetail() {
     const newId = nextDocId(documents);
     const newDoc: BargingDocument = {
       id: newId,
-      createdDate: new Date().toLocaleDateString("id-ID"),
+      // ISO YYYY-MM-DD, matching seed data — Planning.tsx's date filter compares
+      // createdDate lexicographically, which only stays chronologically correct in ISO.
+      createdDate: new Date().toISOString().slice(0, 10),
       area: createForm.area,
       barge: createForm.barge,
       material: createForm.material,
@@ -251,7 +267,8 @@ export default function PlanningDetail() {
     if (id && isClosingAllChecked && ritaseCount >= 1) updateDocument(id, { status: "Closed" });
   };
   const handleConfirmDeparture = () => {
-    if (id && finalActualTonnage) updateDocument(id, { status: "Departed", finalTonnage: Number(finalActualTonnage) });
+    const tonnage = Number(finalActualTonnage);
+    if (id && finalActualTonnage && tonnage > 0) updateDocument(id, { status: "Departed", finalTonnage: tonnage });
   };
   const handleMarkInvalid = () => {
     const trimmed = invalidJustification.trim();
@@ -474,7 +491,7 @@ export default function PlanningDetail() {
                     ["Surveyor", doc.surveyor || "—"],
                     ["SPV / Checker", doc.spv || "—"],
                     ["Created Date", doc.createdDate],
-                    ["Final Tonnage", doc.finalTonnage ? `${doc.finalTonnage} MT` : "—"],
+                    ["Final Tonnage", doc.finalTonnage != null ? `${doc.finalTonnage} MT` : "—"],
                   ].map(([label, value]) => (
                     <div key={label} className="flex flex-col gap-0.5">
                       <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wide">{label}</span>
@@ -650,6 +667,7 @@ export default function PlanningDetail() {
                               <FormField label="Final Tonnage Aktual (MT)">
                                 <input
                                   type="number"
+                                  min="0.1"
                                   placeholder="Masukkan tonase final"
                                   value={finalActualTonnage}
                                   onChange={e => setFinalActualTonnage(e.target.value)}
@@ -670,7 +688,7 @@ export default function PlanningDetail() {
                               </FormField>
                             </div>
                             {!readonly && (
-                              <button onClick={handleConfirmDeparture} disabled={!finalActualTonnage} className="bg-[#5B5FC7] hover:bg-indigo-700 disabled:bg-gray-200 disabled:text-gray-400 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-colors flex items-center gap-2">
+                              <button onClick={handleConfirmDeparture} disabled={!finalActualTonnage || Number(finalActualTonnage) <= 0} className="bg-[#5B5FC7] hover:bg-indigo-700 disabled:bg-gray-200 disabled:text-gray-400 text-white text-sm font-bold px-5 py-2.5 rounded-xl transition-colors flex items-center gap-2">
                                 <Flag className="w-4 h-4" /> Konfirmasi Keberangkatan →
                               </button>
                             )}
@@ -680,7 +698,7 @@ export default function PlanningDetail() {
                         {effectiveStatus === "Departed" && (
                           <SectionCard title="Operasi Selesai" badge={<span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-1 rounded-md">Departed ✓</span>}>
                             <InfoBox tone="green">
-                              Tongkang <strong>{doc.barge}</strong> telah berangkat. Final Tonnage: <strong>{doc.finalTonnage || "-"} MT</strong>. Total Ritase: <strong>{ritaseCount}</strong>. Operasi berhasil diselesaikan.
+                              Tongkang <strong>{doc.barge}</strong> telah berangkat. Final Tonnage: <strong>{doc.finalTonnage != null ? doc.finalTonnage : "-"} MT</strong>. Total Ritase: <strong>{ritaseCount}</strong>. Operasi berhasil diselesaikan.
                             </InfoBox>
                           </SectionCard>
                         )}
@@ -729,7 +747,7 @@ export default function PlanningDetail() {
                                         </td>
                                         <td className="px-4 py-2.5 text-xs text-gray-500">{dt.assignedArea || "—"}</td>
                                         <td className="px-4 py-2.5 relative">
-                                          {readonly ? (
+                                          {readonly || dt.status !== "available" ? (
                                             <span className="text-[11px] text-gray-300">—</span>
                                           ) : (
                                             <>
@@ -740,12 +758,8 @@ export default function PlanningDetail() {
                                                 <>
                                                   <div className="fixed inset-0 z-10" onClick={() => setOpenMenuKey(null)} />
                                                   <div className="absolute right-4 top-full mt-1 z-20 bg-white border border-gray-200 rounded-lg shadow-lg min-w-[130px] overflow-hidden">
-                                                    {dt.status === "available" && (
-                                                      <button onClick={() => { simulateLoaded(dt.code); setOpenMenuKey(null); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 border-b border-gray-100">▶ Sim</button>
-                                                    )}
-                                                    {dt.status === "available" && (
-                                                      <button onClick={() => { setRemoveTarget({ type: "dt", code: dt.code }); setOpenMenuKey(null); }} className="w-full text-left px-3 py-2 text-xs text-rose-600 hover:bg-rose-50">Remove</button>
-                                                    )}
+                                                    <button onClick={() => { simulateLoaded(dt.code); setOpenMenuKey(null); }} className="w-full text-left px-3 py-2 text-xs hover:bg-gray-50 border-b border-gray-100">▶ Sim</button>
+                                                    <button onClick={() => { setRemoveTarget({ type: "dt", code: dt.code }); setOpenMenuKey(null); }} className="w-full text-left px-3 py-2 text-xs text-rose-600 hover:bg-rose-50">Remove</button>
                                                   </div>
                                                 </>
                                               )}

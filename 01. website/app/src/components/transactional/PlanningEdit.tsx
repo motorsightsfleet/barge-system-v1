@@ -17,7 +17,6 @@ export default function PlanningEdit() {
 
   // initEditPage(): only editable while status is Planned, otherwise bounce to list.
   useEffect(() => {
-    if (documents.length === 0) return;
     if (!doc || doc.status !== "Planned") {
       navigate("/transactional/operation", { replace: true });
       return;

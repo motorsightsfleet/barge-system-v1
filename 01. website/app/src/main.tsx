@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 import { RouterProvider, createMemoryRouter } from "react-router";
 import App from "./App";
 import { routeConfig } from "./routes";
+import ErrorBoundary from "./components/common/ErrorBoundary";
 import "./index.css";
 
 const USE_MOCK = import.meta.env.VITE_MOCK_API === "true";
@@ -17,6 +18,8 @@ function Root() {
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <Root />
+    <ErrorBoundary>
+      <Root />
+    </ErrorBoundary>
   </StrictMode>
 );
