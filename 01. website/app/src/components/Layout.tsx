@@ -20,12 +20,20 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 
+// Reference Data, Engine, Variant Specification, and Unit Model Variant used to be four
+// separate sidebar entries. They're all "configuration" data feeding the Unit registry
+// and now share one tab bar (see PopulationConfigTabs), so the sidebar only needs one
+// "Konfigurasi Unit" entry that matches any of their routes.
+const POPULATION_CONFIG_PATHS = [
+  '/master/population/reference-data',
+  '/master/population/engine',
+  '/master/population/unit-model-variant',
+  '/master/population/variant-specification',
+];
+
 const POPULATION_SUBMENU = [
-  { label: 'Unit', path: '/master/population/unit' },
-  { label: 'Reference Data', path: '/master/population/reference-data' },
-  { label: 'Engine', path: '/master/population/engine' },
-  { label: 'Variant Specification', path: '/master/population/variant-specification' },
-  { label: 'Unit Model Variant', path: '/master/population/unit-model-variant' },
+  { label: 'Unit', path: '/master/population/unit', matchPaths: undefined as string[] | undefined },
+  { label: 'Konfigurasi Unit', path: '/master/population/reference-data', matchPaths: POPULATION_CONFIG_PATHS },
 ];
 
 export default function Layout() {
@@ -38,12 +46,13 @@ export default function Layout() {
 
   const isActive = (path: string) => location.pathname === path;
   const isActiveSection = (section: string) => location.pathname.startsWith(section);
-  const isPopulationSubActive = (path: string) => location.pathname.startsWith(path);
+  const isPopulationSubActive = (item: (typeof POPULATION_SUBMENU)[number]) =>
+    (item.matchPaths ?? [item.path]).some((p) => location.pathname.startsWith(p));
 
   const getPageTitle = () => {
     if (location.pathname === '/dashboard') return 'Dashboard';
     if (location.pathname.startsWith('/master/population')) {
-      const match = POPULATION_SUBMENU.find((item) => location.pathname.startsWith(item.path));
+      const match = POPULATION_SUBMENU.find((item) => (item.matchPaths ?? [item.path]).some((p) => location.pathname.startsWith(p)));
       return match ? `Population - ${match.label}` : 'Population';
     }
     if (location.pathname.startsWith('/master/area')) return 'Master Area';
@@ -120,10 +129,10 @@ export default function Layout() {
                           key={item.path}
                           to={item.path}
                           className={`flex items-center gap-3 pl-16 pr-6 py-2 text-[13px] transition-colors ${
-                            isPopulationSubActive(item.path) ? 'text-[#5B5FC7] font-semibold' : 'text-gray-400 hover:text-white'
+                            isPopulationSubActive(item) ? 'text-[#5B5FC7] font-semibold' : 'text-gray-400 hover:text-white'
                           }`}
                         >
-                          <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${isPopulationSubActive(item.path) ? 'bg-[#5B5FC7]' : 'bg-transparent'}`}></div>
+                          <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${isPopulationSubActive(item) ? 'bg-[#5B5FC7]' : 'bg-transparent'}`}></div>
                           <span>{item.label}</span>
                         </Link>
                       ))}

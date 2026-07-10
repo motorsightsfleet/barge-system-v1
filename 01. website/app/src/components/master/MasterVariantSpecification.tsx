@@ -13,6 +13,7 @@ import { variantSpecificationApi, VariantSpecification, Pagination } from "../..
 import { ApiError } from "../../lib/api";
 import { buildPageList } from "../../lib/pagination";
 import ActionModal from "../common/ActionModal";
+import PopulationConfigTabs from "./PopulationConfigTabs";
 
 function StatusBadge({ isActive }: { isActive: boolean }) {
   return (
@@ -122,9 +123,14 @@ export default function MasterVariantSpecification() {
   const to = Math.min(pagination.page * pagination.pageSize, pagination.total);
 
   return (
-    <div className="p-8 max-w-[1600px] mx-auto space-y-6" onClick={() => setOpenMenuId(null)}>
+    <div>
+      <PopulationConfigTabs />
+
+      <div className="p-8 max-w-[1600px] mx-auto space-y-6" onClick={() => setOpenMenuId(null)}>
       <div className="text-sm text-gray-500">
         Master Data <span className="mx-1">&gt;</span> Population <span className="mx-1">&gt;</span>{" "}
+        <Link to="/master/population/reference-data" className="hover:text-[#5B5FC7]">Konfigurasi Unit</Link>{" "}
+        <span className="mx-1">&gt;</span>{" "}
         <span className="text-[#5B5FC7] font-semibold">Variant Specification</span>
       </div>
 
@@ -350,6 +356,7 @@ export default function MasterVariantSpecification() {
           onClose={handleModalClose}
         />
       )}
+      </div>
     </div>
   );
 }
