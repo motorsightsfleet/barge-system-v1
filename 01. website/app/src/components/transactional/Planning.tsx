@@ -1,16 +1,88 @@
-import { Plus, Search, Calendar, ChevronRight, Anchor, MapPin, Target, LayoutGrid } from "lucide-react";
+import { useState } from "react";
+import { Plus, Search, Calendar, ChevronRight, Anchor, MapPin, Target, Pencil, Trash2, X } from "lucide-react";
 import { Link } from "react-router";
+import ActionModal from "../common/ActionModal";
 
-const mockPlans = [
-  { id: "BRG-001", date: "2026-05-28", area: "Jetty Timur", barge: "SEA TITAN", tugboat: "TB. MERDEKA 01", targetTonase: "5000 MT", status: "Planned" },
-  { id: "BRG-002", date: "2026-05-28", area: "Jetty Barat", barge: "RIVER KING", tugboat: "TB. NUSANTARA", targetTonase: "3500 MT", status: "Arrived" },
-  { id: "BRG-003", date: "2026-05-29", area: "Jetty Timur", barge: "OCEAN BLUE", tugboat: "TB. PACIFIC", targetTonase: "4000 MT", status: "Open" },
-  { id: "BRG-004", date: "2026-05-30", area: "Jetty Timur", barge: "PACIFIC STAR", tugboat: "TB. MERDEKA 02", targetTonase: "4500 MT", status: "On Progress" },
-  { id: "BRG-005", date: "2026-05-24", area: "Jetty Barat", barge: "IRON DUKE", tugboat: "TB. NUSANTARA", targetTonase: "3800 MT", status: "Closed" },
-  { id: "BRG-006", date: "2026-05-20", area: "Jetty Timur", barge: "GOLDEN BAY", tugboat: "TB. PACIFIC", targetTonase: "5200 MT", status: "Departed" },
+interface Plan {
+  id: string;
+  date: string;
+  area: string;
+  barge: string;
+  tugboat: string;
+  targetTonase: number;
+  eta: string;
+  materialDensity: number;
+  status: string;
+}
+
+const initialPlans: Plan[] = [
+  { id: "BRG-001", date: "2026-05-28", area: "Jetty Timur", barge: "SEA TITAN", tugboat: "TB. MERDEKA 01", targetTonase: 5000, eta: "", materialDensity: 1.2, status: "Planned" },
+  { id: "BRG-002", date: "2026-05-28", area: "Jetty Barat", barge: "RIVER KING", tugboat: "TB. NUSANTARA", targetTonase: 3500, eta: "2026-05-28T08:00", materialDensity: 1.3, status: "Arrived" },
+  { id: "BRG-003", date: "2026-05-29", area: "Jetty Timur", barge: "OCEAN BLUE", tugboat: "TB. PACIFIC", targetTonase: 4000, eta: "2026-05-29T08:00", materialDensity: 1.2, status: "Open" },
+  { id: "BRG-004", date: "2026-05-30", area: "Jetty Timur", barge: "PACIFIC STAR", tugboat: "TB. MERDEKA 02", targetTonase: 4500, eta: "2026-05-30T08:00", materialDensity: 1.4, status: "On Progress" },
+  { id: "BRG-005", date: "2026-05-24", area: "Jetty Barat", barge: "IRON DUKE", tugboat: "TB. NUSANTARA", targetTonase: 3800, eta: "2026-05-24T08:00", materialDensity: 1.2, status: "Closed" },
+  { id: "BRG-006", date: "2026-05-20", area: "Jetty Timur", barge: "GOLDEN BAY", tugboat: "TB. PACIFIC", targetTonase: 5200, eta: "2026-05-20T08:00", materialDensity: 1.3, status: "Departed" },
 ];
 
 export default function Planning() {
+  const [plans, setPlans] = useState<Plan[]>(initialPlans);
+  const [search, setSearch] = useState("");
+  const [showDateFilter, setShowDateFilter] = useState(false);
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+
+  const [editPlan, setEditPlan] = useState<Plan | null>(null);
+  const [editForm, setEditForm] = useState({ eta: "", target: "", density: "" });
+  const [editError, setEditError] = useState("");
+  const [editConfirm, setEditConfirm] = useState(false);
+  const [editSuccess, setEditSuccess] = useState<string | null>(null);
+
+  const [deletePlan, setDeletePlan] = useState<Plan | null>(null);
+  const [deleteSuccess, setDeleteSuccess] = useState<string | null>(null);
+
+  const filteredPlans = plans.filter((p) => {
+    const keyword = search.trim().toLowerCase();
+    if (keyword && !p.id.toLowerCase().includes(keyword) && !p.barge.toLowerCase().includes(keyword)) {
+      return false;
+    }
+    if (dateFrom && p.date < dateFrom) return false;
+    if (dateTo && p.date > dateTo) return false;
+    return true;
+  });
+
+  const openEdit = (plan: Plan) => {
+    setEditPlan(plan);
+    setEditForm({ eta: plan.eta, target: String(plan.targetTonase), density: String(plan.materialDensity) });
+    setEditError("");
+  };
+
+  const submitEdit = () => {
+    if (!editForm.eta) { setEditError("ETA wajib diisi."); return; }
+    const target = parseFloat(editForm.target);
+    if (!target || target <= 0) { setEditError("Target Tonnage harus lebih dari 0."); return; }
+    const density = parseFloat(editForm.density);
+    if (!density || density <= 0) { setEditError("Material Density harus lebih dari 0."); return; }
+    setEditError("");
+    setEditConfirm(true);
+  };
+
+  const confirmEdit = () => {
+    if (!editPlan) return;
+    const target = parseFloat(editForm.target);
+    const density = parseFloat(editForm.density);
+    setPlans(prev => prev.map(p => p.id === editPlan.id ? { ...p, eta: editForm.eta, targetTonase: target, materialDensity: density } : p));
+    setEditConfirm(false);
+    setEditSuccess(editPlan.id);
+    setEditPlan(null);
+  };
+
+  const confirmDelete = () => {
+    if (!deletePlan) return;
+    setPlans(prev => prev.filter(p => p.id !== deletePlan.id));
+    setDeleteSuccess(deletePlan.id);
+    setDeletePlan(null);
+  };
+
   return (
     <div className="p-8 max-w-7xl mx-auto space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -27,19 +99,44 @@ export default function Planning() {
       </div>
 
       <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+        <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 relative">
           <div className="relative w-80">
             <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
               placeholder="Search by ID or Barge name..."
               className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl text-sm font-medium focus:outline-none focus:ring-2 focus:ring-[#5B5FC7] focus:border-[#5B5FC7] shadow-sm transition-all"
             />
           </div>
-          <button className="flex items-center gap-2 text-sm font-semibold text-gray-600 border border-gray-300 px-4 py-2.5 rounded-xl hover:bg-gray-100 transition-colors shadow-sm bg-white">
-            <Calendar className="w-4 h-4" />
-            Filter Date
-          </button>
+          <div className="relative">
+            <button
+              onClick={() => setShowDateFilter(v => !v)}
+              className={`flex items-center gap-2 text-sm font-semibold border px-4 py-2.5 rounded-xl transition-colors shadow-sm bg-white ${
+                dateFrom || dateTo ? "text-[#5B5FC7] border-[#5B5FC7]" : "text-gray-600 border-gray-300 hover:bg-gray-100"
+              }`}
+            >
+              <Calendar className="w-4 h-4" />
+              Filter Date
+            </button>
+            {showDateFilter && (
+              <div className="absolute right-0 mt-2 w-72 bg-white rounded-xl border border-gray-200 shadow-lg p-4 z-20 space-y-3">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">From</label>
+                  <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#5B5FC7]" />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">To</label>
+                  <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#5B5FC7]" />
+                </div>
+                <div className="flex justify-between pt-1">
+                  <button onClick={() => { setDateFrom(""); setDateTo(""); }} className="text-xs font-bold text-gray-500 hover:text-gray-700">Clear</button>
+                  <button onClick={() => setShowDateFilter(false)} className="text-xs font-bold text-[#5B5FC7] hover:text-indigo-700">Apply</button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="overflow-x-auto">
@@ -56,7 +153,16 @@ export default function Planning() {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100 bg-white">
-              {mockPlans.map((plan) => (
+              {filteredPlans.length === 0 ? (
+                <tr>
+                  <td colSpan={7} className="px-6 py-10 text-center text-sm text-gray-400 font-medium">
+                    No barging documents found.
+                  </td>
+                </tr>
+              ) : filteredPlans.map((plan) => {
+                const canEdit = plan.status === "Planned";
+                const canDelete = plan.status === "Planned" || plan.status === "Arrived";
+                return (
                 <tr key={plan.id} className="hover:bg-gray-50/80 transition-colors group">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="text-sm font-bold text-gray-900 bg-gray-100 px-2.5 py-1 rounded-md">{plan.id}</span>
@@ -73,7 +179,7 @@ export default function Planning() {
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className="text-sm font-bold text-gray-700 flex items-center gap-1.5"><Target className="w-3.5 h-3.5 text-gray-400" /> {plan.targetTonase}</span>
+                    <span className="text-sm font-bold text-gray-700 flex items-center gap-1.5"><Target className="w-3.5 h-3.5 text-gray-400" /> {plan.targetTonase.toLocaleString()} MT</span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <span className={`px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider ${
@@ -87,19 +193,150 @@ export default function Planning() {
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                    <Link
-                      to={`/transactional/operation/${plan.id}`}
-                      className="inline-flex items-center justify-center px-3 py-1.5 text-sm font-bold text-gray-600 bg-white border border-gray-300 hover:text-[#5B5FC7] hover:border-[#5B5FC7] hover:bg-indigo-50 rounded-lg transition-all shadow-sm group-hover:shadow group-hover:-translate-y-0.5"
-                    >
-                      View Detail <ChevronRight className="w-4 h-4 ml-1" />
-                    </Link>
+                    <div className="flex items-center justify-end gap-1.5">
+                      <button
+                        onClick={() => canEdit && openEdit(plan)}
+                        disabled={!canEdit}
+                        title={canEdit ? "Edit document" : "Only editable while status is Planned"}
+                        className="inline-flex items-center justify-center p-2 text-gray-500 bg-white border border-gray-300 hover:text-[#5B5FC7] hover:border-[#5B5FC7] hover:bg-indigo-50 rounded-lg transition-all shadow-sm disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-gray-500"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => canDelete && setDeletePlan(plan)}
+                        disabled={!canDelete}
+                        title={canDelete ? "Delete document" : "Only deletable while status is Planned or Arrived"}
+                        className="inline-flex items-center justify-center p-2 text-gray-500 bg-white border border-gray-300 hover:text-rose-600 hover:border-rose-400 hover:bg-rose-50 rounded-lg transition-all shadow-sm disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-white disabled:hover:text-gray-500"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                      <Link
+                        to={`/transactional/operation/${plan.id}`}
+                        className="inline-flex items-center justify-center px-3 py-1.5 text-sm font-bold text-gray-600 bg-white border border-gray-300 hover:text-[#5B5FC7] hover:border-[#5B5FC7] hover:bg-indigo-50 rounded-lg transition-all shadow-sm group-hover:shadow group-hover:-translate-y-0.5"
+                      >
+                        View Detail <ChevronRight className="w-4 h-4 ml-1" />
+                      </Link>
+                    </div>
                   </td>
                 </tr>
-              ))}
+              );})}
             </tbody>
           </table>
         </div>
       </div>
+
+      {editPlan && (
+        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all">
+            <div className="px-6 py-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">Edit Document</h3>
+                <p className="text-xs text-gray-500 mt-0.5">Document ID: {editPlan.id}</p>
+              </div>
+              <button onClick={() => setEditPlan(null)} className="text-gray-400 hover:text-gray-600 bg-white hover:bg-gray-100 p-1.5 rounded-lg transition-colors border border-gray-200">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Barge</label>
+                  <div className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-500">{editPlan.barge}</div>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Area</label>
+                  <div className="px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-semibold text-gray-500">{editPlan.area}</div>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">ETA <span className="text-red-500">*</span></label>
+                <input
+                  type="datetime-local"
+                  value={editForm.eta}
+                  onChange={e => setEditForm(f => ({ ...f, eta: e.target.value }))}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5B5FC7] focus:border-[#5B5FC7] shadow-sm font-medium text-gray-900"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Target Tonnage <span className="text-red-500">*</span></label>
+                  <input
+                    type="number"
+                    value={editForm.target}
+                    onChange={e => setEditForm(f => ({ ...f, target: e.target.value }))}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5B5FC7] focus:border-[#5B5FC7] shadow-sm font-medium text-gray-900"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Material Density <span className="text-red-500">*</span></label>
+                  <input
+                    type="number"
+                    step="0.1"
+                    value={editForm.density}
+                    onChange={e => setEditForm(f => ({ ...f, density: e.target.value }))}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5B5FC7] focus:border-[#5B5FC7] shadow-sm font-medium text-gray-900"
+                  />
+                </div>
+              </div>
+              {editError && <p className="text-sm font-semibold text-rose-600">{editError}</p>}
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setEditPlan(null)}
+                  className="px-5 py-2.5 border border-gray-300 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-100 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={submitEdit}
+                  className="bg-[#5B5FC7] hover:bg-indigo-700 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition-all shadow-md shadow-indigo-500/20"
+                >
+                  Save
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {editConfirm && (
+        <ActionModal
+          variant="confirm"
+          title="Simpan Perubahan?"
+          message={`Perubahan pada dokumen "${editPlan?.id}" akan disimpan.`}
+          onConfirm={confirmEdit}
+          onCancel={() => setEditConfirm(false)}
+        />
+      )}
+
+      {editSuccess && (
+        <ActionModal
+          variant="success"
+          title="Berhasil Diperbarui"
+          message={`Barge doc "${editSuccess}" successfully updated.`}
+          onClose={() => setEditSuccess(null)}
+        />
+      )}
+
+      {deletePlan && (
+        <ActionModal
+          variant="confirm"
+          title="Hapus Dokumen?"
+          message={`Dokumen: ${deletePlan.id} — Barge: ${deletePlan.barge} — Status: ${deletePlan.status}`}
+          onConfirm={confirmDelete}
+          onCancel={() => setDeletePlan(null)}
+        />
+      )}
+
+      {deleteSuccess && (
+        <ActionModal
+          variant="success"
+          title="Berhasil Dihapus"
+          message={`Barge doc "${deleteSuccess}" successfully deleted.`}
+          onClose={() => setDeleteSuccess(null)}
+        />
+      )}
     </div>
   );
 }
