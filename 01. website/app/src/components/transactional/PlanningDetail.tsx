@@ -1,4 +1,4 @@
-import { ArrowLeft, Save, FileText, Check, X, Clock, Anchor, MapPin, Target, Layers, Truck, UserCircle, Briefcase, Activity, Calendar, ShieldCheck, ChevronRight, ChevronDown, TrendingUp, Play, Upload, CheckCircle2, AlertTriangle, Flag, Wrench, RotateCcw, History, ArrowRightLeft, RefreshCw } from "lucide-react";
+import { ArrowLeft, Save, FileText, Check, X, Clock, Anchor, MapPin, Target, Layers, Truck, UserCircle, Briefcase, Activity, Calendar, ShieldCheck, ChevronRight, ChevronDown, TrendingUp, Play, Upload, CheckCircle2, AlertTriangle, Flag, Wrench, RotateCcw, History, ArrowRightLeft, RefreshCw, Bookmark, Undo2 } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router";
 import { Fragment, useEffect, useRef, useState } from "react";
 import ActionModal from "../common/ActionModal";
@@ -15,7 +15,8 @@ import {
   type BargingDocument,
 } from "../../lib/bargingStore";
 
-const TimelineItem = ({ title, status, date, icon: Icon, isLast = false, children }: any) => {
+const TimelineItem = ({ title, status, date, icon: Icon, isLast = false, onViewSnapshot, active = false, children }: any) => {
+  const clickable = status === 'completed' && !!onViewSnapshot;
   return (
     <div className="relative pl-12 pb-10 last:pb-0">
       {/* Vertical connector line */}
@@ -47,12 +48,22 @@ const TimelineItem = ({ title, status, date, icon: Icon, isLast = false, childre
 
       {/* Content */}
       <div className="pt-2">
-        <div className="flex justify-between items-center mb-3">
-          <h4 className={`text-[16px] font-bold ${
+        <div
+          onClick={clickable ? onViewSnapshot : undefined}
+          className={`flex justify-between items-center mb-3 -mx-2 px-2 py-1 rounded-lg transition-colors ${
+            clickable ? `cursor-pointer hover:bg-indigo-50/60 ${active ? 'bg-indigo-50/80' : ''}` : ''
+          }`}
+          title={clickable ? `Lihat snapshot status ${title}` : undefined}
+        >
+          <h4 className={`text-[16px] font-bold flex items-center gap-1.5 ${
+            active ? 'text-[#5B5FC7]' :
             status === 'current' ? 'text-[#5B5FC7]' :
             status === 'completed' ? 'text-gray-900' :
             'text-gray-400'
-          }`}>{title}</h4>
+          }`}>
+            {title}
+            {clickable && <Bookmark className="w-3.5 h-3.5 text-gray-300" />}
+          </h4>
           {date && (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-gray-50 text-[12px] font-medium text-gray-500 border border-gray-100">
               <Calendar className="w-3.5 h-3.5" />
@@ -474,6 +485,15 @@ export default function PlanningDetail() {
   const isPast = (st: string) => !isInvalid && statusOrder.indexOf(st) < currentIdx;
   const isCurrent = (st: string) => !isInvalid && statusOrder.indexOf(st) === currentIdx;
 
+  // Historical snapshot view — matches showStepSnapshot()/viewingHistoricalStatus in
+  // index.html: clicking a completed lifecycle step shows the main content panels as
+  // they'd appear at that status, read-only, without touching the document's real data
+  // or the lifecycle stepper (which always reflects the actual current status).
+  const [viewingHistoricalStatus, setViewingHistoricalStatus] = useState<string | null>(null);
+  useEffect(() => { setViewingHistoricalStatus(null); }, [id]);
+  const isHistoricalView = viewingHistoricalStatus !== null;
+  const effectiveStatus = viewingHistoricalStatus ?? status;
+
   if (!isCreate && !doc) {
     return null;
   }
@@ -541,6 +561,21 @@ export default function PlanningDetail() {
 
           {/* Main Content Area */}
           <div className={`${isCreate ? '' : 'xl:col-span-8'} space-y-8`}>
+
+            {!isCreate && isHistoricalView && (
+              <div className="bg-amber-50 border border-amber-300 rounded-2xl px-5 py-3.5 flex items-center justify-between gap-3 shadow-sm">
+                <div className="flex items-center gap-2.5 text-sm text-amber-900">
+                  <Bookmark className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span><strong>Read-Only</strong> — Tampilan status <strong>{viewingHistoricalStatus}</strong></span>
+                </div>
+                <button
+                  onClick={() => setViewingHistoricalStatus(null)}
+                  className="shrink-0 flex items-center gap-1.5 text-xs font-bold text-amber-800 border border-amber-400 bg-white hover:bg-amber-100 px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  <Undo2 className="w-3.5 h-3.5" /> Kembali ke status saat ini
+                </button>
+              </div>
+            )}
 
             {!isCreate && isInvalid && (
               <div className="bg-rose-50 border border-rose-200 rounded-2xl p-6 flex items-start gap-4 shadow-sm">
@@ -694,7 +729,7 @@ export default function PlanningDetail() {
             </div>
 
             {/* Final Tonnage & Document Panel — muncul setelah Closed, sebelum Departed */}
-            {!isCreate && (status === 'Closed' || status === 'Departed') && (
+            {!isCreate && (effectiveStatus === 'Closed' || effectiveStatus === 'Departed') && (
               <div className="bg-white rounded-2xl border border-[#5B5FC7]/20 shadow-sm overflow-hidden">
                 <div className="px-6 py-4 border-b border-gray-100 bg-indigo-50/40 flex items-center gap-3">
                   <div className="p-2 bg-[#5B5FC7]/10 text-[#5B5FC7] rounded-lg">
@@ -718,8 +753,9 @@ export default function PlanningDetail() {
                         min="1"
                         value={finalActualTonnage}
                         onChange={e => setFinalActualTonnage(e.target.value)}
+                        disabled={isHistoricalView}
                         placeholder="e.g. 4980"
-                        className="w-full pl-10 pr-14 py-3 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5B5FC7] focus:border-[#5B5FC7] bg-white font-bold text-[#5B5FC7] shadow-sm placeholder:font-normal placeholder:text-gray-400"
+                        className="w-full pl-10 pr-14 py-3 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5B5FC7] focus:border-[#5B5FC7] bg-white font-bold text-[#5B5FC7] shadow-sm placeholder:font-normal placeholder:text-gray-400 disabled:bg-gray-50 disabled:text-gray-400"
                       />
                       <Layers className="w-4 h-4 text-[#5B5FC7] absolute left-3.5 top-3.5 pointer-events-none" />
                       <span className="absolute right-3.5 top-3.5 text-xs font-bold text-gray-400 pointer-events-none">MT</span>
@@ -768,8 +804,9 @@ export default function PlanningDetail() {
                     ) : (
                       <button
                         type="button"
+                        disabled={isHistoricalView}
                         onClick={() => fileInputRef.current?.click()}
-                        className="border-2 border-dashed border-gray-300 hover:border-[#5B5FC7] rounded-xl py-5 px-8 flex flex-col items-center gap-2 text-gray-500 hover:text-[#5B5FC7] transition-colors bg-white hover:bg-indigo-50/30 w-full max-w-md"
+                        className="border-2 border-dashed border-gray-300 hover:border-[#5B5FC7] rounded-xl py-5 px-8 flex flex-col items-center gap-2 text-gray-500 hover:text-[#5B5FC7] transition-colors bg-white hover:bg-indigo-50/30 w-full max-w-md disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:border-gray-300 disabled:hover:text-gray-500 disabled:hover:bg-white"
                       >
                         <Upload className="w-6 h-6" />
                         <span className="text-[13px] font-semibold">Click to upload PDF / Image</span>
@@ -778,7 +815,7 @@ export default function PlanningDetail() {
                     )}
                   </div>
 
-                  {status === 'Closed' && (
+                  {effectiveStatus === 'Closed' && !isHistoricalView && (
                     <button
                       onClick={handleConfirmDeparture}
                       disabled={!finalActualTonnage}
@@ -794,7 +831,7 @@ export default function PlanningDetail() {
             {/* Assigned Population Panel — only from On Progress onward: population is never
                 assigned at Create, it's auto-populated (simulating mobile sync) once operation
                 starts, then manageable (add/remove) only while status is On Progress. */}
-            {!isCreate && !isInvalid && ['On Progress', 'Closed', 'Departed'].includes(status) && (
+            {!isCreate && !isInvalid && ['On Progress', 'Closed', 'Departed'].includes(effectiveStatus) && (
               <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
                 <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between gap-3">
                   <div className="flex items-center gap-3">
@@ -803,7 +840,7 @@ export default function PlanningDetail() {
                     </div>
                     <div>
                       <h3 className="text-lg font-bold text-gray-900">Assigned Population</h3>
-                      <p className="text-xs text-gray-500 font-medium mt-0.5">Auto-populate dari Operator App{status === 'On Progress' ? ' — remove/simulasi tersedia' : ' — view-only'}</p>
+                      <p className="text-xs text-gray-500 font-medium mt-0.5">Auto-populate dari Operator App{effectiveStatus === 'On Progress' && !isHistoricalView ? ' — remove/simulasi tersedia' : ' — view-only'}</p>
                     </div>
                   </div>
                 </div>
@@ -824,7 +861,7 @@ export default function PlanningDetail() {
                             {ex.status === 'breakdown' && (
                               <span className="text-[10px] font-bold uppercase text-rose-600">Breakdown</span>
                             )}
-                            {status === 'On Progress' && (
+                            {effectiveStatus === 'On Progress' && !isHistoricalView && (
                               <button
                                 onClick={() => toggleExcaBreakdown(ex.code)}
                                 title={ex.status === 'breakdown' ? 'Recovery' : 'Tandai Breakdown'}
@@ -833,7 +870,7 @@ export default function PlanningDetail() {
                                 {ex.status === 'breakdown' ? <RotateCcw className="w-3.5 h-3.5" /> : <Wrench className="w-3.5 h-3.5" />}
                               </button>
                             )}
-                            {status === 'On Progress' && (
+                            {effectiveStatus === 'On Progress' && !isHistoricalView && (
                               <button onClick={() => removeExca(ex.code)} className="text-gray-400 hover:text-rose-600 transition-colors">
                                 <X className="w-3.5 h-3.5" />
                               </button>
@@ -850,7 +887,7 @@ export default function PlanningDetail() {
                         <h4 className="text-sm font-bold text-gray-700">Dump Trucks</h4>
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-medium text-gray-500">{population.dumpTrucks.length} Units</span>
-                          {status === 'On Progress' && loadedTrucks.length > 0 && (
+                          {effectiveStatus === 'On Progress' && !isHistoricalView && loadedTrucks.length > 0 && (
                             <button
                               onClick={() => openBreakdownModal()}
                               className="text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 px-2.5 py-1 rounded-lg flex items-center gap-1 transition-colors"
@@ -887,7 +924,7 @@ export default function PlanningDetail() {
                                 }`}>
                                   {dt.status === 'breakdown' ? 'Breakdown' : dt.status === 'transfer' ? 'Transfer' : dt.status === 'loaded' ? 'Loaded' : 'Available'}
                                 </span>
-                                {status === 'On Progress' && dt.status === 'available' && (
+                                {effectiveStatus === 'On Progress' && !isHistoricalView && dt.status === 'available' && (
                                   <button onClick={() => removeDt(dt.code)} className="text-gray-400 hover:text-rose-600 transition-colors">
                                     <X className="w-3.5 h-3.5" />
                                   </button>
@@ -895,7 +932,7 @@ export default function PlanningDetail() {
                               </div>
                             </div>
 
-                            {status === 'On Progress' && dt.status === 'available' && (
+                            {effectiveStatus === 'On Progress' && !isHistoricalView && dt.status === 'available' && (
                               <button
                                 onClick={() => simulateLoaded(dt.code)}
                                 className="mt-2.5 w-full text-xs font-bold text-violet-700 bg-violet-50 hover:bg-violet-100 border border-violet-200 px-3 py-1.5 rounded-lg transition-colors"
@@ -909,7 +946,7 @@ export default function PlanningDetail() {
                                 <span className="text-[11px] font-semibold text-violet-700">
                                   {dt.payload.bucketCount !== '-' ? `${dt.payload.bucketCount} bucket · ` : ''}{dt.payload.tonnage} MT
                                 </span>
-                                {status === 'On Progress' && (
+                                {effectiveStatus === 'On Progress' && !isHistoricalView && (
                                   <button
                                     onClick={() => openBreakdownModal(dt.code)}
                                     className="text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-2.5 py-1 rounded-lg transition-colors"
@@ -923,7 +960,7 @@ export default function PlanningDetail() {
                             {dt.status === 'breakdown' && (
                               <div className="mt-2 flex items-center justify-between gap-2">
                                 <span className="text-[11px] font-semibold text-rose-600">Muatan → {dt.transferTo || '-'}</span>
-                                {status === 'On Progress' && (
+                                {effectiveStatus === 'On Progress' && !isHistoricalView && (
                                   <button
                                     onClick={() => recoverDT(dt.code)}
                                     className="text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-2.5 py-1 rounded-lg flex items-center gap-1 transition-colors"
@@ -960,7 +997,7 @@ export default function PlanningDetail() {
             )}
 
             {/* Event History (Riwayat) — DT breakdown/recovery & excavator breakdown/recovery log */}
-            {!isCreate && !isInvalid && ['On Progress', 'Closed', 'Departed'].includes(status) && (
+            {!isCreate && !isInvalid && ['On Progress', 'Closed', 'Departed'].includes(effectiveStatus) && (
               <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
                 <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center gap-3">
                   <div className="p-2 bg-gray-100 text-gray-600 rounded-lg">
@@ -1007,7 +1044,7 @@ export default function PlanningDetail() {
 
             {/* Production Progress — mirrors renderTabProgress(): stats come only from
                 today's Operator App sync (simulatedRitase/simulatedTonnage). */}
-            {!isCreate && ['On Progress', 'Closed', 'Departed'].includes(status) && (
+            {!isCreate && ['On Progress', 'Closed', 'Departed'].includes(effectiveStatus) && (
               <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
                 <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center gap-3">
                   <div className="p-2 bg-emerald-100 text-emerald-600 rounded-lg">
@@ -1057,7 +1094,7 @@ export default function PlanningDetail() {
                   </div>
 
                   {/* Integrasi Mobile / Refresh */}
-                  {status === 'On Progress' ? (
+                  {effectiveStatus === 'On Progress' && !isHistoricalView ? (
                     <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 flex items-center justify-between gap-4">
                       <p className="text-xs text-blue-800"><strong>Integrasi Mobile:</strong> Data ritase & tonnage di-sync otomatis dari Operator App setiap kali operator submit dumping di Jetty.</p>
                       <button
@@ -1074,7 +1111,7 @@ export default function PlanningDetail() {
                   )}
 
                   {/* Completion Duration Notice */}
-                  {status === 'Departed' && (
+                  {effectiveStatus === 'Departed' && (
                     <div className="mt-2 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/60 rounded-2xl p-6 flex items-center justify-between shadow-sm">
                       <div className="flex items-center gap-5">
                         <div className="w-12 h-12 rounded-xl bg-white shadow-sm border border-emerald-100 flex items-center justify-center">
@@ -1100,7 +1137,7 @@ export default function PlanningDetail() {
 
             {/* Achievement Tonnage (Shift Log) — mirrors renderShiftLogHtml(): full history
                 including yesterday's shifts, with a By Shift / By Exca toggle view. */}
-            {!isCreate && ['On Progress', 'Closed', 'Departed'].includes(status) && (
+            {!isCreate && ['On Progress', 'Closed', 'Departed'].includes(effectiveStatus) && (
               <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
                 <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between flex-wrap gap-3">
                   <h3 className="text-lg font-bold text-gray-900">Achievement Tonnage</h3>
@@ -1238,6 +1275,8 @@ export default function PlanningDetail() {
                     date={doc?.createdDate}
                     status={!isCreate ? 'completed' : 'current'}
                     icon={FileText}
+                    onViewSnapshot={!isCreate && isPast('Planned') ? () => setViewingHistoricalStatus('Planned') : undefined}
+                    active={viewingHistoricalStatus === 'Planned'}
                   >
                     {isCreate && (
                       <div className="text-[13px] font-medium text-gray-500">Create Barging Document & Allocate Population</div>
@@ -1250,6 +1289,8 @@ export default function PlanningDetail() {
                     date={isPast('Arrived') && doc ? doc.ata.slice(0, 10) : undefined}
                     status={isPast('Arrived') ? 'completed' : isCurrent('Arrived') || isCurrent('Planned') ? 'current' : 'upcoming'}
                     icon={Anchor}
+                    onViewSnapshot={isPast('Arrived') ? () => setViewingHistoricalStatus('Arrived') : undefined}
+                    active={viewingHistoricalStatus === 'Arrived'}
                   >
                     {isCurrent('Planned') && (
                       <div className="mt-3 bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
@@ -1341,6 +1382,8 @@ export default function PlanningDetail() {
                     title="Pre-Operation Checklist"
                     status={isPast('Open') ? 'completed' : isCurrent('Arrived') || isCurrent('Open') ? 'current' : 'upcoming'}
                     icon={ShieldCheck}
+                    onViewSnapshot={isPast('Open') ? () => setViewingHistoricalStatus('Open') : undefined}
+                    active={viewingHistoricalStatus === 'Open'}
                   >
                     {isCurrent('Arrived') && (
                       <div className="space-y-3 mt-2">
@@ -1373,6 +1416,8 @@ export default function PlanningDetail() {
                     title="On Progress"
                     status={isPast('On Progress') ? 'completed' : isCurrent('Open') || isCurrent('On Progress') ? 'current' : 'upcoming'}
                     icon={Activity}
+                    onViewSnapshot={isPast('On Progress') ? () => setViewingHistoricalStatus('On Progress') : undefined}
+                    active={viewingHistoricalStatus === 'On Progress'}
                   >
                     {isCurrent('Open') && (
                       <button onClick={handleStartOperation} className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white text-[14px] font-bold py-3 rounded-xl transition-all shadow-md shadow-emerald-500/20 flex justify-center items-center gap-2 mt-2">
@@ -1392,6 +1437,8 @@ export default function PlanningDetail() {
                     title="Closed"
                     status={isPast('Closed') ? 'completed' : isCurrent('On Progress') || isCurrent('Closed') ? 'current' : 'upcoming'}
                     icon={Anchor}
+                    onViewSnapshot={isPast('Closed') ? () => setViewingHistoricalStatus('Closed') : undefined}
+                    active={viewingHistoricalStatus === 'Closed'}
                   >
                     {isCurrent('On Progress') && (
                       <div className="space-y-3 mt-2">
