@@ -6,10 +6,10 @@ import {
 import { Link, useNavigate, useParams } from "react-router";
 import { Fragment, useEffect, useRef, useState } from "react";
 import ActionModal from "../common/ActionModal";
+import { areaApi } from "../../lib/areaApi";
 import {
   ACTIVE_STATUSES,
   AREAS_LOADING,
-  CREATE_AREAS,
   CREATE_BARGES,
   MATERIAL_DENSITY,
   getAccumulatedTonnage,
@@ -117,7 +117,7 @@ export default function PlanningDetail() {
 
   // ─── CREATE MODE ────────────────────────────────────────────────────────
   const [createForm, setCreateForm] = useState({
-    area: CREATE_AREAS[0],
+    area: "",
     barge: CREATE_BARGES[0].name,
     material: "Coal",
     materialDensity: String(MATERIAL_DENSITY["Coal"]),
@@ -130,11 +130,28 @@ export default function PlanningDetail() {
   const [showCreateConfirm, setShowCreateConfirm] = useState(false);
   const [createdDocId, setCreatedDocId] = useState<string | null>(null);
 
+  // Area/Lokasi options come from the real Area master data (Dumping-category = Jetty
+  // locations, where the barge physically docks) instead of a hardcoded list, so a new
+  // Jetty added in Master Data shows up here without a code change.
+  const [areaOptions, setAreaOptions] = useState<string[]>([]);
+  useEffect(() => {
+    if (!isCreate) return;
+    areaApi.list({ status: "active", pageSize: 100 }).then((res) => {
+      const names = res.data.filter((a) => a.category === "Dumping").map((a) => a.areaName);
+      setAreaOptions(names);
+      setCreateForm((f) => (f.area ? f : { ...f, area: names[0] ?? "" }));
+    });
+  }, [isCreate]);
+
   function handleMaterialChange(material: string) {
     setCreateForm(f => ({ ...f, material, materialDensity: String(MATERIAL_DENSITY[material] ?? 1.2) }));
   }
 
   function handleCreateDocument() {
+    if (!createForm.area) {
+      setCreateError("Area / Lokasi wajib dipilih.");
+      return;
+    }
     if (!createForm.eta) {
       setCreateError("ETA wajib diisi.");
       return;
@@ -407,8 +424,12 @@ export default function PlanningDetail() {
           <div className="bg-white rounded-2xl border border-gray-200 shadow-sm p-6">
             <div className="grid grid-cols-2 gap-4">
               <FormField label="Area / Lokasi (Jetty)">
-                <select value={createForm.area} onChange={e => setCreateForm(f => ({ ...f, area: e.target.value }))} className={inputCls}>
-                  {CREATE_AREAS.map(a => <option key={a} value={a}>{a}</option>)}
+                <select value={createForm.area} onChange={e => setCreateForm(f => ({ ...f, area: e.target.value }))} disabled={areaOptions.length === 0} className={inputCls}>
+                  {areaOptions.length === 0 ? (
+                    <option value="">Memuat area...</option>
+                  ) : (
+                    areaOptions.map(a => <option key={a} value={a}>{a}</option>)
+                  )}
                 </select>
               </FormField>
               <FormField label="Barge (Tongkang)">

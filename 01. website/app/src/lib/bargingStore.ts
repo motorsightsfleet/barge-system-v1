@@ -94,7 +94,10 @@ export interface BargingDocument {
 export const ACTIVE_STATUSES: DocStatus[] = ["Planned", "Arrived", "Open", "On Progress", "Closed"];
 
 // Create-form option lists, matching index.html's #page-create <select> options exactly.
-export const CREATE_AREAS = ["Jetty F", "Jetty G", "Jetty H"];
+// Area/Lokasi used to be this same hardcoded list — it's now fetched live from the real
+// Area master data (Dumping-category areas, i.e. Jetty locations where the barge docks)
+// in PlanningDetail.tsx instead, so a new Jetty area created in Master Data shows up here
+// without a code change.
 export const CREATE_BARGES = [
   { name: "SEA TITAN", label: "SEA TITAN (5.000 MT)" },
   { name: "RIVER KING", label: "RIVER KING (3.500 MT)" },
