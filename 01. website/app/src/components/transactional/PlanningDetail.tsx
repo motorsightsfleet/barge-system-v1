@@ -1,6 +1,16 @@
 import { ArrowLeft, Save, FileText, Check, Plus, X, Clock, Anchor, MapPin, Target, Layers, Truck, UserCircle, Briefcase, Activity, Calendar, ShieldCheck, ChevronRight, TrendingUp, Play, Upload, CheckCircle2, AlertTriangle, Flag, Wrench, RotateCcw, History, ArrowRightLeft } from "lucide-react";
-import { Link, useParams } from "react-router";
-import { useState, useRef } from "react";
+import { Link, useNavigate, useParams } from "react-router";
+import { useEffect, useRef, useState } from "react";
+import ActionModal from "../common/ActionModal";
+import {
+  ACTIVE_STATUSES,
+  CREATE_AREAS,
+  CREATE_BARGES,
+  MATERIAL_DENSITY,
+  nextDocId,
+  useBargingDocuments,
+  type BargingDocument,
+} from "../../lib/bargingStore";
 
 const ALL_EXCAS = [
   { code: "EX-001", model: "Hitachi PC200", bucket: 1.6 },
@@ -28,7 +38,7 @@ const TimelineItem = ({ title, status, date, icon: Icon, isLast = false, childre
           status === 'completed' ? 'bg-[#5B5FC7]' : 'bg-gray-200'
         }`} />
       )}
-      
+
       {/* Node Icon */}
       <div className="absolute left-0 top-1">
         {status === 'completed' && (
@@ -48,13 +58,13 @@ const TimelineItem = ({ title, status, date, icon: Icon, isLast = false, childre
           </div>
         )}
       </div>
-      
+
       {/* Content */}
       <div className="pt-2">
         <div className="flex justify-between items-center mb-3">
           <h4 className={`text-[16px] font-bold ${
-            status === 'current' ? 'text-[#5B5FC7]' : 
-            status === 'completed' ? 'text-gray-900' : 
+            status === 'current' ? 'text-[#5B5FC7]' :
+            status === 'completed' ? 'text-gray-900' :
             'text-gray-400'
           }`}>{title}</h4>
           {date && (
@@ -75,11 +85,11 @@ const TimelineItem = ({ title, status, date, icon: Icon, isLast = false, childre
 };
 
 const TaskCard = ({ label, checked, onChange, disabled = false }: any) => (
-  <div 
+  <div
     onClick={() => !disabled && onChange(!checked)}
     className={`group flex items-center justify-between p-4 rounded-xl border transition-all duration-300 cursor-pointer ${
       disabled ? 'opacity-50 cursor-not-allowed bg-gray-50 border-gray-100' :
-      checked ? 'bg-gradient-to-r from-[#5B5FC7]/10 to-indigo-50/30 border-[#5B5FC7]/40 shadow-[0_2px_12px_rgba(91,95,199,0.06)]' : 
+      checked ? 'bg-gradient-to-r from-[#5B5FC7]/10 to-indigo-50/30 border-[#5B5FC7]/40 shadow-[0_2px_12px_rgba(91,95,199,0.06)]' :
       'bg-white border-gray-200 hover:border-[#5B5FC7]/60 hover:shadow-md hover:-translate-y-[2px] hover:bg-gray-50/30'
     }`}
   >
@@ -101,42 +111,107 @@ const TaskCard = ({ label, checked, onChange, disabled = false }: any) => (
 export default function PlanningDetail() {
   const { id } = useParams();
   const isCreate = id === "create";
+  const navigate = useNavigate();
+  const { documents, addDocument, updateDocument } = useBargingDocuments();
+  const doc = !isCreate ? documents.find(d => d.id === id) : undefined;
 
-  const [status, setStatus] = useState("Planned");
-  const [invalidReason, setInvalidReason] = useState("");
+  // Document not found (e.g. deleted, or bad URL) — bounce back to the list, matching
+  // index.html's renderDetail(): if (!doc) { goPage('planning'); return; }
+  useEffect(() => {
+    if (!isCreate && documents.length > 0 && !doc) {
+      navigate("/transactional/operation", { replace: true });
+    }
+  }, [isCreate, doc, documents.length, navigate]);
+
+  // ─── CREATE MODE ────────────────────────────────────────────────────────
+  const [createForm, setCreateForm] = useState({
+    area: CREATE_AREAS[0],
+    barge: CREATE_BARGES[0].name,
+    material: "Coal",
+    materialDensity: String(MATERIAL_DENSITY["Coal"]),
+    targetTonase: "4500",
+    eta: "",
+    surveyor: "PT. Sucofindo",
+    spv: "Budi Santoso",
+  });
+  const [createError, setCreateError] = useState("");
+  const [showCreateConfirm, setShowCreateConfirm] = useState(false);
+  const [createdDocId, setCreatedDocId] = useState<string | null>(null);
+
+  function handleMaterialChange(material: string) {
+    setCreateForm(f => ({ ...f, material, materialDensity: String(MATERIAL_DENSITY[material] ?? 1.2) }));
+  }
+
+  function handleCreateDocument() {
+    const dup = documents.find(d => d.barge === createForm.barge && ACTIVE_STATUSES.includes(d.status));
+    if (dup) {
+      setCreateError(`Barge "${createForm.barge}" masih memiliki dokumen aktif (${dup.id} — Status: ${dup.status}). Selesaikan atau hapus dokumen tersebut sebelum membuat yang baru.`);
+      return;
+    }
+    setCreateError("");
+    setShowCreateConfirm(true);
+  }
+
+  function confirmCreateDocument() {
+    const newId = nextDocId(documents);
+    const newDoc: BargingDocument = {
+      id: newId,
+      createdDate: new Date().toLocaleDateString("id-ID"),
+      area: createForm.area,
+      barge: createForm.barge,
+      material: createForm.material,
+      materialDensity: parseFloat(createForm.materialDensity) || 1.2,
+      targetTonase: parseInt(createForm.targetTonase, 10) || 4500,
+      surveyor: createForm.surveyor,
+      spv: createForm.spv,
+      status: "Planned",
+      eta: createForm.eta,
+      ata: "",
+      invalidReason: "",
+      openChecklist: { notify: false, ramp: false, excaEnter: false },
+      closeChecklist: { bargeInfo: false, closeBarge: false, finalDraft: false },
+      finalTonnage: null,
+      excavators: [],
+      dumpTrucks: [],
+      achievements: [],
+      breakdownEvents: [],
+    };
+    addDocument(newDoc);
+    setShowCreateConfirm(false);
+    setCreatedDocId(newId);
+  }
+
+  // ─── DETAIL MODE ────────────────────────────────────────────────────────
   const [showInvalidModal, setShowInvalidModal] = useState(false);
   const [invalidJustification, setInvalidJustification] = useState("");
 
-  // Innovated General Info Fields
-  const [generalInfo, setGeneralInfo] = useState({
-    area: "Jetty Timur",
-    barge: "SEA TITAN",
-    material: "Coal (GAR 4200)",
-    surveyor: "PT. Sucofindo",
-    targetTonase: 5000,
-    materialDensity: 1.2
-  });
+  const status = doc?.status ?? "Planned";
+  const invalidReason = doc?.invalidReason ?? "";
+  const generalInfo = {
+    area: doc?.area ?? "",
+    barge: doc?.barge ?? "",
+    material: doc?.material ?? "",
+    surveyor: doc?.surveyor ?? "",
+    targetTonase: doc?.targetTonase ?? 0,
+    materialDensity: doc?.materialDensity ?? 1.2,
+  };
+  const population = {
+    excavators: doc?.excavators ?? [],
+    dumpTrucks: doc?.dumpTrucks ?? [],
+    spv: doc?.spv ?? "",
+  };
+  const breakdownEvents = doc?.breakdownEvents ?? [];
+  const achievements = doc?.achievements ?? [];
+  const openChecks = doc?.openChecklist ?? { notify: false, ramp: false, excaEnter: false };
+  const closingChecks = doc?.closeChecklist ?? { bargeInfo: false, closeBarge: false, finalDraft: false };
 
-  interface ExcaEntry { code: string; model: string; bucket: number; assignedArea: string; status: "available" | "breakdown"; }
-  interface DtPayload { bucketCount: number | "-"; tonnage: number; fromTruck?: string; }
-  interface DtEntry { code: string; plate: string; capacity: number; route: "scheduled" | "unscheduled"; assignedArea: string; status: "available" | "loaded" | "breakdown" | "transfer"; payload?: DtPayload; transferTo?: string; }
-  interface BreakdownEvent { id: string; type: "dt_breakdown" | "exca_breakdown" | "exca_recover" | "dt_recovery"; timestamp: string; unit?: string; fromTruck?: string; toTruck?: string; bucketCount?: number | "-"; tonnage?: number; note?: string; }
+  // Arrival form — local draft until "Confirm Arrival" commits it to the document.
+  const [eta, setEta] = useState("");
+  const [ata, setAta] = useState("");
+  useEffect(() => {
+    if (doc) { setEta(doc.eta); setAta(doc.ata); }
+  }, [doc?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Population is NOT assigned at Create — it starts empty and is only auto-populated
-  // (simulating mobile/Operator App sync) once the operation reaches On Progress, matching
-  // the SPV POC (confirmCreateDocument() always sets excas/dumpTrucks to empty arrays).
-  const [population, setPopulation] = useState<{
-    excavators: ExcaEntry[];
-    dumpTrucks: DtEntry[];
-    spv: string;
-  }>({
-    excavators: [],
-    dumpTrucks: [],
-    spv: "Budi Santoso"
-  });
-
-  // DT status machine (web-managed, no mobile dependency): available -> loaded -> breakdown -> transfer.
-  const [breakdownEvents, setBreakdownEvents] = useState<BreakdownEvent[]>([]);
   const [breakdownModal, setBreakdownModal] = useState(false);
   const [breakdownFrom, setBreakdownFrom] = useState("");
   const [breakdownTo, setBreakdownTo] = useState("");
@@ -151,16 +226,16 @@ export default function PlanningDetail() {
   }
 
   function simulateLoaded(code: string) {
+    if (!id) return;
     const density = generalInfo.materialDensity || 1.2;
-    setPopulation(prev => ({
-      ...prev,
-      dumpTrucks: prev.dumpTrucks.map(dt => {
+    updateDocument(id, d => ({
+      dumpTrucks: d.dumpTrucks.map(dt => {
         if (dt.code !== code || dt.status !== "available") return dt;
         if (dt.route === "unscheduled") {
           const tonnage = Math.round(dt.capacity * density * 10) / 10;
           return { ...dt, status: "loaded" as const, payload: { bucketCount: "-" as const, tonnage } };
         }
-        const exca = prev.excavators.find(e => e.status !== "breakdown") || prev.excavators[0];
+        const exca = d.excavators.find(e => e.status !== "breakdown") || d.excavators[0];
         const bucketSize = exca?.bucket || 1.6;
         const bucketCount = Math.floor(Math.random() * 5) + 3; // 3-7
         const tonnage = Math.round(bucketCount * bucketSize * density * 10) / 10;
@@ -170,34 +245,34 @@ export default function PlanningDetail() {
   }
 
   function toggleExcaBreakdown(code: string) {
+    if (!id) return;
     const exca = population.excavators.find(e => e.code === code);
     if (!exca) return;
     const wasBreakdown = exca.status === "breakdown";
-    setPopulation(prev => ({
-      ...prev,
-      excavators: prev.excavators.map(e => e.code === code ? { ...e, status: wasBreakdown ? "available" as const : "breakdown" as const } : e),
+    updateDocument(id, d => ({
+      excavators: d.excavators.map(e => e.code === code ? { ...e, status: wasBreakdown ? "available" as const : "breakdown" as const } : e),
+      breakdownEvents: [...d.breakdownEvents, {
+        id: `EV-${Date.now()}`,
+        type: wasBreakdown ? "exca_recover" as const : "exca_breakdown" as const,
+        unit: code,
+        timestamp: new Date().toLocaleString("id-ID"),
+      }],
     }));
-    setBreakdownEvents(prev => [...prev, {
-      id: `EV-${Date.now()}`,
-      type: wasBreakdown ? "exca_recover" : "exca_breakdown",
-      unit: code,
-      timestamp: new Date().toLocaleString("id-ID"),
-    }]);
   }
 
   function recoverDT(code: string) {
-    const dt = population.dumpTrucks.find(d => d.code === code);
+    if (!id) return;
+    const dt = population.dumpTrucks.find(d2 => d2.code === code);
     if (!dt || dt.status !== "breakdown") return;
-    setPopulation(prev => ({
-      ...prev,
-      dumpTrucks: prev.dumpTrucks.map(d => d.code === code ? { ...d, status: "available" as const, transferTo: undefined } : d),
+    updateDocument(id, d => ({
+      dumpTrucks: d.dumpTrucks.map(x => x.code === code ? { ...x, status: "available" as const, transferTo: undefined } : x),
+      breakdownEvents: [...d.breakdownEvents, {
+        id: `EV-${Date.now()}`,
+        type: "dt_recovery" as const,
+        unit: `${dt.code} (${dt.plate})`,
+        timestamp: new Date().toLocaleString("id-ID"),
+      }],
     }));
-    setBreakdownEvents(prev => [...prev, {
-      id: `EV-${Date.now()}`,
-      type: "dt_recovery",
-      unit: `${dt.code} (${dt.plate})`,
-      timestamp: new Date().toLocaleString("id-ID"),
-    }]);
   }
 
   function computeBreakdownTonnage(fromCode: string, toCode: string) {
@@ -229,31 +304,30 @@ export default function PlanningDetail() {
     : null;
 
   function confirmBreakdownTransfer() {
-    if (!breakdownFrom || !breakdownTo || breakdownFrom === breakdownTo) return;
+    if (!id || !breakdownFrom || !breakdownTo || breakdownFrom === breakdownTo) return;
     const result = computeBreakdownTonnage(breakdownFrom, breakdownTo);
-    const fromDT = population.dumpTrucks.find(d => d.code === breakdownFrom);
-    const toDT = population.dumpTrucks.find(d => d.code === breakdownTo);
+    const fromDT = population.dumpTrucks.find(d2 => d2.code === breakdownFrom);
+    const toDT = population.dumpTrucks.find(d2 => d2.code === breakdownTo);
     if (!result || !fromDT || !toDT) return;
     const ts = new Date().toLocaleString("id-ID");
 
-    setPopulation(prev => ({
-      ...prev,
-      dumpTrucks: prev.dumpTrucks.map(d => {
-        if (d.code === breakdownFrom) return { ...d, status: "breakdown" as const, transferTo: `${toDT.code} (${toDT.plate})` };
-        if (d.code === breakdownTo) return { ...d, status: "transfer" as const, payload: { bucketCount: result.bucketCount, tonnage: result.tonnage, fromTruck: `${fromDT.code} (${fromDT.plate})` } };
-        return d;
+    updateDocument(id, d => ({
+      dumpTrucks: d.dumpTrucks.map(x => {
+        if (x.code === breakdownFrom) return { ...x, status: "breakdown" as const, transferTo: `${toDT.code} (${toDT.plate})` };
+        if (x.code === breakdownTo) return { ...x, status: "transfer" as const, payload: { bucketCount: result.bucketCount, tonnage: result.tonnage, fromTruck: `${fromDT.code} (${fromDT.plate})` } };
+        return x;
       }),
+      breakdownEvents: [...d.breakdownEvents, {
+        id: `EV-${Date.now()}`,
+        type: "dt_breakdown" as const,
+        fromTruck: `${fromDT.code} (${fromDT.plate})`,
+        toTruck: `${toDT.code} (${toDT.plate})`,
+        bucketCount: result.bucketCount,
+        tonnage: result.tonnage,
+        timestamp: ts,
+        note: result.note,
+      }],
     }));
-    setBreakdownEvents(prev => [...prev, {
-      id: `EV-${Date.now()}`,
-      type: "dt_breakdown",
-      fromTruck: `${fromDT.code} (${fromDT.plate})`,
-      toTruck: `${toDT.code} (${toDT.plate})`,
-      bucketCount: result.bucketCount,
-      tonnage: result.tonnage,
-      timestamp: ts,
-      note: result.note,
-    }]);
     setBreakdownModal(false);
   }
 
@@ -270,52 +344,29 @@ export default function PlanningDetail() {
   }
 
   function confirmAddUnit() {
-    if (!addUnitSelection) return;
+    if (!id || !addUnitSelection) return;
     if (addUnitModal === "exca") {
       const master = ALL_EXCAS.find((e) => e.code === addUnitSelection);
       if (!master) return;
-      setPopulation((prev) => ({ ...prev, excavators: [...prev.excavators, { ...master, assignedArea: addUnitArea, status: "available" as const }] }));
+      updateDocument(id, d => ({ excavators: [...d.excavators, { ...master, assignedArea: addUnitArea, status: "available" as const }] }));
     } else if (addUnitModal === "dt") {
-      const master = ALL_DT.find((d) => d.code === addUnitSelection);
+      const master = ALL_DT.find((d2) => d2.code === addUnitSelection);
       if (!master) return;
-      setPopulation((prev) => ({
-        ...prev,
-        dumpTrucks: [...prev.dumpTrucks, { code: master.code, plate: master.plate, capacity: master.capacity, route: addUnitRoute, assignedArea: addUnitArea, status: "available" as const }],
+      updateDocument(id, d => ({
+        dumpTrucks: [...d.dumpTrucks, { code: master.code, plate: master.plate, capacity: master.capacity, route: addUnitRoute, assignedArea: addUnitArea, status: "available" as const }],
       }));
     }
     setAddUnitModal(null);
   }
 
   function removeExca(code: string) {
-    setPopulation((prev) => ({ ...prev, excavators: prev.excavators.filter((e) => e.code !== code) }));
+    if (!id) return;
+    updateDocument(id, d => ({ excavators: d.excavators.filter((e) => e.code !== code) }));
   }
   function removeDt(code: string) {
-    setPopulation((prev) => ({ ...prev, dumpTrucks: prev.dumpTrucks.filter((d) => d.code !== code) }));
+    if (!id) return;
+    updateDocument(id, d => ({ dumpTrucks: d.dumpTrucks.filter((dt) => dt.code !== code) }));
   }
-
-  // Arrival form
-  const [eta, setEta] = useState("");
-  const [ata, setAta] = useState("");
-
-  // Open (Pre-Operation) Checklist form
-  const [openChecks, setOpenChecks] = useState({
-    notify: false,
-    ramp: false,
-    excaEnter: false
-  });
-
-  // Close Checklist form
-  const [closingChecks, setClosingChecks] = useState({
-    bargeInfo: false,
-    closeBarge: false,
-    finalDraft: false
-  });
-
-  // Daily Achievements
-  const [achievements, setAchievements] = useState([
-    { id: 1, date: "2026-05-28", shift: "DS", ritase: 35, tonase: 1050, remark: "Morning operation went smoothly" },
-    { id: 2, date: "2026-05-28", shift: "NS", ritase: 28, tonase: 840, remark: "Slight delay due to rain" }
-  ]);
 
   const [showAchievementModal, setShowAchievementModal] = useState(false);
   const [achievementForm, setAchievementForm] = useState({
@@ -330,74 +381,78 @@ export default function PlanningDetail() {
 
   // Final closing data
   const [finalActualTonnage, setFinalActualTonnage] = useState("");
+  useEffect(() => {
+    if (doc) setFinalActualTonnage(doc.finalTonnage != null ? String(doc.finalTonnage) : "");
+  }, [doc?.id]); // eslint-disable-line react-hooks/exhaustive-deps
   const [finalDraftFile, setFinalDraftFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isOpenAllChecked = Object.values(openChecks).every(Boolean);
   const isClosingAllChecked = Object.values(closingChecks).every(Boolean);
 
-  const handleConfirmArrival = () => { if (eta && ata) setStatus("Arrived"); };
-  const handleSetOpen = () => { if (isOpenAllChecked) setStatus("Open"); };
+  const handleConfirmArrival = () => { if (id && eta && ata) updateDocument(id, { status: "Arrived", eta, ata }); };
+  const handleSetOpen = () => { if (id && isOpenAllChecked) updateDocument(id, { status: "Open" }); };
   const handleStartOperation = () => {
-    setStatus("On Progress");
+    if (!id) return;
     // Auto-populate from "Operator App" the first time operation starts, matching the SPV POC's
     // simulateRitase() behavior — population is never assigned manually at Create.
-    setPopulation((prev) => ({
-      ...prev,
-      excavators: prev.excavators.length
-        ? prev.excavators
+    updateDocument(id, d => ({
+      status: "On Progress",
+      excavators: d.excavators.length
+        ? d.excavators
         : [
             { code: "EX-001", model: "Hitachi PC200", bucket: 1.6, assignedArea: "EFO A", status: "available" as const },
             { code: "EX-003", model: "Caterpillar 320", bucket: 1.2, assignedArea: "EFO B", status: "available" as const },
           ],
-      dumpTrucks: prev.dumpTrucks.length
-        ? prev.dumpTrucks
+      dumpTrucks: d.dumpTrucks.length
+        ? d.dumpTrucks
         : [
-            { code: "DT-01", plate: "B 1234 ABC", capacity: 10, route: "scheduled" as const, assignedArea: generalInfo.area, status: "available" as const },
-            { code: "DT-02", plate: "B 5678 DEF", capacity: 12, route: "scheduled" as const, assignedArea: generalInfo.area, status: "available" as const },
-            { code: "DT-03", plate: "B 9012 GHI", capacity: 15, route: "unscheduled" as const, assignedArea: generalInfo.area, status: "available" as const },
+            { code: "DT-01", plate: "B 1234 ABC", capacity: 10, route: "scheduled" as const, assignedArea: d.area, status: "available" as const },
+            { code: "DT-02", plate: "B 5678 DEF", capacity: 12, route: "scheduled" as const, assignedArea: d.area, status: "available" as const },
+            { code: "DT-03", plate: "B 9012 GHI", capacity: 15, route: "unscheduled" as const, assignedArea: d.area, status: "available" as const },
           ],
     }));
   };
   const handleCloseBarge = () => {
-    if (isClosingAllChecked && achievements.length > 0) {
-      setStatus("Closed");
+    if (id && isClosingAllChecked && achievements.length > 0) {
+      updateDocument(id, { status: "Closed" });
     }
   };
   const handleConfirmDeparture = () => {
-    if (finalActualTonnage) {
-      setStatus("Departed");
+    if (id && finalActualTonnage) {
+      updateDocument(id, { status: "Departed", finalTonnage: Number(finalActualTonnage) });
       setLoadingDuration("1 Day 14 Hours 30 Mins");
     }
   };
   const handleMarkInvalid = () => {
     const trimmed = invalidJustification.trim();
-    if (!trimmed) return;
-    setInvalidReason(trimmed);
-    setStatus("Invalid");
+    if (!id || !trimmed) return;
+    updateDocument(id, { status: "Invalid", invalidReason: trimmed });
     setShowInvalidModal(false);
     setInvalidJustification("");
   };
 
   const handleAddAchievement = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!achievementForm.date || !achievementForm.ritase || !achievementForm.tonase) return;
+    if (!id || !achievementForm.date || !achievementForm.ritase || !achievementForm.tonase) return;
 
-    setAchievements([...achievements, {
-      id: Date.now(),
-      date: achievementForm.date,
-      shift: achievementForm.shift,
-      ritase: Number(achievementForm.ritase),
-      tonase: Number(achievementForm.tonase),
-      remark: achievementForm.remark
-    }]);
+    updateDocument(id, d => ({
+      achievements: [...d.achievements, {
+        id: Date.now(),
+        date: achievementForm.date,
+        shift: achievementForm.shift,
+        ritase: Number(achievementForm.ritase),
+        tonase: Number(achievementForm.tonase),
+        remark: achievementForm.remark
+      }],
+    }));
     setShowAchievementModal(false);
     setAchievementForm({ date: new Date().toISOString().split('T')[0], shift: "DS", ritase: "", tonase: "", remark: "" });
   };
 
   const accumulatedRitase = achievements.reduce((acc, curr) => acc + curr.ritase, 0);
   const accumulatedTonase = achievements.reduce((acc, curr) => acc + curr.tonase, 0);
-  const progress = Math.min(100, Math.round((accumulatedTonase / generalInfo.targetTonase) * 100));
+  const progress = generalInfo.targetTonase > 0 ? Math.min(100, Math.round((accumulatedTonase / generalInfo.targetTonase) * 100)) : 0;
   const remainingTonase = Math.max(0, generalInfo.targetTonase - accumulatedTonase);
 
   const statusOrder = ["Planned", "Arrived", "Open", "On Progress", "Closed", "Departed"];
@@ -406,6 +461,10 @@ export default function PlanningDetail() {
 
   const isPast = (st: string) => !isInvalid && statusOrder.indexOf(st) < currentIdx;
   const isCurrent = (st: string) => !isInvalid && statusOrder.indexOf(st) === currentIdx;
+
+  if (!isCreate && !doc) {
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-gray-50/50 pb-20">
@@ -456,7 +515,7 @@ export default function PlanningDetail() {
               </button>
             )}
             {isCreate && (
-              <button className="bg-gradient-to-r from-[#5B5FC7] to-indigo-600 hover:to-indigo-700 text-white px-6 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 transition-all shadow-md shadow-indigo-500/20">
+              <button onClick={handleCreateDocument} className="bg-gradient-to-r from-[#5B5FC7] to-indigo-600 hover:to-indigo-700 text-white px-6 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 transition-all shadow-md shadow-indigo-500/20">
                 <Save className="w-4 h-4" />
                 Save Document
               </button>
@@ -467,7 +526,7 @@ export default function PlanningDetail() {
 
       <div className="max-w-7xl mx-auto px-8 pt-8">
         <div className={`grid grid-cols-1 ${isCreate ? '' : 'xl:grid-cols-12'} gap-8`}>
-          
+
           {/* Main Content Area */}
           <div className={`${isCreate ? '' : 'xl:col-span-8'} space-y-8`}>
 
@@ -497,43 +556,128 @@ export default function PlanningDetail() {
                 <h3 className="text-lg font-bold text-gray-900">General Information</h3>
               </div>
               <div className="p-6">
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
-                  <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Area / Jetty</label>
-                    <div className="flex items-center gap-2 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl">
-                      <MapPin className="w-4 h-4 text-gray-400" />
-                      <span className="text-sm font-semibold text-gray-900">{generalInfo.area}</span>
+                {isCreate ? (
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Area / Lokasi (Jetty)</label>
+                      <select
+                        value={createForm.area}
+                        onChange={e => setCreateForm(f => ({ ...f, area: e.target.value }))}
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#5B5FC7] focus:border-[#5B5FC7] bg-white shadow-sm"
+                      >
+                        {CREATE_AREAS.map(a => <option key={a} value={a}>{a}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Barge (Tongkang)</label>
+                      <select
+                        value={createForm.barge}
+                        onChange={e => setCreateForm(f => ({ ...f, barge: e.target.value }))}
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-indigo-900 focus:outline-none focus:ring-2 focus:ring-[#5B5FC7] focus:border-[#5B5FC7] bg-indigo-50 shadow-sm"
+                      >
+                        {CREATE_BARGES.map(b => <option key={b.name} value={b.name}>{b.label}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Target Tonase (MT)</label>
+                      <input
+                        type="number"
+                        min="100"
+                        value={createForm.targetTonase}
+                        onChange={e => setCreateForm(f => ({ ...f, targetTonase: e.target.value }))}
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#5B5FC7] focus:border-[#5B5FC7] bg-white shadow-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Material</label>
+                      <select
+                        value={createForm.material}
+                        onChange={e => handleMaterialChange(e.target.value)}
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#5B5FC7] focus:border-[#5B5FC7] bg-white shadow-sm"
+                      >
+                        {Object.keys(MATERIAL_DENSITY).map(m => <option key={m} value={m}>{m}</option>)}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Densitas Material (MT/m³)</label>
+                      <input
+                        type="number"
+                        step="0.1"
+                        min="0.5"
+                        max="3.0"
+                        value={createForm.materialDensity}
+                        onChange={e => setCreateForm(f => ({ ...f, materialDensity: e.target.value }))}
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#5B5FC7] focus:border-[#5B5FC7] bg-white shadow-sm"
+                      />
+                      <p className="text-[10px] text-gray-400 mt-1.5">Auto-fill dari jenis material. Bisa diubah.</p>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">ETA</label>
+                      <input
+                        type="datetime-local"
+                        value={createForm.eta}
+                        onChange={e => setCreateForm(f => ({ ...f, eta: e.target.value }))}
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#5B5FC7] focus:border-[#5B5FC7] bg-white shadow-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Surveyor</label>
+                      <input
+                        type="text"
+                        value={createForm.surveyor}
+                        onChange={e => setCreateForm(f => ({ ...f, surveyor: e.target.value }))}
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#5B5FC7] focus:border-[#5B5FC7] bg-white shadow-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">SPV / Checker</label>
+                      <input
+                        type="text"
+                        value={createForm.spv}
+                        onChange={e => setCreateForm(f => ({ ...f, spv: e.target.value }))}
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-gray-900 focus:outline-none focus:ring-2 focus:ring-[#5B5FC7] focus:border-[#5B5FC7] bg-white shadow-sm"
+                      />
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Barge Name</label>
-                    <div className="flex items-center gap-2 px-3 py-2.5 bg-indigo-50 border border-indigo-100 rounded-xl">
-                      <Anchor className="w-4 h-4 text-[#5B5FC7]" />
-                      <span className="text-sm font-semibold text-indigo-900">{generalInfo.barge}</span>
+                ) : (
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-6">
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Area / Jetty</label>
+                      <div className="flex items-center gap-2 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl">
+                        <MapPin className="w-4 h-4 text-gray-400" />
+                        <span className="text-sm font-semibold text-gray-900">{generalInfo.area}</span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Barge Name</label>
+                      <div className="flex items-center gap-2 px-3 py-2.5 bg-indigo-50 border border-indigo-100 rounded-xl">
+                        <Anchor className="w-4 h-4 text-[#5B5FC7]" />
+                        <span className="text-sm font-semibold text-indigo-900">{generalInfo.barge}</span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Target Tonase</label>
+                      <div className="flex items-center gap-2 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl">
+                        <Target className="w-4 h-4 text-gray-400" />
+                        <span className="text-sm font-semibold text-gray-900">{generalInfo.targetTonase} <span className="text-gray-500 font-normal">MT</span></span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Material Type</label>
+                      <div className="flex items-center gap-2 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl">
+                        <Layers className="w-4 h-4 text-gray-400" />
+                        <span className="text-sm font-semibold text-gray-900">{generalInfo.material}</span>
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Surveyor</label>
+                      <div className="flex items-center gap-2 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl">
+                        <Briefcase className="w-4 h-4 text-gray-400" />
+                        <span className="text-sm font-semibold text-gray-900">{generalInfo.surveyor}</span>
+                      </div>
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Target Tonase</label>
-                    <div className="flex items-center gap-2 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl">
-                      <Target className="w-4 h-4 text-gray-400" />
-                      <span className="text-sm font-semibold text-gray-900">{generalInfo.targetTonase} <span className="text-gray-500 font-normal">MT</span></span>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Material Type</label>
-                    <div className="flex items-center gap-2 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl">
-                      <Layers className="w-4 h-4 text-gray-400" />
-                      <span className="text-sm font-semibold text-gray-900">{generalInfo.material}</span>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Surveyor</label>
-                    <div className="flex items-center gap-2 px-3 py-2.5 bg-gray-50 border border-gray-200 rounded-xl">
-                      <Briefcase className="w-4 h-4 text-gray-400" />
-                      <span className="text-sm font-semibold text-gray-900">{generalInfo.surveyor}</span>
-                    </div>
-                  </div>
-                </div>
+                )}
               </div>
             </div>
 
@@ -1018,7 +1162,7 @@ export default function PlanningDetail() {
                   {/* Planned */}
                   <TimelineItem
                     title="Planned"
-                    date="27 May 2026"
+                    date={doc?.createdDate}
                     status={!isCreate ? 'completed' : 'current'}
                     icon={FileText}
                   >
@@ -1030,7 +1174,7 @@ export default function PlanningDetail() {
                   {/* Arrived */}
                   <TimelineItem
                     title="Barge Arrived"
-                    date={isPast('Arrived') ? "28 May 2026" : undefined}
+                    date={isPast('Arrived') && doc ? doc.ata.slice(0, 10) : undefined}
                     status={isPast('Arrived') ? 'completed' : isCurrent('Arrived') || isCurrent('Planned') ? 'current' : 'upcoming'}
                     icon={Anchor}
                   >
@@ -1039,7 +1183,7 @@ export default function PlanningDetail() {
                         <div className="px-4 py-3 bg-gray-50/80 border-b border-gray-100 font-bold text-gray-800 text-sm">
                           Arrival Update
                         </div>
-                        
+
                         <div className="relative">
                           <label className="block group hover:bg-indigo-50/50 transition-colors border-b border-gray-100 cursor-pointer">
                             <div className="px-4 py-3.5 flex items-center justify-between relative">
@@ -1055,10 +1199,10 @@ export default function PlanningDetail() {
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">
-                                <input 
-                                  type="datetime-local" 
-                                  value={eta} 
-                                  onChange={e => setEta(e.target.value)} 
+                                <input
+                                  type="datetime-local"
+                                  value={eta}
+                                  onChange={e => setEta(e.target.value)}
                                   className="w-[30px] opacity-0 cursor-pointer absolute right-4 top-1/2 -translate-y-1/2 h-full z-20"
                                   onClick={(e) => {
                                     // Make sure modern browsers open the picker when clicked anywhere near it
@@ -1090,10 +1234,10 @@ export default function PlanningDetail() {
                                 </div>
                               </div>
                               <div className="flex items-center gap-2">
-                                <input 
-                                  type="datetime-local" 
-                                  value={ata} 
-                                  onChange={e => setAta(e.target.value)} 
+                                <input
+                                  type="datetime-local"
+                                  value={ata}
+                                  onChange={e => setAta(e.target.value)}
                                   className="w-[30px] opacity-0 cursor-pointer absolute right-4 top-1/2 -translate-y-1/2 h-full z-20"
                                   onClick={(e) => {
                                     // Make sure modern browsers open the picker when clicked anywhere near it
@@ -1109,7 +1253,7 @@ export default function PlanningDetail() {
                             </div>
                           </label>
                         </div>
-                        
+
                         <div className="p-3 bg-gray-50 border-t border-gray-100">
                           <button onClick={handleConfirmArrival} disabled={!eta || !ata} className="w-full bg-[#5B5FC7] hover:bg-indigo-700 disabled:bg-gray-200 disabled:text-gray-400 text-white text-[14px] font-bold py-2.5 rounded-lg transition-colors shadow-sm flex justify-center items-center gap-2">
                             Confirm Arrival
@@ -1130,17 +1274,17 @@ export default function PlanningDetail() {
                         <TaskCard
                           label="Notify SPV Production"
                           checked={openChecks.notify}
-                          onChange={(val: any) => setOpenChecks({...openChecks, notify: val})}
+                          onChange={(val: any) => id && updateDocument(id, { openChecklist: { ...openChecks, notify: val } })}
                         />
                         <TaskCard
                           label="Set Ramp Door"
                           checked={openChecks.ramp}
-                          onChange={(val: any) => setOpenChecks({...openChecks, ramp: val})}
+                          onChange={(val: any) => id && updateDocument(id, { openChecklist: { ...openChecks, ramp: val } })}
                         />
                         <TaskCard
                           label="Excavator enters barge"
                           checked={openChecks.excaEnter}
-                          onChange={(val: any) => setOpenChecks({...openChecks, excaEnter: val})}
+                          onChange={(val: any) => id && updateDocument(id, { openChecklist: { ...openChecks, excaEnter: val } })}
                         />
                         <div className="pt-3">
                           <button onClick={handleSetOpen} disabled={!isOpenAllChecked} className="w-full bg-[#5B5FC7] hover:bg-indigo-700 disabled:bg-indigo-300 disabled:shadow-none text-white text-[14px] font-bold py-3 rounded-xl transition-all shadow-md shadow-indigo-500/20 flex justify-center items-center gap-2">
@@ -1181,17 +1325,17 @@ export default function PlanningDetail() {
                         <TaskCard
                           label="Receive barge full info"
                           checked={closingChecks.bargeInfo}
-                          onChange={(val: any) => setClosingChecks({...closingChecks, bargeInfo: val})}
+                          onChange={(val: any) => id && updateDocument(id, { closeChecklist: { ...closingChecks, bargeInfo: val } })}
                         />
                         <TaskCard
                           label="Close Barge"
                           checked={closingChecks.closeBarge}
-                          onChange={(val: any) => setClosingChecks({...closingChecks, closeBarge: val})}
+                          onChange={(val: any) => id && updateDocument(id, { closeChecklist: { ...closingChecks, closeBarge: val } })}
                         />
                         <TaskCard
                           label="Confirm Final Draft"
                           checked={closingChecks.finalDraft}
-                          onChange={(val: any) => setClosingChecks({...closingChecks, finalDraft: val})}
+                          onChange={(val: any) => id && updateDocument(id, { closeChecklist: { ...closingChecks, finalDraft: val } })}
                         />
 
                         <div className="pt-2">
@@ -1252,12 +1396,12 @@ export default function PlanningDetail() {
               <div className="grid grid-cols-2 gap-5">
                 <div>
                   <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Date <span className="text-red-500">*</span></label>
-                  <input 
-                    type="date" 
-                    required 
-                    value={achievementForm.date} 
-                    onChange={e => setAchievementForm({...achievementForm, date: e.target.value})} 
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5B5FC7] focus:border-[#5B5FC7] shadow-sm font-medium text-gray-900" 
+                  <input
+                    type="date"
+                    required
+                    value={achievementForm.date}
+                    onChange={e => setAchievementForm({...achievementForm, date: e.target.value})}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5B5FC7] focus:border-[#5B5FC7] shadow-sm font-medium text-gray-900"
                   />
                 </div>
                 <div>
@@ -1277,14 +1421,14 @@ export default function PlanningDetail() {
                 <div>
                   <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Ritase <span className="text-red-500">*</span></label>
                   <div className="relative">
-                    <input 
-                      type="number" 
-                      required 
-                      min="1" 
-                      value={achievementForm.ritase} 
-                      onChange={e => setAchievementForm({...achievementForm, ritase: e.target.value})} 
-                      className="w-full px-4 py-2.5 pl-10 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5B5FC7] focus:border-[#5B5FC7] bg-white font-bold text-gray-900 shadow-sm" 
-                      placeholder="0" 
+                    <input
+                      type="number"
+                      required
+                      min="1"
+                      value={achievementForm.ritase}
+                      onChange={e => setAchievementForm({...achievementForm, ritase: e.target.value})}
+                      className="w-full px-4 py-2.5 pl-10 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5B5FC7] focus:border-[#5B5FC7] bg-white font-bold text-gray-900 shadow-sm"
+                      placeholder="0"
                     />
                     <Truck className="w-4 h-4 text-gray-400 absolute left-3.5 top-3" />
                   </div>
@@ -1292,14 +1436,14 @@ export default function PlanningDetail() {
                 <div>
                   <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Tonase (MT) <span className="text-red-500">*</span></label>
                   <div className="relative">
-                    <input 
-                      type="number" 
-                      required 
-                      min="1" 
-                      value={achievementForm.tonase} 
-                      onChange={e => setAchievementForm({...achievementForm, tonase: e.target.value})} 
-                      className="w-full px-4 py-2.5 pl-10 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5B5FC7] focus:border-[#5B5FC7] bg-white font-bold text-[#5B5FC7] shadow-sm" 
-                      placeholder="0" 
+                    <input
+                      type="number"
+                      required
+                      min="1"
+                      value={achievementForm.tonase}
+                      onChange={e => setAchievementForm({...achievementForm, tonase: e.target.value})}
+                      className="w-full px-4 py-2.5 pl-10 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5B5FC7] focus:border-[#5B5FC7] bg-white font-bold text-[#5B5FC7] shadow-sm"
+                      placeholder="0"
                     />
                     <Layers className="w-4 h-4 text-[#5B5FC7] absolute left-3.5 top-3" />
                   </div>
@@ -1307,24 +1451,24 @@ export default function PlanningDetail() {
               </div>
               <div>
                 <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Remark</label>
-                <textarea 
-                  rows={2} 
-                  value={achievementForm.remark} 
-                  onChange={e => setAchievementForm({...achievementForm, remark: e.target.value})} 
-                  className="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5B5FC7] focus:border-[#5B5FC7] shadow-sm font-medium text-gray-900 resize-none" 
+                <textarea
+                  rows={2}
+                  value={achievementForm.remark}
+                  onChange={e => setAchievementForm({...achievementForm, remark: e.target.value})}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5B5FC7] focus:border-[#5B5FC7] shadow-sm font-medium text-gray-900 resize-none"
                   placeholder="Add notes, constraints, or issues (optional)..."
                 ></textarea>
               </div>
               <div className="flex justify-end gap-3 pt-2">
-                <button 
-                  type="button" 
-                  onClick={() => setShowAchievementModal(false)} 
+                <button
+                  type="button"
+                  onClick={() => setShowAchievementModal(false)}
                   className="px-5 py-2.5 border border-gray-300 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-100 transition-colors"
                 >
                   Cancel
                 </button>
-                <button 
-                  type="submit" 
+                <button
+                  type="submit"
                   className="bg-[#5B5FC7] hover:bg-indigo-700 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition-all shadow-md shadow-indigo-500/20"
                 >
                   Save Achievement
@@ -1359,9 +1503,7 @@ export default function PlanningDetail() {
                   rows={3}
                   value={invalidJustification}
                   onChange={e => setInvalidJustification(e.target.value)}
-                  className={`w-full px-4 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 shadow-sm font-medium text-gray-900 resize-none ${
-                    invalidJustification.trim() ? 'border-gray-300' : 'border-gray-300'
-                  }`}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 shadow-sm font-medium text-gray-900 resize-none"
                   placeholder="Jelaskan alasan dokumen ini ditandai invalid..."
                 />
               </div>
@@ -1538,6 +1680,34 @@ export default function PlanningDetail() {
             </div>
           </div>
         </div>
+      )}
+
+      {isCreate && showCreateConfirm && (
+        <ActionModal
+          variant="confirm"
+          title="Buat Dokumen Baru?"
+          message={`Dokumen baru untuk barge "${createForm.barge}" di ${createForm.area} akan dibuat dengan status Planned.`}
+          onConfirm={confirmCreateDocument}
+          onCancel={() => setShowCreateConfirm(false)}
+        />
+      )}
+
+      {isCreate && createError && !showCreateConfirm && (
+        <ActionModal
+          variant="failed"
+          title="Tidak Dapat Membuat Dokumen"
+          message={createError}
+          onClose={() => setCreateError("")}
+        />
+      )}
+
+      {isCreate && createdDocId && (
+        <ActionModal
+          variant="success"
+          title="Dokumen Berhasil Dibuat"
+          message={`Barge doc "${createdDocId}" successfully created.`}
+          onClose={() => navigate("/transactional/operation")}
+        />
       )}
     </div>
   );

@@ -2,55 +2,35 @@ import { useState } from "react";
 import { Plus, Search, Calendar, ChevronRight, Anchor, MapPin, Target, Pencil, Trash2, X } from "lucide-react";
 import { Link } from "react-router";
 import ActionModal from "../common/ActionModal";
-
-interface Plan {
-  id: string;
-  date: string;
-  area: string;
-  barge: string;
-  tugboat: string;
-  targetTonase: number;
-  eta: string;
-  materialDensity: number;
-  status: string;
-}
-
-const initialPlans: Plan[] = [
-  { id: "BRG-001", date: "2026-05-28", area: "Jetty Timur", barge: "SEA TITAN", tugboat: "TB. MERDEKA 01", targetTonase: 5000, eta: "", materialDensity: 1.2, status: "Planned" },
-  { id: "BRG-002", date: "2026-05-28", area: "Jetty Barat", barge: "RIVER KING", tugboat: "TB. NUSANTARA", targetTonase: 3500, eta: "2026-05-28T08:00", materialDensity: 1.3, status: "Arrived" },
-  { id: "BRG-003", date: "2026-05-29", area: "Jetty Timur", barge: "OCEAN BLUE", tugboat: "TB. PACIFIC", targetTonase: 4000, eta: "2026-05-29T08:00", materialDensity: 1.2, status: "Open" },
-  { id: "BRG-004", date: "2026-05-30", area: "Jetty Timur", barge: "PACIFIC STAR", tugboat: "TB. MERDEKA 02", targetTonase: 4500, eta: "2026-05-30T08:00", materialDensity: 1.4, status: "On Progress" },
-  { id: "BRG-005", date: "2026-05-24", area: "Jetty Barat", barge: "IRON DUKE", tugboat: "TB. NUSANTARA", targetTonase: 3800, eta: "2026-05-24T08:00", materialDensity: 1.2, status: "Closed" },
-  { id: "BRG-006", date: "2026-05-20", area: "Jetty Timur", barge: "GOLDEN BAY", tugboat: "TB. PACIFIC", targetTonase: 5200, eta: "2026-05-20T08:00", materialDensity: 1.3, status: "Departed" },
-];
+import { useBargingDocuments, type BargingDocument } from "../../lib/bargingStore";
 
 export default function Planning() {
-  const [plans, setPlans] = useState<Plan[]>(initialPlans);
+  const { documents, updateDocument, removeDocument } = useBargingDocuments();
   const [search, setSearch] = useState("");
   const [showDateFilter, setShowDateFilter] = useState(false);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
 
-  const [editPlan, setEditPlan] = useState<Plan | null>(null);
+  const [editPlan, setEditPlan] = useState<BargingDocument | null>(null);
   const [editForm, setEditForm] = useState({ eta: "", target: "", density: "" });
   const [editError, setEditError] = useState("");
   const [editConfirm, setEditConfirm] = useState(false);
   const [editSuccess, setEditSuccess] = useState<string | null>(null);
 
-  const [deletePlan, setDeletePlan] = useState<Plan | null>(null);
+  const [deletePlan, setDeletePlan] = useState<BargingDocument | null>(null);
   const [deleteSuccess, setDeleteSuccess] = useState<string | null>(null);
 
-  const filteredPlans = plans.filter((p) => {
+  const filteredPlans = documents.filter((p) => {
     const keyword = search.trim().toLowerCase();
     if (keyword && !p.id.toLowerCase().includes(keyword) && !p.barge.toLowerCase().includes(keyword)) {
       return false;
     }
-    if (dateFrom && p.date < dateFrom) return false;
-    if (dateTo && p.date > dateTo) return false;
+    if (dateFrom && p.createdDate < dateFrom) return false;
+    if (dateTo && p.createdDate > dateTo) return false;
     return true;
   });
 
-  const openEdit = (plan: Plan) => {
+  const openEdit = (plan: BargingDocument) => {
     setEditPlan(plan);
     setEditForm({ eta: plan.eta, target: String(plan.targetTonase), density: String(plan.materialDensity) });
     setEditError("");
@@ -70,7 +50,7 @@ export default function Planning() {
     if (!editPlan) return;
     const target = parseFloat(editForm.target);
     const density = parseFloat(editForm.density);
-    setPlans(prev => prev.map(p => p.id === editPlan.id ? { ...p, eta: editForm.eta, targetTonase: target, materialDensity: density } : p));
+    updateDocument(editPlan.id, { eta: editForm.eta, targetTonase: target, materialDensity: density });
     setEditConfirm(false);
     setEditSuccess(editPlan.id);
     setEditPlan(null);
@@ -78,7 +58,7 @@ export default function Planning() {
 
   const confirmDelete = () => {
     if (!deletePlan) return;
-    setPlans(prev => prev.filter(p => p.id !== deletePlan.id));
+    removeDocument(deletePlan.id);
     setDeleteSuccess(deletePlan.id);
     setDeletePlan(null);
   };
@@ -167,7 +147,7 @@ export default function Planning() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span className="text-sm font-bold text-gray-900 bg-gray-100 px-2.5 py-1 rounded-md">{plan.id}</span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-600">{plan.date}</td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-600">{plan.createdDate}</td>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="flex items-center gap-1.5 text-sm font-semibold text-gray-700">
                       <MapPin className="w-3.5 h-3.5 text-gray-400" /> {plan.area}
