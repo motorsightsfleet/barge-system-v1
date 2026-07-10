@@ -1,4 +1,4 @@
-import { ArrowLeft, Save, FileText, Check, Plus, X, Clock, Anchor, MapPin, Target, Layers, Truck, UserCircle, Briefcase, Activity, Calendar, ShieldCheck, ChevronRight, ChevronDown, TrendingUp, Play, Upload, CheckCircle2, AlertTriangle, Flag, Wrench, RotateCcw, History, ArrowRightLeft, RefreshCw } from "lucide-react";
+import { ArrowLeft, Save, FileText, Check, X, Clock, Anchor, MapPin, Target, Layers, Truck, UserCircle, Briefcase, Activity, Calendar, ShieldCheck, ChevronRight, ChevronDown, TrendingUp, Play, Upload, CheckCircle2, AlertTriangle, Flag, Wrench, RotateCcw, History, ArrowRightLeft, RefreshCw } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router";
 import { Fragment, useEffect, useRef, useState } from "react";
 import ActionModal from "../common/ActionModal";
@@ -14,23 +14,6 @@ import {
   useBargingDocuments,
   type BargingDocument,
 } from "../../lib/bargingStore";
-
-const ALL_EXCAS = [
-  { code: "EX-001", model: "Hitachi PC200", bucket: 1.6 },
-  { code: "EX-002", model: "Komatsu PC400", bucket: 2.4 },
-  { code: "EX-003", model: "Caterpillar 320", bucket: 1.2 },
-  { code: "EX-004", model: "Hitachi PC300", bucket: 2.0 },
-];
-
-const ALL_DT = [
-  { code: "DT-01", plate: "B 1234 ABC", capacity: 10 },
-  { code: "DT-02", plate: "B 5678 DEF", capacity: 12 },
-  { code: "DT-03", plate: "B 9012 GHI", capacity: 15 },
-  { code: "DT-04", plate: "B 3456 JKL", capacity: 10 },
-  { code: "DT-05", plate: "B 7890 MNO", capacity: 8 },
-];
-
-const ALL_AREAS = ["EFO A", "EFO B", "Stockpile A", "Jetty F", "Jetty G", "Jetty H", "PIT", "ETO"];
 
 const TimelineItem = ({ title, status, date, icon: Icon, isLast = false, children }: any) => {
   return (
@@ -336,33 +319,11 @@ export default function PlanningDetail() {
     setBreakdownModal(false);
   }
 
-  const [addUnitModal, setAddUnitModal] = useState<null | "exca" | "dt">(null);
-  const [addUnitSelection, setAddUnitSelection] = useState("");
-  const [addUnitRoute, setAddUnitRoute] = useState<"scheduled" | "unscheduled">("scheduled");
-  const [addUnitArea, setAddUnitArea] = useState(ALL_AREAS[0]);
-
-  function openAddUnitModal(type: "exca" | "dt") {
-    setAddUnitModal(type);
-    setAddUnitSelection("");
-    setAddUnitArea(ALL_AREAS[0]);
-    setAddUnitRoute("scheduled");
-  }
-
-  function confirmAddUnit() {
-    if (!id || !addUnitSelection) return;
-    if (addUnitModal === "exca") {
-      const master = ALL_EXCAS.find((e) => e.code === addUnitSelection);
-      if (!master) return;
-      updateDocument(id, d => ({ excavators: [...d.excavators, { ...master, assignedArea: addUnitArea, status: "available" as const }] }));
-    } else if (addUnitModal === "dt") {
-      const master = ALL_DT.find((d2) => d2.code === addUnitSelection);
-      if (!master) return;
-      updateDocument(id, d => ({
-        dumpTrucks: [...d.dumpTrucks, { code: master.code, plate: master.plate, capacity: master.capacity, route: addUnitRoute, assignedArea: addUnitArea, status: "available" as const }],
-      }));
-    }
-    setAddUnitModal(null);
-  }
+  // No manual "assign unit" action exists in index.html — openAddUnitModal()/confirmAddUnit()
+  // are defined there but never wired to any button, so the population table only ever
+  // supports Remove (openRemoveUnitModal) and Sim (simulateLoaded) via its "⋯" action menu.
+  // Units only ever enter the document through the Operator App auto-populate on first
+  // On Progress (handleStartOperation below).
 
   function removeExca(code: string) {
     if (!id) return;
@@ -842,7 +803,7 @@ export default function PlanningDetail() {
                     </div>
                     <div>
                       <h3 className="text-lg font-bold text-gray-900">Assigned Population</h3>
-                      <p className="text-xs text-gray-500 font-medium mt-0.5">Auto-populate dari Operator App{status === 'On Progress' ? ' — dapat diedit' : ' — view-only'}</p>
+                      <p className="text-xs text-gray-500 font-medium mt-0.5">Auto-populate dari Operator App{status === 'On Progress' ? ' — remove/simulasi tersedia' : ' — view-only'}</p>
                     </div>
                   </div>
                 </div>
@@ -851,17 +812,7 @@ export default function PlanningDetail() {
                     <div>
                       <div className="flex items-center justify-between mb-3">
                         <h4 className="text-sm font-bold text-gray-700">Excavators</h4>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-medium text-gray-500">{population.excavators.length} Units</span>
-                          {status === 'On Progress' && (
-                            <button
-                              onClick={() => openAddUnitModal('exca')}
-                              className="text-xs font-bold text-[#5B5FC7] bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-lg flex items-center gap-1 transition-colors"
-                            >
-                              <Plus className="w-3 h-3 stroke-[3]" /> Add
-                            </button>
-                          )}
-                        </div>
+                        <span className="text-xs font-medium text-gray-500">{population.excavators.length} Units</span>
                       </div>
                       <div className="flex flex-wrap gap-2">
                         {population.excavators.map(ex => (
@@ -905,14 +856,6 @@ export default function PlanningDetail() {
                               className="text-xs font-bold text-amber-700 bg-amber-50 hover:bg-amber-100 px-2.5 py-1 rounded-lg flex items-center gap-1 transition-colors"
                             >
                               <AlertTriangle className="w-3 h-3" /> Tandai Breakdown
-                            </button>
-                          )}
-                          {status === 'On Progress' && (
-                            <button
-                              onClick={() => openAddUnitModal('dt')}
-                              className="text-xs font-bold text-[#5B5FC7] bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-lg flex items-center gap-1 transition-colors"
-                            >
-                              <Plus className="w-3 h-3 stroke-[3]" /> Add
                             </button>
                           )}
                         </div>
@@ -1551,84 +1494,6 @@ export default function PlanningDetail() {
                   className="bg-rose-600 hover:bg-rose-700 disabled:bg-rose-200 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition-all shadow-md shadow-rose-500/20"
                 >
                   Mark as Invalid
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {addUnitModal && (
-        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all">
-            <div className="px-6 py-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center">
-                  <Truck className="w-4 h-4 text-orange-600" />
-                </div>
-                <h3 className="text-lg font-bold text-gray-900">{addUnitModal === "exca" ? "Tambah Excavator" : "Tambah Dump Truck"}</h3>
-              </div>
-              <button onClick={() => setAddUnitModal(null)} className="text-gray-400 hover:text-gray-600 bg-white hover:bg-gray-100 p-1.5 rounded-lg transition-colors border border-gray-200">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-6 space-y-4">
-              <p className="text-sm text-gray-500">Pilih unit dari master yang belum terdaftar di dokumen ini.</p>
-              <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Unit <span className="text-red-500">*</span></label>
-                <select
-                  value={addUnitSelection}
-                  onChange={e => setAddUnitSelection(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5B5FC7] focus:border-[#5B5FC7] shadow-sm bg-white font-medium text-gray-900"
-                >
-                  <option value="">Pilih unit...</option>
-                  {addUnitModal === "exca"
-                    ? ALL_EXCAS.filter(e => !population.excavators.some(pe => pe.code === e.code)).map(e => (
-                        <option key={e.code} value={e.code}>{e.code} — {e.model} ({e.bucket}m³/bucket)</option>
-                      ))
-                    : ALL_DT.filter(d => !population.dumpTrucks.some(pd => pd.code === d.code)).map(d => (
-                        <option key={d.code} value={d.code}>{d.code} — {d.plate} ({d.capacity}m³)</option>
-                      ))}
-                </select>
-              </div>
-              {addUnitModal === "dt" && (
-                <div>
-                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Route</label>
-                  <select
-                    value={addUnitRoute}
-                    onChange={e => setAddUnitRoute(e.target.value as "scheduled" | "unscheduled")}
-                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5B5FC7] focus:border-[#5B5FC7] shadow-sm bg-white font-medium text-gray-900"
-                  >
-                    <option value="scheduled">Scheduled</option>
-                    <option value="unscheduled">Unscheduled</option>
-                  </select>
-                </div>
-              )}
-              <div>
-                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Area</label>
-                <select
-                  value={addUnitArea}
-                  onChange={e => setAddUnitArea(e.target.value)}
-                  className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5B5FC7] focus:border-[#5B5FC7] shadow-sm bg-white font-medium text-gray-900"
-                >
-                  {ALL_AREAS.map(a => <option key={a} value={a}>{a}</option>)}
-                </select>
-              </div>
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setAddUnitModal(null)}
-                  className="px-5 py-2.5 border border-gray-300 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-100 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={confirmAddUnit}
-                  disabled={!addUnitSelection}
-                  className="bg-[#5B5FC7] hover:bg-indigo-700 disabled:bg-indigo-200 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition-all shadow-md shadow-indigo-500/20"
-                >
-                  Add
                 </button>
               </div>
             </div>
