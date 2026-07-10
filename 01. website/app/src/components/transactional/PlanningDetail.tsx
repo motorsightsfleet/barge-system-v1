@@ -1,4 +1,4 @@
-import { ArrowLeft, Save, FileText, Check, Plus, X, Clock, Anchor, MapPin, Target, Layers, Truck, UserCircle, Briefcase, Activity, Calendar, ShieldCheck, ChevronRight, TrendingUp, Play, Upload, CheckCircle2 } from "lucide-react";
+import { ArrowLeft, Save, FileText, Check, Plus, X, Clock, Anchor, MapPin, Target, Layers, Truck, UserCircle, Briefcase, Activity, Calendar, ShieldCheck, ChevronRight, TrendingUp, Play, Upload, CheckCircle2, AlertTriangle, Flag } from "lucide-react";
 import { Link, useParams } from "react-router";
 import { useState, useRef } from "react";
 
@@ -85,8 +85,11 @@ export default function PlanningDetail() {
   const { id } = useParams();
   const isCreate = id === "create";
 
-  const [status, setStatus] = useState("Draft");
-  
+  const [status, setStatus] = useState("Planned");
+  const [invalidReason, setInvalidReason] = useState("");
+  const [showInvalidModal, setShowInvalidModal] = useState(false);
+  const [invalidJustification, setInvalidJustification] = useState("");
+
   // Innovated General Info Fields
   const [generalInfo, setGeneralInfo] = useState({
     area: "Jetty Timur",
@@ -107,16 +110,16 @@ export default function PlanningDetail() {
   const [eta, setEta] = useState("");
   const [ata, setAta] = useState("");
 
-  // Ready Checklist form
-  const [readyChecks, setReadyChecks] = useState({
-    notifySpv: false,
-    rampDoor: false,
-    excavatorEnter: false
+  // Open (Pre-Operation) Checklist form
+  const [openChecks, setOpenChecks] = useState({
+    notify: false,
+    ramp: false,
+    excaEnter: false
   });
 
-  // Closing Checklist form
+  // Close Checklist form
   const [closingChecks, setClosingChecks] = useState({
-    bargeFull: false,
+    bargeInfo: false,
     closeBarge: false,
     finalDraft: false
   });
@@ -143,17 +146,30 @@ export default function PlanningDetail() {
   const [finalDraftFile, setFinalDraftFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const isReadyAllChecked = Object.values(readyChecks).every(Boolean);
+  const isOpenAllChecked = Object.values(openChecks).every(Boolean);
   const isClosingAllChecked = Object.values(closingChecks).every(Boolean);
 
   const handleConfirmArrival = () => { if (eta && ata) setStatus("Arrived"); };
-  const handleSetReady = () => { if (isReadyAllChecked) setStatus("Ready"); };
-  const handleStartOperation = () => { setStatus("Operation"); };
-  const handleCompleteBarging = () => {
+  const handleSetOpen = () => { if (isOpenAllChecked) setStatus("Open"); };
+  const handleStartOperation = () => { setStatus("On Progress"); };
+  const handleCloseBarge = () => {
     if (isClosingAllChecked && achievements.length > 0) {
-      setStatus("Completed");
+      setStatus("Closed");
+    }
+  };
+  const handleConfirmDeparture = () => {
+    if (finalActualTonnage) {
+      setStatus("Departed");
       setLoadingDuration("1 Day 14 Hours 30 Mins");
     }
+  };
+  const handleMarkInvalid = () => {
+    const trimmed = invalidJustification.trim();
+    if (!trimmed) return;
+    setInvalidReason(trimmed);
+    setStatus("Invalid");
+    setShowInvalidModal(false);
+    setInvalidJustification("");
   };
 
   const handleAddAchievement = (e: React.FormEvent) => {
@@ -177,11 +193,12 @@ export default function PlanningDetail() {
   const progress = Math.min(100, Math.round((accumulatedTonase / generalInfo.targetTonase) * 100));
   const remainingTonase = Math.max(0, generalInfo.targetTonase - accumulatedTonase);
 
-  const statusOrder = ["Draft", "Arrived", "Ready", "Operation", "Completed"];
+  const statusOrder = ["Planned", "Arrived", "Open", "On Progress", "Closed", "Departed"];
   const currentIdx = statusOrder.indexOf(status);
-  
-  const isPast = (st: string) => statusOrder.indexOf(st) < currentIdx;
-  const isCurrent = (st: string) => statusOrder.indexOf(st) === currentIdx;
+  const isInvalid = status === "Invalid";
+
+  const isPast = (st: string) => !isInvalid && statusOrder.indexOf(st) < currentIdx;
+  const isCurrent = (st: string) => !isInvalid && statusOrder.indexOf(st) === currentIdx;
 
   return (
     <div className="min-h-screen bg-gray-50/50 pb-20">
@@ -199,8 +216,10 @@ export default function PlanningDetail() {
                 </h1>
                 {!isCreate && (
                   <span className={`px-3 py-1 rounded-lg text-xs font-bold tracking-wide uppercase ${
-                    status === 'Completed' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' : 
-                    status === 'Operation' ? 'bg-indigo-100 text-indigo-800 border border-indigo-200' :
+                    status === 'Departed' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
+                    status === 'Closed' ? 'bg-sky-100 text-sky-800 border border-sky-200' :
+                    status === 'On Progress' ? 'bg-indigo-100 text-indigo-800 border border-indigo-200' :
+                    status === 'Invalid' ? 'bg-rose-100 text-rose-800 border border-rose-200' :
                     'bg-amber-100 text-amber-800 border border-amber-200'
                   }`}>
                     {status}
@@ -214,6 +233,15 @@ export default function PlanningDetail() {
             </div>
           </div>
           <div className="flex gap-3">
+            {!isCreate && status === "Open" && (
+              <button
+                onClick={() => setShowInvalidModal(true)}
+                className="px-5 py-2.5 border border-rose-200 bg-rose-50 rounded-xl text-sm font-semibold text-rose-700 hover:bg-rose-100 flex items-center gap-2 shadow-sm transition-all"
+              >
+                <AlertTriangle className="w-4 h-4" />
+                Mark as Invalid
+              </button>
+            )}
             {!isCreate && (
               <button className="px-5 py-2.5 border border-gray-200 bg-white rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 flex items-center gap-2 shadow-sm transition-all">
                 <FileText className="w-4 h-4" />
@@ -235,7 +263,24 @@ export default function PlanningDetail() {
           
           {/* Main Content Area */}
           <div className={`${isCreate ? '' : 'xl:col-span-8'} space-y-8`}>
-            
+
+            {!isCreate && isInvalid && (
+              <div className="bg-rose-50 border border-rose-200 rounded-2xl p-6 flex items-start gap-4 shadow-sm">
+                <div className="w-11 h-11 rounded-xl bg-rose-100 flex items-center justify-center shrink-0">
+                  <AlertTriangle className="w-6 h-6 text-rose-600" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-rose-900">Dokumen ini telah ditandai sebagai Invalid</h3>
+                  {invalidReason && (
+                    <p className="text-sm text-rose-700 mt-1.5">
+                      <span className="font-semibold">Alasan:</span> {invalidReason}
+                    </p>
+                  )}
+                  <p className="text-xs text-rose-500 mt-2 font-medium">Tidak ada aksi operasional yang tersedia untuk dokumen ini.</p>
+                </div>
+              </div>
+            )}
+
             {/* General Information Panel */}
             <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
               <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center gap-3">
@@ -285,8 +330,8 @@ export default function PlanningDetail() {
               </div>
             </div>
 
-            {/* Final Tonnage & Document Panel — muncul setelah Completed */}
-            {!isCreate && status === 'Completed' && (
+            {/* Final Tonnage & Document Panel — muncul setelah Closed, sebelum Departed */}
+            {!isCreate && (status === 'Closed' || status === 'Departed') && (
               <div className="bg-white rounded-2xl border border-[#5B5FC7]/20 shadow-sm overflow-hidden">
                 <div className="px-6 py-4 border-b border-gray-100 bg-indigo-50/40 flex items-center gap-3">
                   <div className="p-2 bg-[#5B5FC7]/10 text-[#5B5FC7] rounded-lg">
@@ -369,6 +414,16 @@ export default function PlanningDetail() {
                       </button>
                     )}
                   </div>
+
+                  {status === 'Closed' && (
+                    <button
+                      onClick={handleConfirmDeparture}
+                      disabled={!finalActualTonnage}
+                      className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 disabled:from-gray-200 disabled:to-gray-200 disabled:text-gray-400 text-white text-[14px] font-bold py-3 rounded-xl transition-all shadow-md shadow-emerald-500/20 flex justify-center items-center gap-2"
+                    >
+                      <Flag className="w-4 h-4" /> Konfirmasi Keberangkatan →
+                    </button>
+                  )}
                 </div>
               </div>
             )}
@@ -417,7 +472,7 @@ export default function PlanningDetail() {
             </div>
 
             {/* Production Progress & Daily Achievements */}
-            {!isCreate && (status === 'Operation' || status === 'Completed') && (
+            {!isCreate && ['On Progress', 'Closed', 'Departed'].includes(status) && (
               <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
                 <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -426,8 +481,8 @@ export default function PlanningDetail() {
                     </div>
                     <h3 className="text-lg font-bold text-gray-900">Production Progress</h3>
                   </div>
-                  {status === 'Operation' && (
-                    <button 
+                  {status === 'On Progress' && (
+                    <button
                       onClick={() => setShowAchievementModal(true)}
                       className="bg-[#5B5FC7] hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-bold flex items-center gap-2 transition-all shadow-sm"
                     >
@@ -517,14 +572,14 @@ export default function PlanningDetail() {
                   </div>
 
                   {/* Completion Duration Notice */}
-                  {status === 'Completed' && (
+                  {status === 'Departed' && (
                     <div className="mt-2 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200/60 rounded-2xl p-6 flex items-center justify-between shadow-sm">
                       <div className="flex items-center gap-5">
                         <div className="w-12 h-12 rounded-xl bg-white shadow-sm border border-emerald-100 flex items-center justify-center">
                           <Clock className="w-6 h-6 text-emerald-600" />
                         </div>
                         <div>
-                          <h4 className="text-emerald-950 font-bold text-lg tracking-tight">Operation Completed</h4>
+                          <h4 className="text-emerald-950 font-bold text-lg tracking-tight">Operation Departed</h4>
                           <div className="flex items-center gap-2 mt-1">
                             <span className="text-emerald-700 text-sm font-medium">Total Loading Duration:</span>
                             <span className="text-emerald-900 text-sm font-bold bg-emerald-100/50 px-2.5 py-0.5 rounded-md border border-emerald-200/50">{loadingDuration || "1 Day 14 Hours 30 Mins"}</span>
@@ -556,13 +611,19 @@ export default function PlanningDetail() {
                     <p className="text-xs font-medium text-gray-500">Track standard operating procedures</p>
                   </div>
                 </div>
-                
+
+                {isInvalid ? (
+                  <div className="text-sm font-medium text-rose-700 bg-rose-50 border border-rose-200 rounded-xl p-4 flex gap-2 items-start">
+                    <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-rose-500" />
+                    <span>Dokumen ini telah ditandai Invalid dan tidak lagi mengikuti alur SOP normal.</span>
+                  </div>
+                ) : (
                 <div className="mt-4">
-                  {/* Draft */}
-                  <TimelineItem 
-                    title="Draft & Planning" 
-                    date="27 May 2026" 
-                    status={!isCreate ? 'completed' : 'current'} 
+                  {/* Planned */}
+                  <TimelineItem
+                    title="Planned"
+                    date="27 May 2026"
+                    status={!isCreate ? 'completed' : 'current'}
                     icon={FileText}
                   >
                     {isCreate && (
@@ -571,13 +632,13 @@ export default function PlanningDetail() {
                   </TimelineItem>
 
                   {/* Arrived */}
-                  <TimelineItem 
-                    title="Barge Arrived" 
+                  <TimelineItem
+                    title="Barge Arrived"
                     date={isPast('Arrived') ? "28 May 2026" : undefined}
-                    status={isPast('Arrived') ? 'completed' : isCurrent('Arrived') || isCurrent('Draft') ? 'current' : 'upcoming'}
+                    status={isPast('Arrived') ? 'completed' : isCurrent('Arrived') || isCurrent('Planned') ? 'current' : 'upcoming'}
                     icon={Anchor}
                   >
-                    {isCurrent('Draft') && (
+                    {isCurrent('Planned') && (
                       <div className="mt-3 bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
                         <div className="px-4 py-3 bg-gray-50/80 border-b border-gray-100 font-bold text-gray-800 text-sm">
                           Arrival Update
@@ -662,50 +723,50 @@ export default function PlanningDetail() {
                     )}
                   </TimelineItem>
 
-                  {/* Ready */}
-                  <TimelineItem 
-                    title="Ready for Operation" 
-                    status={isPast('Ready') ? 'completed' : isCurrent('Arrived') ? 'current' : 'upcoming'}
+                  {/* Open (Pre-Operation Checklist) */}
+                  <TimelineItem
+                    title="Pre-Operation Checklist"
+                    status={isPast('Open') ? 'completed' : isCurrent('Arrived') || isCurrent('Open') ? 'current' : 'upcoming'}
                     icon={ShieldCheck}
                   >
                     {isCurrent('Arrived') && (
                       <div className="space-y-3 mt-2">
-                        <TaskCard 
-                          label="Notify SPV Production" 
-                          checked={readyChecks.notifySpv} 
-                          onChange={(val: any) => setReadyChecks({...readyChecks, notifySpv: val})} 
+                        <TaskCard
+                          label="Notify SPV Production"
+                          checked={openChecks.notify}
+                          onChange={(val: any) => setOpenChecks({...openChecks, notify: val})}
                         />
-                        <TaskCard 
-                          label="Set Ramp Door" 
-                          checked={readyChecks.rampDoor} 
-                          onChange={(val: any) => setReadyChecks({...readyChecks, rampDoor: val})} 
+                        <TaskCard
+                          label="Set Ramp Door"
+                          checked={openChecks.ramp}
+                          onChange={(val: any) => setOpenChecks({...openChecks, ramp: val})}
                         />
-                        <TaskCard 
-                          label="Excavator enters barge" 
-                          checked={readyChecks.excavatorEnter} 
-                          onChange={(val: any) => setReadyChecks({...readyChecks, excavatorEnter: val})} 
+                        <TaskCard
+                          label="Excavator enters barge"
+                          checked={openChecks.excaEnter}
+                          onChange={(val: any) => setOpenChecks({...openChecks, excaEnter: val})}
                         />
                         <div className="pt-3">
-                          <button onClick={handleSetReady} disabled={!isReadyAllChecked} className="w-full bg-[#5B5FC7] hover:bg-indigo-700 disabled:bg-indigo-300 disabled:shadow-none text-white text-[14px] font-bold py-3 rounded-xl transition-all shadow-md shadow-indigo-500/20 flex justify-center items-center gap-2">
-                            Set Status Ready
+                          <button onClick={handleSetOpen} disabled={!isOpenAllChecked} className="w-full bg-[#5B5FC7] hover:bg-indigo-700 disabled:bg-indigo-300 disabled:shadow-none text-white text-[14px] font-bold py-3 rounded-xl transition-all shadow-md shadow-indigo-500/20 flex justify-center items-center gap-2">
+                            Set Status Open
                           </button>
                         </div>
                       </div>
                     )}
                   </TimelineItem>
 
-                  {/* Operation */}
-                  <TimelineItem 
-                    title="On Progress" 
-                    status={isPast('Operation') ? 'completed' : isCurrent('Ready') || isCurrent('Operation') ? 'current' : 'upcoming'}
+                  {/* On Progress */}
+                  <TimelineItem
+                    title="On Progress"
+                    status={isPast('On Progress') ? 'completed' : isCurrent('Open') || isCurrent('On Progress') ? 'current' : 'upcoming'}
                     icon={Activity}
                   >
-                    {isCurrent('Ready') && (
+                    {isCurrent('Open') && (
                       <button onClick={handleStartOperation} className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white text-[14px] font-bold py-3 rounded-xl transition-all shadow-md shadow-emerald-500/20 flex justify-center items-center gap-2 mt-2">
-                        <Play className="w-4 h-4 fill-white" /> Start Operation
+                        <Play className="w-4 h-4 fill-white" /> Mulai Operasi
                       </button>
                     )}
-                    {isCurrent('Operation') && (
+                    {isCurrent('On Progress') && (
                        <div className="text-[13px] font-semibold text-[#5B5FC7] bg-indigo-50 px-4 py-3 rounded-xl border border-indigo-100 flex items-center gap-2">
                           <div className="w-2 h-2 bg-[#5B5FC7] rounded-full animate-ping" />
                           Operation is ongoing
@@ -713,31 +774,30 @@ export default function PlanningDetail() {
                     )}
                   </TimelineItem>
 
-                  {/* Closing & Finalization */}
-                  <TimelineItem 
-                    title="Barge Closed & Departure" 
-                    status={status === 'Completed' ? 'completed' : isCurrent('Operation') ? 'current' : 'upcoming'}
+                  {/* Closed */}
+                  <TimelineItem
+                    title="Closed"
+                    status={isPast('Closed') ? 'completed' : isCurrent('On Progress') || isCurrent('Closed') ? 'current' : 'upcoming'}
                     icon={Anchor}
-                    isLast={true}
                   >
-                    {isCurrent('Operation') && (
+                    {isCurrent('On Progress') && (
                       <div className="space-y-3 mt-2">
-                        <TaskCard 
-                          label="Receive barge full info" 
-                          checked={closingChecks.bargeFull} 
-                          onChange={(val: any) => setClosingChecks({...closingChecks, bargeFull: val})} 
+                        <TaskCard
+                          label="Receive barge full info"
+                          checked={closingChecks.bargeInfo}
+                          onChange={(val: any) => setClosingChecks({...closingChecks, bargeInfo: val})}
                         />
-                        <TaskCard 
-                          label="Close Barge" 
-                          checked={closingChecks.closeBarge} 
-                          onChange={(val: any) => setClosingChecks({...closingChecks, closeBarge: val})} 
+                        <TaskCard
+                          label="Close Barge"
+                          checked={closingChecks.closeBarge}
+                          onChange={(val: any) => setClosingChecks({...closingChecks, closeBarge: val})}
                         />
-                        <TaskCard 
-                          label="Confirm Final Draft" 
-                          checked={closingChecks.finalDraft} 
-                          onChange={(val: any) => setClosingChecks({...closingChecks, finalDraft: val})} 
+                        <TaskCard
+                          label="Confirm Final Draft"
+                          checked={closingChecks.finalDraft}
+                          onChange={(val: any) => setClosingChecks({...closingChecks, finalDraft: val})}
                         />
-                        
+
                         <div className="pt-2">
                           {(!isClosingAllChecked || achievements.length === 0) && (
                             <div className="text-[13px] font-medium text-amber-700 mb-3 bg-amber-50 p-3 rounded-xl border border-amber-200/60 flex gap-2 items-start">
@@ -745,14 +805,33 @@ export default function PlanningDetail() {
                               <span>Complete all checklist items & ensure at least 1 achievement to finish.</span>
                             </div>
                           )}
-                          <button onClick={handleCompleteBarging} disabled={!isClosingAllChecked || achievements.length === 0} className="w-full bg-gradient-to-r from-gray-800 to-gray-900 hover:from-black hover:to-black disabled:from-gray-300 disabled:to-gray-300 disabled:text-gray-500 disabled:shadow-none text-white text-[14px] font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-gray-900/20 flex justify-center items-center gap-2">
-                            <Check className="w-5 h-5 stroke-[3]" /> Complete Barging
+                          <button onClick={handleCloseBarge} disabled={!isClosingAllChecked || achievements.length === 0} className="w-full bg-gradient-to-r from-gray-800 to-gray-900 hover:from-black hover:to-black disabled:from-gray-300 disabled:to-gray-300 disabled:text-gray-500 disabled:shadow-none text-white text-[14px] font-bold py-3.5 rounded-xl transition-all shadow-lg shadow-gray-900/20 flex justify-center items-center gap-2">
+                            <Check className="w-5 h-5 stroke-[3]" /> Close Tongkang
                           </button>
                         </div>
                       </div>
                     )}
                   </TimelineItem>
+
+                  {/* Departed */}
+                  <TimelineItem
+                    title="Departed"
+                    status={status === 'Departed' ? 'completed' : isCurrent('Closed') ? 'current' : 'upcoming'}
+                    icon={Flag}
+                    isLast={true}
+                  >
+                    {isCurrent('Closed') && (
+                      <div className="text-[13px] font-medium text-gray-500">Lengkapi Final Tonnage & dokumen di panel "Final Data" sebelum konfirmasi keberangkatan.</div>
+                    )}
+                    {status === 'Departed' && (
+                      <div className="text-[13px] font-semibold text-emerald-700 bg-emerald-50 px-4 py-3 rounded-xl border border-emerald-100 flex items-center gap-2">
+                        <CheckCircle2 className="w-4 h-4" />
+                        Tongkang telah berangkat
+                      </div>
+                    )}
+                  </TimelineItem>
                 </div>
+                )}
               </div>
             </div>
           )}
@@ -856,6 +935,58 @@ export default function PlanningDetail() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {showInvalidModal && (
+        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all">
+            <div className="px-6 py-4 bg-rose-50 border-b border-rose-100 flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-rose-100 flex items-center justify-center">
+                  <AlertTriangle className="w-4 h-4 text-rose-600" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-900">Mark as Invalid</h3>
+              </div>
+              <button onClick={() => setShowInvalidModal(false)} className="text-gray-400 hover:text-gray-600 bg-white hover:bg-gray-100 p-1.5 rounded-lg transition-colors border border-gray-200">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-gray-600">Dokumen ini akan ditandai sebagai <span className="font-bold text-rose-600">Invalid</span> dan tidak dapat digunakan dalam proses operasional. Tindakan ini memerlukan justifikasi.</p>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">
+                  Alasan Invalidasi <span className="text-red-500">*</span>
+                </label>
+                <textarea
+                  rows={3}
+                  value={invalidJustification}
+                  onChange={e => setInvalidJustification(e.target.value)}
+                  className={`w-full px-4 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500 shadow-sm font-medium text-gray-900 resize-none ${
+                    invalidJustification.trim() ? 'border-gray-300' : 'border-gray-300'
+                  }`}
+                  placeholder="Jelaskan alasan dokumen ini ditandai invalid..."
+                />
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowInvalidModal(false)}
+                  className="px-5 py-2.5 border border-gray-300 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-100 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleMarkInvalid}
+                  disabled={!invalidJustification.trim()}
+                  className="bg-rose-600 hover:bg-rose-700 disabled:bg-rose-200 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition-all shadow-md shadow-rose-500/20"
+                >
+                  Mark as Invalid
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

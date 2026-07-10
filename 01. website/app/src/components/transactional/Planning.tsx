@@ -2,9 +2,12 @@ import { Plus, Search, Calendar, ChevronRight, Anchor, MapPin, Target, LayoutGri
 import { Link } from "react-router";
 
 const mockPlans = [
-  { id: "BRG-001", date: "2026-05-28", area: "Jetty Timur", barge: "SEA TITAN", tugboat: "TB. MERDEKA 01", targetTonase: "5000 MT", status: "Draft" },
+  { id: "BRG-001", date: "2026-05-28", area: "Jetty Timur", barge: "SEA TITAN", tugboat: "TB. MERDEKA 01", targetTonase: "5000 MT", status: "Planned" },
   { id: "BRG-002", date: "2026-05-28", area: "Jetty Barat", barge: "RIVER KING", tugboat: "TB. NUSANTARA", targetTonase: "3500 MT", status: "Arrived" },
-  { id: "BRG-003", date: "2026-05-29", area: "Jetty Timur", barge: "OCEAN BLUE", tugboat: "TB. PACIFIC", targetTonase: "4000 MT", status: "Operation" },
+  { id: "BRG-003", date: "2026-05-29", area: "Jetty Timur", barge: "OCEAN BLUE", tugboat: "TB. PACIFIC", targetTonase: "4000 MT", status: "Open" },
+  { id: "BRG-004", date: "2026-05-30", area: "Jetty Timur", barge: "PACIFIC STAR", tugboat: "TB. MERDEKA 02", targetTonase: "4500 MT", status: "On Progress" },
+  { id: "BRG-005", date: "2026-05-24", area: "Jetty Barat", barge: "IRON DUKE", tugboat: "TB. NUSANTARA", targetTonase: "3800 MT", status: "Closed" },
+  { id: "BRG-006", date: "2026-05-20", area: "Jetty Timur", barge: "GOLDEN BAY", tugboat: "TB. PACIFIC", targetTonase: "5200 MT", status: "Departed" },
 ];
 
 export default function Planning() {
@@ -74,8 +77,10 @@ export default function Planning() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm">
                     <span className={`px-3 py-1.5 rounded-lg text-[11px] font-bold uppercase tracking-wider ${
-                      plan.status === 'Completed' ? 'bg-emerald-100 text-emerald-800' : 
-                      plan.status === 'Operation' ? 'bg-indigo-100 text-indigo-800' :
+                      plan.status === 'Departed' ? 'bg-emerald-100 text-emerald-800' :
+                      plan.status === 'Closed' ? 'bg-sky-100 text-sky-800' :
+                      plan.status === 'On Progress' ? 'bg-indigo-100 text-indigo-800' :
+                      plan.status === 'Invalid' ? 'bg-rose-100 text-rose-800' :
                       'bg-amber-100 text-amber-800'
                     }`}>
                       {plan.status}
