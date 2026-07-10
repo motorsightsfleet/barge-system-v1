@@ -2,6 +2,23 @@ import { ArrowLeft, Save, FileText, Check, Plus, X, Clock, Anchor, MapPin, Targe
 import { Link, useParams } from "react-router";
 import { useState, useRef } from "react";
 
+const ALL_EXCAS = [
+  { code: "EX-001", model: "Hitachi PC200", bucket: 1.6 },
+  { code: "EX-002", model: "Komatsu PC400", bucket: 2.4 },
+  { code: "EX-003", model: "Caterpillar 320", bucket: 1.2 },
+  { code: "EX-004", model: "Hitachi PC300", bucket: 2.0 },
+];
+
+const ALL_DT = [
+  { code: "DT-01", plate: "B 1234 ABC", capacity: 10 },
+  { code: "DT-02", plate: "B 5678 DEF", capacity: 12 },
+  { code: "DT-03", plate: "B 9012 GHI", capacity: 15 },
+  { code: "DT-04", plate: "B 3456 JKL", capacity: 10 },
+  { code: "DT-05", plate: "B 7890 MNO", capacity: 8 },
+];
+
+const ALL_AREAS = ["EFO A", "EFO B", "Stockpile A", "Jetty F", "Jetty G", "Jetty H", "PIT", "ETO"];
+
 const TimelineItem = ({ title, status, date, icon: Icon, isLast = false, children }: any) => {
   return (
     <div className="relative pl-12 pb-10 last:pb-0">
@@ -99,12 +116,54 @@ export default function PlanningDetail() {
     targetTonase: 5000
   });
 
-  // Innovated Population Fields (using mock chips/tags for modern UI)
-  const [population] = useState({
-    excavators: ["EX-001", "EX-002"],
-    dumpTrucks: ["DT-012", "DT-015", "DT-018", "DT-021"],
+  // Population is NOT assigned at Create — it starts empty and is only auto-populated
+  // (simulating mobile/Operator App sync) once the operation reaches On Progress, matching
+  // the SPV POC (confirmCreateDocument() always sets excas/dumpTrucks to empty arrays).
+  const [population, setPopulation] = useState<{
+    excavators: { code: string; model: string; bucket: number; assignedArea: string }[];
+    dumpTrucks: { code: string; plate: string; capacity: number; route: "scheduled" | "unscheduled"; assignedArea: string }[];
+    spv: string;
+  }>({
+    excavators: [],
+    dumpTrucks: [],
     spv: "Budi Santoso"
   });
+
+  const [addUnitModal, setAddUnitModal] = useState<null | "exca" | "dt">(null);
+  const [addUnitSelection, setAddUnitSelection] = useState("");
+  const [addUnitRoute, setAddUnitRoute] = useState<"scheduled" | "unscheduled">("scheduled");
+  const [addUnitArea, setAddUnitArea] = useState(ALL_AREAS[0]);
+
+  function openAddUnitModal(type: "exca" | "dt") {
+    setAddUnitModal(type);
+    setAddUnitSelection("");
+    setAddUnitArea(ALL_AREAS[0]);
+    setAddUnitRoute("scheduled");
+  }
+
+  function confirmAddUnit() {
+    if (!addUnitSelection) return;
+    if (addUnitModal === "exca") {
+      const master = ALL_EXCAS.find((e) => e.code === addUnitSelection);
+      if (!master) return;
+      setPopulation((prev) => ({ ...prev, excavators: [...prev.excavators, { ...master, assignedArea: addUnitArea }] }));
+    } else if (addUnitModal === "dt") {
+      const master = ALL_DT.find((d) => d.code === addUnitSelection);
+      if (!master) return;
+      setPopulation((prev) => ({
+        ...prev,
+        dumpTrucks: [...prev.dumpTrucks, { code: master.code, plate: master.plate, capacity: master.capacity, route: addUnitRoute, assignedArea: addUnitArea }],
+      }));
+    }
+    setAddUnitModal(null);
+  }
+
+  function removeExca(code: string) {
+    setPopulation((prev) => ({ ...prev, excavators: prev.excavators.filter((e) => e.code !== code) }));
+  }
+  function removeDt(code: string) {
+    setPopulation((prev) => ({ ...prev, dumpTrucks: prev.dumpTrucks.filter((d) => d.code !== code) }));
+  }
 
   // Arrival form
   const [eta, setEta] = useState("");
@@ -151,7 +210,27 @@ export default function PlanningDetail() {
 
   const handleConfirmArrival = () => { if (eta && ata) setStatus("Arrived"); };
   const handleSetOpen = () => { if (isOpenAllChecked) setStatus("Open"); };
-  const handleStartOperation = () => { setStatus("On Progress"); };
+  const handleStartOperation = () => {
+    setStatus("On Progress");
+    // Auto-populate from "Operator App" the first time operation starts, matching the SPV POC's
+    // simulateRitase() behavior — population is never assigned manually at Create.
+    setPopulation((prev) => ({
+      ...prev,
+      excavators: prev.excavators.length
+        ? prev.excavators
+        : [
+            { code: "EX-001", model: "Hitachi PC200", bucket: 1.6, assignedArea: "EFO A" },
+            { code: "EX-003", model: "Caterpillar 320", bucket: 1.2, assignedArea: "EFO B" },
+          ],
+      dumpTrucks: prev.dumpTrucks.length
+        ? prev.dumpTrucks
+        : [
+            { code: "DT-01", plate: "B 1234 ABC", capacity: 10, route: "scheduled" as const, assignedArea: generalInfo.area },
+            { code: "DT-02", plate: "B 5678 DEF", capacity: 12, route: "scheduled" as const, assignedArea: generalInfo.area },
+            { code: "DT-03", plate: "B 9012 GHI", capacity: 15, route: "unscheduled" as const, assignedArea: generalInfo.area },
+          ],
+    }));
+  };
   const handleCloseBarge = () => {
     if (isClosingAllChecked && achievements.length > 0) {
       setStatus("Closed");
@@ -428,48 +507,102 @@ export default function PlanningDetail() {
               </div>
             )}
 
-            {/* Assigned Population Panel */}
-            <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
-               <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center gap-3">
-                <div className="p-2 bg-orange-100 text-orange-600 rounded-lg">
-                  <Truck className="w-5 h-5" />
+            {/* Assigned Population Panel — only from On Progress onward: population is never
+                assigned at Create, it's auto-populated (simulating mobile sync) once operation
+                starts, then manageable (add/remove) only while status is On Progress. */}
+            {!isCreate && !isInvalid && ['On Progress', 'Closed', 'Departed'].includes(status) && (
+              <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+                <div className="px-6 py-4 border-b border-gray-100 bg-gray-50/50 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-orange-100 text-orange-600 rounded-lg">
+                      <Truck className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-gray-900">Assigned Population</h3>
+                      <p className="text-xs text-gray-500 font-medium mt-0.5">Auto-populate dari Operator App{status === 'On Progress' ? ' — dapat diedit' : ' — view-only'}</p>
+                    </div>
+                  </div>
                 </div>
-                <h3 className="text-lg font-bold text-gray-900">Assigned Population</h3>
+                <div className="p-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-sm font-bold text-gray-700">Excavators</h4>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-medium text-gray-500">{population.excavators.length} Units</span>
+                          {status === 'On Progress' && (
+                            <button
+                              onClick={() => openAddUnitModal('exca')}
+                              className="text-xs font-bold text-[#5B5FC7] bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-lg flex items-center gap-1 transition-colors"
+                            >
+                              <Plus className="w-3 h-3 stroke-[3]" /> Add
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {population.excavators.map(ex => (
+                          <span key={ex.code} className="pl-3 pr-2 py-1.5 bg-gray-100 border border-gray-200 text-gray-800 text-sm font-semibold rounded-lg shadow-sm flex items-center gap-2">
+                            {ex.code}
+                            <span className="text-gray-400 font-normal text-xs">{ex.assignedArea}</span>
+                            {status === 'On Progress' && (
+                              <button onClick={() => removeExca(ex.code)} className="text-gray-400 hover:text-rose-600 transition-colors">
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </span>
+                        ))}
+                        {population.excavators.length === 0 && (
+                          <span className="text-xs text-gray-400 italic">Belum ada excavator.</span>
+                        )}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-sm font-bold text-gray-700">Dump Trucks</h4>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-medium text-gray-500">{population.dumpTrucks.length} Units</span>
+                          {status === 'On Progress' && (
+                            <button
+                              onClick={() => openAddUnitModal('dt')}
+                              className="text-xs font-bold text-[#5B5FC7] bg-indigo-50 hover:bg-indigo-100 px-2.5 py-1 rounded-lg flex items-center gap-1 transition-colors"
+                            >
+                              <Plus className="w-3 h-3 stroke-[3]" /> Add
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {population.dumpTrucks.map(dt => (
+                          <span key={dt.code} className="pl-3 pr-2 py-1.5 bg-gray-100 border border-gray-200 text-gray-800 text-sm font-semibold rounded-lg shadow-sm flex items-center gap-2">
+                            {dt.code}
+                            <span className={`font-normal text-xs ${dt.route === 'unscheduled' ? 'text-rose-500' : 'text-emerald-600'}`}>
+                              {dt.route === 'unscheduled' ? 'Unscheduled' : 'Scheduled'}
+                            </span>
+                            <span className="text-gray-400 font-normal text-xs">{dt.assignedArea}</span>
+                            {status === 'On Progress' && (
+                              <button onClick={() => removeDt(dt.code)} className="text-gray-400 hover:text-rose-600 transition-colors">
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            )}
+                          </span>
+                        ))}
+                        {population.dumpTrucks.length === 0 && (
+                          <span className="text-xs text-gray-400 italic">Belum ada dump truck.</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-6 pt-5 border-t border-gray-100 flex items-center gap-3">
+                    <UserCircle className="w-8 h-8 text-gray-400" />
+                    <div>
+                      <p className="text-xs text-gray-500 font-medium">Supervisor / Checker</p>
+                      <p className="text-sm font-bold text-gray-900">{population.spv}</p>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <div className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                  <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="text-sm font-bold text-gray-700">Excavators</h4>
-                      <span className="text-xs font-medium text-gray-500">{population.excavators.length} Units</span>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {population.excavators.map(ex => (
-                        <span key={ex} className="px-3 py-1.5 bg-gray-100 border border-gray-200 text-gray-800 text-sm font-semibold rounded-lg shadow-sm">{ex}</span>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <div className="flex items-center justify-between mb-3">
-                      <h4 className="text-sm font-bold text-gray-700">Dump Trucks</h4>
-                      <span className="text-xs font-medium text-gray-500">{population.dumpTrucks.length} Units</span>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {population.dumpTrucks.map(dt => (
-                        <span key={dt} className="px-3 py-1.5 bg-gray-100 border border-gray-200 text-gray-800 text-sm font-semibold rounded-lg shadow-sm">{dt}</span>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-6 pt-5 border-t border-gray-100 flex items-center gap-3">
-                  <UserCircle className="w-8 h-8 text-gray-400" />
-                  <div>
-                    <p className="text-xs text-gray-500 font-medium">Supervisor / Checker</p>
-                    <p className="text-sm font-bold text-gray-900">{population.spv}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
+            )}
 
             {/* Production Progress & Daily Achievements */}
             {!isCreate && ['On Progress', 'Closed', 'Departed'].includes(status) && (
@@ -984,6 +1117,84 @@ export default function PlanningDetail() {
                   className="bg-rose-600 hover:bg-rose-700 disabled:bg-rose-200 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition-all shadow-md shadow-rose-500/20"
                 >
                   Mark as Invalid
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {addUnitModal && (
+        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all">
+            <div className="px-6 py-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center">
+                  <Truck className="w-4 h-4 text-orange-600" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-900">{addUnitModal === "exca" ? "Tambah Excavator" : "Tambah Dump Truck"}</h3>
+              </div>
+              <button onClick={() => setAddUnitModal(null)} className="text-gray-400 hover:text-gray-600 bg-white hover:bg-gray-100 p-1.5 rounded-lg transition-colors border border-gray-200">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <p className="text-sm text-gray-500">Pilih unit dari master yang belum terdaftar di dokumen ini.</p>
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Unit <span className="text-red-500">*</span></label>
+                <select
+                  value={addUnitSelection}
+                  onChange={e => setAddUnitSelection(e.target.value)}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5B5FC7] focus:border-[#5B5FC7] shadow-sm bg-white font-medium text-gray-900"
+                >
+                  <option value="">Pilih unit...</option>
+                  {addUnitModal === "exca"
+                    ? ALL_EXCAS.filter(e => !population.excavators.some(pe => pe.code === e.code)).map(e => (
+                        <option key={e.code} value={e.code}>{e.code} — {e.model} ({e.bucket}m³/bucket)</option>
+                      ))
+                    : ALL_DT.filter(d => !population.dumpTrucks.some(pd => pd.code === d.code)).map(d => (
+                        <option key={d.code} value={d.code}>{d.code} — {d.plate} ({d.capacity}m³)</option>
+                      ))}
+                </select>
+              </div>
+              {addUnitModal === "dt" && (
+                <div>
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Route</label>
+                  <select
+                    value={addUnitRoute}
+                    onChange={e => setAddUnitRoute(e.target.value as "scheduled" | "unscheduled")}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5B5FC7] focus:border-[#5B5FC7] shadow-sm bg-white font-medium text-gray-900"
+                  >
+                    <option value="scheduled">Scheduled</option>
+                    <option value="unscheduled">Unscheduled</option>
+                  </select>
+                </div>
+              )}
+              <div>
+                <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-1.5">Area</label>
+                <select
+                  value={addUnitArea}
+                  onChange={e => setAddUnitArea(e.target.value)}
+                  className="w-full px-4 py-2.5 border border-gray-300 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#5B5FC7] focus:border-[#5B5FC7] shadow-sm bg-white font-medium text-gray-900"
+                >
+                  {ALL_AREAS.map(a => <option key={a} value={a}>{a}</option>)}
+                </select>
+              </div>
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setAddUnitModal(null)}
+                  className="px-5 py-2.5 border border-gray-300 rounded-xl text-sm font-bold text-gray-700 hover:bg-gray-100 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmAddUnit}
+                  disabled={!addUnitSelection}
+                  className="bg-[#5B5FC7] hover:bg-indigo-700 disabled:bg-indigo-200 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition-all shadow-md shadow-indigo-500/20"
+                >
+                  Add
                 </button>
               </div>
             </div>
