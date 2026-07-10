@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router";
-import { engineApi, Brand } from "../../lib/engineApi";
+import { engineApi } from "../../lib/engineApi";
 import { brandApi } from "../../lib/brandApi";
 import { ApiError } from "../../lib/api";
 import ActionModal, { ActionModalVariant } from "../common/ActionModal";
+import CreatableSelect from "../common/CreatableSelect";
 
 interface FormState {
   name: string;
@@ -19,7 +20,7 @@ export default function EngineForm() {
   const navigate = useNavigate();
   const isEdit = Boolean(id);
 
-  const [brands, setBrands] = useState<Brand[]>([]);
+  const [brands, setBrands] = useState<{ id: string; name: string }[]>([]);
   const [form, setForm] = useState<FormState>(EMPTY_FORM);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(isEdit);
@@ -29,7 +30,7 @@ export default function EngineForm() {
   const [resultMessage, setResultMessage] = useState("");
 
   useEffect(() => {
-    brandApi.list({ pageSize: 100 }).then((res) => setBrands(res.data as unknown as Brand[]));
+    brandApi.list({ pageSize: 100 }).then((res) => setBrands(res.data));
   }, []);
 
   useEffect(() => {
@@ -120,18 +121,16 @@ export default function EngineForm() {
             <label className="block text-sm font-semibold text-gray-700 mb-1.5">
               Brand<span className="text-rose-500">*</span>
             </label>
-            <select
+            <CreatableSelect
               value={form.brandId}
-              onChange={(e) => setForm({ ...form, brandId: e.target.value })}
-              className={`w-full px-4 py-2.5 border rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#5B5FC7]/30 ${
-                fieldErrors.brandId ? "border-rose-400" : "border-gray-300"
-              }`}
-            >
-              <option value="">Select Brand</option>
-              {brands.map((b) => (
-                <option key={b.id} value={b.id}>{b.name}</option>
-              ))}
-            </select>
+              onChange={(brandId) => setForm({ ...form, brandId })}
+              options={brands}
+              onCreated={(opt) => setBrands((prev) => [...prev, opt])}
+              create={async (name) => (await brandApi.create({ name, isActive: true })).data}
+              placeholder="Select Brand"
+              createLabel="Tambah Brand baru"
+              error={fieldErrors.brandId}
+            />
             {fieldErrors.brandId && <p className="mt-1 text-xs text-rose-500 font-medium">{fieldErrors.brandId}</p>}
           </div>
 

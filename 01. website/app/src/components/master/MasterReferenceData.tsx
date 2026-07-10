@@ -1,15 +1,14 @@
 import { Link, Navigate, useParams } from "react-router";
 import SimpleMasterListPage from "../common/SimpleMasterListPage";
 import { brandApi } from "../../lib/brandApi";
-import { unitTypeApi } from "../../lib/unitTypeApi";
 import { unitModelApi } from "../../lib/unitModelApi";
 
-// Brand, Unit Type, and Unit Model are structurally identical (name + status) and were
-// previously three separate sub-menu pages. They now share one page with a type tab,
-// reducing Population's sub-menu from 7 to 5 entries without changing how each type behaves.
+// Brand and Unit Model are structurally identical (name + status) and share one page
+// with a type tab. Unit Type used to be a third tab here, but it only ever fed the
+// Variant Specification form and wasn't used as a filter anywhere, so it's now created
+// inline from that form (via CreatableSelect) instead of needing its own management page.
 export const REFERENCE_DATA_TABS = [
   { type: "brand", label: "Brand", searchPlaceholder: "Search by Brand Name", api: brandApi },
-  { type: "unit-type", label: "Unit Type", searchPlaceholder: "Search by Unit Type Name", api: unitTypeApi },
   { type: "unit-model", label: "Unit Model", searchPlaceholder: "Search by Unit Model Name", api: unitModelApi },
 ] as const;
 

@@ -7,6 +7,7 @@ import { unitModelVariantApi, UnitModelVariant } from "../../lib/unitModelVarian
 import { engineApi, Engine } from "../../lib/engineApi";
 import { ApiError } from "../../lib/api";
 import ActionModal, { ActionModalVariant } from "../common/ActionModal";
+import CreatableSelect from "../common/CreatableSelect";
 
 interface RefOption {
   id: string;
@@ -171,18 +172,16 @@ export default function VariantSpecificationForm() {
               <label className="block text-sm font-semibold text-gray-700 mb-1.5">
                 Unit Type<span className="text-rose-500">*</span>
               </label>
-              <select
+              <CreatableSelect
                 value={form.unitTypeId}
-                onChange={(e) => setForm({ ...form, unitTypeId: e.target.value })}
-                className={`w-full px-4 py-2.5 border rounded-xl text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#5B5FC7]/30 ${
-                  fieldErrors.unitTypeId ? "border-rose-400" : "border-gray-300"
-                }`}
-              >
-                <option value="">Select Unit Type</option>
-                {unitTypes.map((t) => (
-                  <option key={t.id} value={t.id}>{t.name}</option>
-                ))}
-              </select>
+                onChange={(unitTypeId) => setForm({ ...form, unitTypeId })}
+                options={unitTypes}
+                onCreated={(opt) => setUnitTypes((prev) => [...prev, opt])}
+                create={async (name) => (await unitTypeApi.create({ name, isActive: true })).data}
+                placeholder="Select Unit Type"
+                createLabel="Tambah Unit Type baru"
+                error={fieldErrors.unitTypeId}
+              />
               {fieldErrors.unitTypeId && <p className="mt-1 text-xs text-rose-500 font-medium">{fieldErrors.unitTypeId}</p>}
             </div>
 
